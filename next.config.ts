@@ -12,15 +12,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // firebase-admin's jwt.js does a CJS require("jwks-rsa"), which itself
-  // requires the ESM-only `jose` package. Turbopack's production bundler
-  // trips over that interop (works fine in `next dev`, breaks in the
-  // deployed serverless function with ERR_REQUIRE_ESM). Externalizing
-  // just "firebase-admin" wasn't enough — the failure is one level
-  // deeper, in jwks-rsa/jose themselves — so all three need to be
-  // excluded from bundling so Node resolves them natively at runtime.
-  // See app/api/staff/route.ts, the only place that imports firebase-admin.
-  serverExternalPackages: ["firebase-admin", "jwks-rsa", "jose"],
+  // firebase-admin (used for Firestore admin access in app/api/staff)
+  // bundles some native/CJS internals that are safer resolved natively by
+  // Node at runtime than bundled by Turbopack. Note: firebase-admin/auth
+  // is deliberately NOT used anywhere (see app/api/staff/route.ts) because
+  // its jwt.js does a CJS require("jwks-rsa") -> require("jose"), and that
+  // require-of-ESM interop crashes deployed Vercel functions with
+  // ERR_REQUIRE_ESM even with this package externalized — the failure is
+  // one level too deep for serverExternalPackages to help with in
+  // Turbopack. The route uses `jose` directly instead (a plain ESM
+  // import, not the broken CJS chain), which Turbopack bundles correctly.
+  serverExternalPackages: ["firebase-admin"],
 };
 
 export default withNextIntl(nextConfig);
