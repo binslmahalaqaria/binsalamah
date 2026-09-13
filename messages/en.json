@@ -204,5 +204,27 @@
     "savePublish": "Save & Publish",
     "publishBlocked": "To publish, fill in the English title/city/district/description and add at least one image.",
     "notFound": "Offer not found."
+  },
+  "AdminStaff": {
+    "title": "Staff",
+    "newStaff": "New Staff",
+    "cancel": "Cancel",
+    "formName": "Name",
+    "formEmail": "Email",
+    "formPassword": "Temporary password",
+    "formRole": "Role",
+    "formCreate": "Create Account",
+    "formError": "Name, email, and a password of at least 6 characters are required",
+    "colStaff": "Staff",
+    "colRole": "Role",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "restrictedTitle": "Admin Access Only",
+    "restrictedBody": "Staff management is restricted to admins.",
+    "loading": "Loading…"
   }
 }

@@ -204,5 +204,27 @@
     "savePublish": "حفظ ونشر",
     "publishBlocked": "للنشر، عبّي العنوان والمدينة والحي والوصف بالإنجليزي وأضف صورة واحدة على الأقل.",
     "notFound": "العرض غير موجود."
+  },
+  "AdminStaff": {
+    "title": "الموظفون",
+    "newStaff": "موظف جديد",
+    "cancel": "إلغاء",
+    "formName": "الاسم",
+    "formEmail": "البريد الإلكتروني",
+    "formPassword": "كلمة مرور مؤقتة",
+    "formRole": "الدور",
+    "formCreate": "إنشاء الحساب",
+    "formError": "الاسم والبريد الإلكتروني مطلوبان، وكلمة المرور 6 أحرف على الأقل",
+    "colStaff": "الموظف",
+    "colRole": "الدور",
+    "colStatus": "الحالة",
+    "colActions": "الإجراءات",
+    "active": "نشط",
+    "inactive": "معطّل",
+    "activate": "تفعيل",
+    "deactivate": "تعطيل",
+    "restrictedTitle": "صلاحية المدير فقط",
+    "restrictedBody": "إدارة الموظفين مقتصرة على المدراء.",
+    "loading": "جاري التحميل..."
   }
 }
