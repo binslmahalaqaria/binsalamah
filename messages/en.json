@@ -226,5 +226,19 @@
     "restrictedTitle": "Admin Access Only",
     "restrictedBody": "Staff management is restricted to admins.",
     "loading": "Loading…"
+  },
+  "AdminSettings": {
+    "title": "Settings",
+    "sectionContact": "Contact Information",
+    "sectionHint": "Shown on the public website's footer and Contact page.",
+    "whatsappNumber": "WhatsApp Number",
+    "whatsappHint": "Country code, no + or leading zero, e.g. 9665XXXXXXXX",
+    "contactEmail": "Contact Email",
+    "contactPhone": "Contact Phone",
+    "save": "Save Changes",
+    "saved": "Changes saved.",
+    "restrictedTitle": "Admin Access Only",
+    "restrictedBody": "Settings are restricted to admins.",
+    "loading": "Loading…"
   }
 }

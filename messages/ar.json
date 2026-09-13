@@ -226,5 +226,19 @@
     "restrictedTitle": "صلاحية المدير فقط",
     "restrictedBody": "إدارة الموظفين مقتصرة على المدراء.",
     "loading": "جاري التحميل..."
+  },
+  "AdminSettings": {
+    "title": "الإعدادات",
+    "sectionContact": "معلومات التواصل",
+    "sectionHint": "تظهر في تذييل الموقع العام وصفحة تواصل معنا.",
+    "whatsappNumber": "رقم الواتساب",
+    "whatsappHint": "رمز الدولة بدون + أو صفر البداية، مثال: 9665XXXXXXXX",
+    "contactEmail": "البريد الإلكتروني للتواصل",
+    "contactPhone": "هاتف التواصل",
+    "save": "حفظ التغييرات",
+    "saved": "تم حفظ التغييرات.",
+    "restrictedTitle": "صلاحية المدير فقط",
+    "restrictedBody": "الإعدادات مقتصرة على المدراء.",
+    "loading": "جاري التحميل..."
   }
 }
