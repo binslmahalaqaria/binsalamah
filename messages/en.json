@@ -1,0 +1,90 @@
+{
+  "Nav": {
+    "home": "Home",
+    "offers": "Offers",
+    "about": "About",
+    "contact": "Contact Us",
+    "language": "العربية"
+  },
+  "Home": {
+    "heroTitle": "Bin Salmah Real Estate",
+    "heroSubtitle": "We search, analyze, and choose the best real estate offers available right now.",
+    "browseOffers": "Browse Offers",
+    "contactUs": "Contact Us",
+    "featuredTitle": "Latest Offers",
+    "viewAll": "View All Offers",
+    "whyTitle": "Why Bin Salmah Real Estate?",
+    "why1Title": "Trusted Expertise",
+    "why1Body": "We hand-pick offers from verified developers and owners.",
+    "why2Title": "Personal Follow-up",
+    "why2Body": "Our team follows your request from first contact to closing.",
+    "why3Title": "Full Transparency",
+    "why3Body": "Every detail and price is clear from the start, no surprises."
+  },
+  "Offers": {
+    "title": "Real Estate Offers",
+    "empty": "No offers are available right now.",
+    "registerInterest": "Register Interest",
+    "contactUs": "Contact Us",
+    "viewDetails": "View Details",
+    "priceFrom": "Starting from",
+    "areaFrom": "Area from",
+    "sar": "SAR",
+    "sqm": "sqm",
+    "sold": "Sold",
+    "filterAll": "All",
+    "filterCity": "City",
+    "filterType": "Type",
+    "allCities": "All Cities",
+    "types": {
+      "apartment": "Apartment",
+      "villa": "Villa",
+      "floor": "Floor",
+      "townhouse": "Townhouse",
+      "land": "Land",
+      "other": "Other"
+    }
+  },
+  "OfferDetail": {
+    "notFoundTitle": "Offer not found",
+    "notFoundBody": "This offer may be unavailable or unpublished.",
+    "backToOffers": "Back to all offers",
+    "description": "Description",
+    "similarOffers": "Similar Offers"
+  },
+  "RegisterInterest": {
+    "title": "Register your interest in this offer",
+    "name": "Full name",
+    "phone": "Phone number",
+    "message": "Note (optional)",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "success": "Your request was received. Our team will contact you soon.",
+    "error": "Something went wrong. Please try again."
+  },
+  "About": {
+    "title": "About Us",
+    "body": "Bin Salmah Real Estate receives the best offers from developers and owners and presents them to clients with trust and transparency."
+  },
+  "Contact": {
+    "title": "Contact Us",
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "phone": "Phone"
+  },
+  "Admin": {
+    "login": {
+      "title": "Staff Login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign In",
+      "error": "Invalid login credentials"
+    },
+    "dashboard": "Dashboard",
+    "offers": "Manage Offers",
+    "leads": "Manage Leads",
+    "staff": "Staff",
+    "settings": "Settings",
+    "logout": "Sign Out"
+  }
+}

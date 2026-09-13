@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Offer images are public marketing content (read is open to everyone).
+// Only authenticated staff (checked via Firestore in the app layer at
+// upload time) may upload/delete — Storage rules can't cheaply join
+// against Firestore, so this is a coarse "any signed-in user" check;
+// Firestore rules remain the source of truth for who is real staff.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /offers/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

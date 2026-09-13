@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// Mirrors CLAUDE.md §6 "Firestore Security Rules — Required Behavior".
+// Keep this file and that section in sync whenever either changes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function staffDoc() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function isActiveStaff() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid)) &&
+        staffDoc().data.active == true;
+    }
+
+    function isAdmin() {
+      return isActiveStaff() && staffDoc().data.role == 'admin';
+    }
+
+    // offers: public read only for published docs; staff (admin/sales)
+    // read/write everything.
+    match /offers/{offerId} {
+      allow read: if resource.data.status == 'published' || isActiveStaff();
+      allow create, update: if isActiveStaff();
+      allow delete: if isActiveStaff();
+    }
+
+    // leads: public can only create (the "Register interest" form and
+    // general-inquiry contact form). No public read/update/delete — a
+    // visitor must never see another customer's lead. Staff have full
+    // read/update; delete is admin-only.
+    match /leads/{leadId} {
+      // Two ways to create a lead:
+      // 1. Staff logging a manual lead (phone call, or any source) from
+      //    the CRM — full trust, same as any other staff write.
+      // 2. An unauthenticated visitor via the "Register interest" / contact
+      //    forms — shape is validated so they can't forge status,
+      //    assignment, or notes on creation, and can't claim a source that
+      //    implies staff/API involvement (phone_call, manual, whatsapp).
+      allow create: if isActiveStaff() || (
+        request.resource.data.customer_name is string &&
+        request.resource.data.customer_name.size() > 0 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() > 0 &&
+        request.resource.data.source in ['website_interest', 'other'] &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.assigned_to == null &&
+        (!('notes' in request.resource.data) || request.resource.data.notes.size() == 0)
+      );
+      allow read, update: if isActiveStaff();
+      allow delete: if isAdmin();
+    }
+
+    // staff: no public access at all. Any active staff member may read the
+    // staff directory (needed for "assign to" pickers). Only admins may
+    // write staff records (role/active changes; account creation itself
+    // goes through the Admin SDK — see app/api/staff/route.ts).
+    match /staff/{staffId} {
+      allow read: if isActiveStaff() || (isSignedIn() && request.auth.uid == staffId);
+      allow write: if isAdmin();
+    }
+
+    // settings: a single `settings/company` doc (WhatsApp number, contact
+    // email/phone). Public read (the public website reads it with no
+    // login), admin-only write.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
