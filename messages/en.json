@@ -86,5 +86,28 @@
     "staff": "Staff",
     "settings": "Settings",
     "logout": "Sign Out"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "publishedOffers": "Published Offers",
+    "draftOffers": "Draft Offers",
+    "newLeads": "New Leads",
+    "totalLeads": "Total Leads",
+    "leadsByStatus": "Leads by Status",
+    "recentLeads": "Recent Leads",
+    "noLeadsYet": "No leads yet.",
+    "loading": "Loading…"
+  },
+  "LeadStatus": {
+    "new": "New",
+    "contacted": "Contacted",
+    "interested": "Interested",
+    "not_interested": "Not Interested",
+    "closed_won": "Closed (Won)",
+    "closed_lost": "Closed (Lost)"
+  },
+  "StaffRole": {
+    "admin": "Admin",
+    "sales": "Sales"
   }
 }

@@ -3,11 +3,9 @@
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useEffect } from "react";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Link } from "@/i18n/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useTranslations } from "next-intl";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, staff, loading, configError } = useAuth();
@@ -43,33 +41,13 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AdminChrome({ children }: { children: React.ReactNode }) {
-  const t = useTranslations("Admin");
-  const { user } = useAuth();
   const pathname = usePathname();
   if (pathname === "/admin/login") return <>{children}</>;
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-e px-4 py-6">
-        <nav className="flex flex-col gap-3 text-sm">
-          <Link href="/admin">{t("dashboard")}</Link>
-          <Link href="/admin/offers">{t("offers")}</Link>
-          <Link href="/admin/leads">{t("leads")}</Link>
-          <Link href="/admin/staff">{t("staff")}</Link>
-          <Link href="/admin/settings">{t("settings")}</Link>
-          <LanguageSwitcher />
-          {user && (
-            <button
-              type="button"
-              onClick={() => signOut(auth)}
-              className="mt-6 text-start text-red-600"
-            >
-              {t("logout")}
-            </button>
-          )}
-        </nav>
-      </aside>
-      <main className="flex-1 px-8 py-6">{children}</main>
+    <div className="flex min-h-screen bg-navy/[0.03]">
+      <AdminSidebar />
+      <main className="flex-1 px-10 py-8">{children}</main>
     </div>
   );
 }
