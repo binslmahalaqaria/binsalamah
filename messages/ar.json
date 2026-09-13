@@ -110,6 +110,46 @@
     "admin": "مدير",
     "sales": "مبيعات"
   },
+  "LeadSource": {
+    "website_interest": "الموقع",
+    "whatsapp": "واتساب",
+    "phone_call": "مكالمة هاتفية",
+    "manual": "يدوي",
+    "other": "أخرى"
+  },
+  "AdminLeads": {
+    "title": "إدارة الطلبات",
+    "logCall": "تسجيل مكالمة",
+    "cancel": "إلغاء",
+    "formName": "اسم العميل",
+    "formPhone": "رقم الجوال",
+    "formMessage": "ملاحظات (اختياري)",
+    "formSave": "حفظ الطلب",
+    "formError": "الاسم ورقم الجوال مطلوبان",
+    "colCustomer": "العميل",
+    "colSource": "المصدر",
+    "colStatus": "الحالة",
+    "colAssigned": "المسؤول",
+    "unassigned": "غير معيّن",
+    "emptyTitle": "لا توجد طلبات بعد",
+    "emptyBody": "الطلبات القادمة من نموذج \"تسجيل اهتمام\" بالموقع أو المسجّلة يدويًا بتظهر هنا.",
+    "loading": "جاري التحميل..."
+  },
+  "AdminLeadDetail": {
+    "back": "الرجوع للطلبات",
+    "notFound": "الطلب غير موجود.",
+    "phone": "رقم الجوال",
+    "source": "المصدر",
+    "relatedOffer": "العرض المرتبط",
+    "message": "الرسالة",
+    "none": "—",
+    "status": "الحالة",
+    "assignedTo": "المسؤول",
+    "notes": "الملاحظات",
+    "noNotes": "لا توجد ملاحظات بعد.",
+    "addNotePlaceholder": "أضف ملاحظة متابعة...",
+    "addNote": "إضافة"
+  },
   "OfferStatus": {
     "draft": "مسوّدة",
     "published": "منشور",

@@ -110,6 +110,46 @@
     "admin": "Admin",
     "sales": "Sales"
   },
+  "LeadSource": {
+    "website_interest": "Website",
+    "whatsapp": "WhatsApp",
+    "phone_call": "Phone Call",
+    "manual": "Manual",
+    "other": "Other"
+  },
+  "AdminLeads": {
+    "title": "Manage Leads",
+    "logCall": "Log a Call",
+    "cancel": "Cancel",
+    "formName": "Customer name",
+    "formPhone": "Phone",
+    "formMessage": "Notes (optional)",
+    "formSave": "Save Lead",
+    "formError": "Name and phone are required",
+    "colCustomer": "Customer",
+    "colSource": "Source",
+    "colStatus": "Status",
+    "colAssigned": "Assigned To",
+    "unassigned": "Unassigned",
+    "emptyTitle": "No leads yet",
+    "emptyBody": "Leads from the website's \"Register interest\" form, or logged manually, will show up here.",
+    "loading": "Loading…"
+  },
+  "AdminLeadDetail": {
+    "back": "Back to leads",
+    "notFound": "Lead not found.",
+    "phone": "Phone",
+    "source": "Source",
+    "relatedOffer": "Related Offer",
+    "message": "Message",
+    "none": "—",
+    "status": "Status",
+    "assignedTo": "Assigned To",
+    "notes": "Notes",
+    "noNotes": "No notes yet.",
+    "addNotePlaceholder": "Add a follow-up note…",
+    "addNote": "Add"
+  },
   "OfferStatus": {
     "draft": "Draft",
     "published": "Published",
