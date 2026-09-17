@@ -2,14 +2,20 @@
 
 /**
  * Brand tokens — see CLAUDE.md §2b. Extracted directly from the client's
- * brand PDF, not guessed. The site intentionally always uses this light
- * palette (no dark-mode toggle) — real estate/marketing sites typically
- * commit to one brand look rather than following the OS theme.
+ * 2026-09-14 brand refresh (colors PDF + logo .ai files), not guessed. The
+ * site intentionally always uses this light palette (no dark-mode toggle) —
+ * real estate/marketing sites typically commit to one brand look rather
+ * than following the OS theme.
+ *
+ * Token names (navy/gold/cream) are kept from the original brand pass for
+ * minimal churn across the codebase's Tailwind classes (bg-navy, text-gold,
+ * etc.) — only the underlying values changed. "navy" now holds a dark
+ * charcoal (not blue) and "cream" now holds pure white.
  */
 :root {
-  --color-navy: #161f28;
-  --color-gold: #967e5a;
-  --color-cream: #f8f4eb;
+  --color-navy: #333333;
+  --color-gold: #b79579;
+  --color-cream: #ffffff;
 
   --background: var(--color-cream);
   --foreground: var(--color-navy);
@@ -21,8 +27,8 @@
   --color-navy: var(--color-navy);
   --color-gold: var(--color-gold);
   --color-cream: var(--color-cream);
-  --font-heading: var(--font-cairo);
-  --font-sans: var(--font-tajawal);
+  --font-heading: var(--font-darah-modern);
+  --font-sans: var(--font-rubik);
 }
 
 body {

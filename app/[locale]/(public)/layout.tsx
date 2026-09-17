@@ -23,7 +23,7 @@ export default async function PublicLayout({
           <Logo variant="light" locale={locale} />
           <p className="text-sm">
             © {new Date().getFullYear()}{" "}
-            {locale === "ar" ? "بن سلمه العقارية" : "Bin Salmah Real Estate"}
+            {locale === "ar" ? "بن سلمه العقارية" : "Bin Slmah Real Estate"}
           </p>
         </div>
       </footer>

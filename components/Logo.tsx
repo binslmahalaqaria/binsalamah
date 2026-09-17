@@ -2,11 +2,11 @@ import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 
 /**
- * Brand mark + wordmark. The wordmark is live text (Cairo font), not an
- * extracted image — see CLAUDE.md §2b for why. `variant` picks the icon
- * color/text color pairing for the surface it sits on. Wordmark language
- * follows the current locale (Arabic trademark on `/ar`, an English
- * rendering on `/en` since the brand PDF has no dedicated Latin lockup).
+ * Brand mark + wordmark. The wordmark is live text (Darah Modern font), not
+ * an extracted image — see CLAUDE.md §2b. `variant` picks the icon/text
+ * color pairing for the surface it sits on. Wordmark language follows the
+ * current locale (Arabic on `/ar`, the logo's own Latin lockup — "Bin
+ * Slmah", matching the binslmah.com domain spelling — on `/en`).
  */
 export function Logo({
   variant = "dark",
@@ -21,10 +21,10 @@ export function Logo({
   return (
     <Link href="/" className="flex shrink-0 items-center gap-2">
       <Image
-        src={isDark ? "/brand/logo-mark-navy.png" : "/brand/logo-mark-cream.png"}
+        src={isDark ? "/brand/logo-mark-dark.png" : "/brand/logo-mark-white.png"}
         alt="بن سلمه العقارية"
-        width={28}
-        height={30}
+        width={24}
+        height={36}
         priority
       />
       <span
@@ -32,15 +32,7 @@ export function Logo({
           isDark ? "text-navy" : "text-cream"
         }`}
       >
-        {isArabic ? (
-          <>
-            بن سلمه <span className="font-bold text-gold">العقارية</span>
-          </>
-        ) : (
-          <>
-            Bin Salmah <span className="font-bold text-gold">Real Estate</span>
-          </>
-        )}
+        {isArabic ? "بن سلمه العقارية" : "Bin Slmah Real Estate"}
       </span>
     </Link>
   );

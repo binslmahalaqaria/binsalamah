@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
-import { Cairo, Tajawal } from "next/font/google";
+import localFont from "next/font/local";
+import { Rubik } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
-const cairo = Cairo({
-  subsets: ["arabic", "latin"],
-  variable: "--font-cairo",
-  weight: ["600", "700", "800", "900"],
+// Real brand font (2026-09-14 identity refresh) — not on Google Fonts, so
+// self-hosted from the client-provided .otf files. See CLAUDE.md §2b.
+const darahModern = localFont({
+  src: [
+    { path: "../../fonts/DarahModern-Regular.otf", weight: "400", style: "normal" },
+    { path: "../../fonts/DarahModern-Medium.otf", weight: "500", style: "normal" },
+  ],
+  variable: "--font-darah-modern",
 });
 
-const tajawal = Tajawal({
+const rubik = Rubik({
   subsets: ["arabic", "latin"],
-  variable: "--font-tajawal",
+  variable: "--font-rubik",
   weight: ["400", "500", "700"],
 });
 
@@ -29,10 +34,10 @@ export async function generateMetadata({
   const { locale } = await params;
   const isArabic = locale === "ar";
   return {
-    title: isArabic ? "بن سلمه العقارية" : "Bin Salmah Real Estate",
+    title: isArabic ? "بن سلمه العقارية" : "Bin Slmah Real Estate",
     description: isArabic
       ? "بن سلمه العقارية — نعرض لك أفضل العروض العقارية المتاحة حاليًا."
-      : "Bin Salmah Real Estate — offers and services.",
+      : "Bin Slmah Real Estate — offers and services.",
   };
 }
 
@@ -53,7 +58,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir}>
       <body
-        className={`${cairo.variable} ${tajawal.variable} min-h-screen font-sans antialiased`}
+        className={`${darahModern.variable} ${rubik.variable} min-h-screen font-sans antialiased`}
       >
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
