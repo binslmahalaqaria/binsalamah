@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Rubik } from "next/font/google";
+import { Alexandria, IBM_Plex_Sans_Arabic, Rubik } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
@@ -20,6 +20,20 @@ const rubik = Rubik({
   subsets: ["arabic", "latin"],
   variable: "--font-rubik",
   weight: ["400", "500", "700"],
+});
+
+// CRM-only fonts, kept from the original artifact CRM at the client's
+// request (2026-10-10): Alexandria for headings, IBM Plex Sans Arabic for
+// body text. Applied via the .crm scope in globals.css.
+const alexandria = Alexandria({
+  subsets: ["arabic", "latin"],
+  variable: "--font-crm-display",
+  weight: ["500", "600", "700"],
+});
+const plexArabic = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic", "latin"],
+  variable: "--font-crm-body",
+  weight: ["400", "500", "600", "700"],
 });
 
 export function generateStaticParams() {
@@ -58,7 +72,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir}>
       <body
-        className={`${darahModern.variable} ${rubik.variable} min-h-screen font-sans antialiased`}
+        className={`${darahModern.variable} ${rubik.variable} ${alexandria.variable} ${plexArabic.variable} min-h-screen font-sans antialiased`}
       >
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>

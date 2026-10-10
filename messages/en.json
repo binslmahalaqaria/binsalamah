@@ -107,7 +107,8 @@
     "closed_lost": "Closed (Lost)"
   },
   "StaffRole": {
-    "admin": "Admin",
+    "admin": "Owner",
+    "manager": "Sales manager",
     "sales": "Sales"
   },
   "LeadSource": {

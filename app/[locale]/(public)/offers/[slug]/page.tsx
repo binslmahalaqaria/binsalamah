@@ -74,7 +74,7 @@ export default async function OfferDetailPage({
           <div>
             <div className="text-navy/50">{t("priceFrom")}</div>
             <div className="font-heading font-bold text-navy">
-              {offer.price_from.toLocaleString()} {t("sar")}
+              {offer.price_from.toLocaleString("en-US")} {t("sar")}
             </div>
           </div>
           <div>

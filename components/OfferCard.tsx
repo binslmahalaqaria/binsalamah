@@ -75,7 +75,7 @@ export function OfferCard({
         <div className="mt-1 flex items-baseline justify-between text-navy">
           <span className="text-xs text-navy/60">{t("priceFrom")}</span>
           <span className="font-heading font-bold">
-            {offer.price_from.toLocaleString()} {t("sar")}
+            {offer.price_from.toLocaleString("en-US")} {t("sar")}
           </span>
         </div>
         <div className="flex items-baseline justify-between text-sm text-navy/70">

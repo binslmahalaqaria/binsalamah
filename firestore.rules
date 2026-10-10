@@ -64,6 +64,62 @@ service cloud.firestore {
     match /staff/{staffId} {
       allow read: if isActiveStaff() || (isSignedIn() && request.auth.uid == staffId);
       allow write: if isAdmin();
+      // A staff member may edit their own display name/phone and the
+      // CRM's last-seen markers — never their role or active flag.
+      allow update: if isActiveStaff() && request.auth.uid == staffId &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'phone', 'lastSeen', 'chatSeen']);
+    }
+
+    // ---- Sales CRM (CLAUDE.md §5 "Sales CRM collections") ----
+    function isManager() {
+      return isActiveStaff() && staffDoc().data.role in ['admin', 'manager'];
+    }
+
+    // Shared working data: every active staff member reads and writes
+    // (the CRM shows employees only their own records; that's a UI
+    // filter, matching the original CRM). Deleting clients is for
+    // managers; other deletes are open to staff like the original.
+    match /clients/{id} {
+      allow read, create, update: if isActiveStaff();
+      allow delete: if isManager();
+    }
+    match /properties/{id} {
+      allow read, write: if isActiveStaff();
+    }
+    match /requests/{id} {
+      allow read, write: if isActiveStaff();
+    }
+    match /tasks/{id} {
+      allow read, write: if isActiveStaff();
+    }
+    // Team chat: post as yourself; only the owner can edit/remove messages.
+    match /chat/{id} {
+      allow read: if isActiveStaff();
+      allow create: if isActiveStaff() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    // Monthly goals: everyone sees them, managers set them.
+    match /goals/{id} {
+      allow read: if isActiveStaff();
+      allow write: if isManager();
+    }
+    // CRM settings (escalation): staff read, owner writes.
+    match /crm/{id} {
+      allow read: if isActiveStaff();
+      allow write: if isAdmin();
+    }
+    // HR files and payroll: owner only.
+    match /hr/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /payroll/{id} {
+      allow read, write: if isAdmin();
+    }
+    // Attendance: each person checks in/out on their own days; the owner
+    // sees and corrects everyone's.
+    match /attendance/{uid}/days/{day} {
+      allow read, write: if isAdmin() || (isActiveStaff() && request.auth.uid == uid);
     }
 
     // settings: a single `settings/company` doc (WhatsApp number, contact

@@ -107,8 +107,9 @@
     "closed_lost": "مغلق (خاسر)"
   },
   "StaffRole": {
-    "admin": "مدير",
-    "sales": "مبيعات"
+    "admin": "المالك",
+    "manager": "مدير مبيعات",
+    "sales": "موظف مبيعات"
   },
   "LeadSource": {
     "website_interest": "الموقع",

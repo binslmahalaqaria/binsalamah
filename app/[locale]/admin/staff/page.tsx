@@ -144,6 +144,7 @@ export default function AdminStaffPage() {
             onChange={(e) => setRole(e.target.value as StaffRole)}
           >
             <option value="sales">{tRole("sales")}</option>
+            <option value="manager">{tRole("manager")}</option>
             <option value="admin">{tRole("admin")}</option>
           </select>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -203,6 +204,7 @@ export default function AdminStaffPage() {
                       }}
                     >
                       <option value="sales">{tRole("sales")}</option>
+                      <option value="manager">{tRole("manager")}</option>
                       <option value="admin">{tRole("admin")}</option>
                     </select>
                   </td>

@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { CrmProvider } from "@/lib/crm/store";
+import { CrmShell } from "@/components/crm/Shell";
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, staff, loading, configError } = useAuth();
@@ -44,11 +45,12 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/admin/login") return <>{children}</>;
 
+  // The sales CRM shell (sidebar groups, client drawer, modals) — see
+  // components/crm/Shell.tsx and CLAUDE.md §9. The CRM UI is Arabic/RTL.
   return (
-    <div className="flex min-h-screen bg-navy/[0.03]">
-      <AdminSidebar />
-      <main className="flex-1 px-10 py-8">{children}</main>
-    </div>
+    <CrmProvider>
+      <CrmShell>{children}</CrmShell>
+    </CrmProvider>
   );
 }
 

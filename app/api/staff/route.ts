@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     !email.trim() ||
     typeof password !== "string" ||
     password.length < 6 ||
-    (role !== "admin" && role !== "sales")
+    !["admin", "manager", "sales"].includes(role)
   ) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }

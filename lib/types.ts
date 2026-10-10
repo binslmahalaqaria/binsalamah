@@ -88,7 +88,9 @@ export interface Lead {
   updated_at: number;
 }
 
-export type StaffRole = "admin" | "sales";
+// admin: full access incl. HR/payroll/settings. manager: sees and assigns
+// the whole team's clients/requests and sets goals. sales: own work only.
+export type StaffRole = "admin" | "manager" | "sales";
 
 export interface Staff {
   id: string; // Firebase Auth uid
@@ -97,6 +99,10 @@ export interface Staff {
   role: StaffRole;
   active: boolean;
   created_at: number;
+  // Self-editable profile fields (see firestore.rules `staff`).
+  phone?: string | null;
+  lastSeen?: string | null;
+  chatSeen?: string | null;
 }
 
 export interface CompanySettings {

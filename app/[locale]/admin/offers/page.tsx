@@ -146,7 +146,7 @@ export default function AdminOffersPage() {
                     </td>
                     <td className="px-3 py-3 text-navy/70">{tType(o.type)}</td>
                     <td className="px-3 py-3 text-navy/70">
-                      {o.price_from.toLocaleString()}
+                      {o.price_from.toLocaleString("en-US")}
                     </td>
                     <td className="px-3 py-3">
                       <span
