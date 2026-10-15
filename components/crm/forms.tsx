@@ -10,20 +10,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import {
-  CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, PTYPES, REQ, SOLD_ST, SOURCES, TEMPS,
-} from "@/lib/crm/constants";
+  CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData,
-} from "@/lib/crm/logic";
-import { releaseUnit, remove, write } from "@/lib/crm/actions";
+  allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
+import { nextAssignee, releaseUnit, remove, write } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
-import { normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
+import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
   ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Sec, Select,
 } from "./ui";
+import { WaPicker } from "./WaPicker";
 
 type F = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v));
+/** The floor question only applies to apartments (شقة) and floors (دور). */
+const needsFloor = (types: string[]) => types.some((t) => t === "شقة" || t === "دور");
 
 function useForm<T extends F>(init: T) {
   const [f, setF] = useState<T>(init);
@@ -45,23 +46,29 @@ function DupHint({ phone, exceptId }: { phone: string; exceptId?: string | null 
   return (
     <div className="mt-1.5 grid justify-items-start gap-1.5 rounded-lg bg-[var(--crm-warn-soft)] px-2.5 py-2 text-[13px] text-[var(--crm-warn)]">
       <span><b>العميل مسجّل من قبل:</b> {c.name}{c.assignee ? " — عند " + nameOf(data, c.assignee) : " — غير مسند"}</span>
-      <span>ما ينفع يتسجّل مرة ثانية.</span>
+      <span>لا يمكن تسجيله مرة أخرى.</span>
       {mine && <button type="button" className="crm-btn sm" onClick={() => { closeModal(); openClient(c.id); }}>افتح ملفه</button>}
     </div>
   );
 }
 
-function MemberSelect({ value, onChange, lock }: { value: string | null | undefined; onChange: (v: string) => void; lock?: boolean }) {
+/** Assignee value meaning "next employee in the round-robin" (resolved on save). */
+const AUTO = "__auto";
+
+function MemberSelect({ value, onChange, lock, auto }: { value: string | null | undefined; onChange: (v: string) => void; lock?: boolean; auto?: boolean }) {
   const { data } = useCrm();
+  const order = data.rr.order.filter((id) => data.staff.some((s) => s.id === id && s.active));
+  const upNext = order.length ? order[((data.rr.last ? order.indexOf(data.rr.last) : -1) + 1) % order.length] : null;
   return (
     <>
       <select value={value || ""} disabled={lock} onChange={(e) => onChange(e.target.value)}>
+        {auto && upNext && <option value={AUTO}>تلقائي بالدور (التالي: {nameOf(data, upNext)})</option>}
         {data.isMgr && <option value="">غير مسند</option>}
         {members(data).map((id) => (
           <option key={id} value={id}>{nameOf(data, id)}{id === data.uid ? " (أنا)" : ""}</option>
         ))}
       </select>
-      {lock && <span className="crm-hint">المدير هو اللي يغيّر الإسناد</span>}
+      {lock && <span className="crm-hint">تغيير الإسناد من صلاحية المدير</span>}
     </>
   );
 }
@@ -81,7 +88,7 @@ export function ClientForm({ id }: { id?: string }) {
   const [busy, setBusy] = useState(false);
 
   async function save() {
-    if (!f.name.trim()) return toast("عبّ خانة: اسم العميل");
+    if (!f.name.trim()) return toast("يرجى تعبئة حقل: اسم العميل");
     if (f.phone && findDup(data, f.phone, rec?.id)) {
       const dup = findDup(data, f.phone, rec?.id)!;
       return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
@@ -106,7 +113,7 @@ export function ClientForm({ id }: { id?: string }) {
         closeModal();
       } else {
         const nid = await write("clients", null, { ...body, log: [], createdAt: nowStamp() });
-        toast("تم حفظ العميل، الحين سجّل وش يبي");
+        toast("تم حفظ العميل، يرجى الآن تسجيل طلبه");
         openModal({ kind: "request", preset: { clientId: nid, assignee: body.assignee || data.uid, source: body.source || null, _clientName: body.name } });
       }
     } catch {
@@ -131,22 +138,30 @@ export function ClientForm({ id }: { id?: string }) {
       }>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save(); }}>
         <Sec>بيانات العميل</Sec>
+        {!rec && (
+          <WaPicker onPick={(c) => {
+            if (c.name) set("name", c.name);
+            set("phone", c.phone);
+            if (!f.source && data.sources.includes("واتساب")) set("source", "واتساب");
+            if (!f.notes.trim() && c.last) set("notes", "آخر رسالة على واتساب: " + c.last);
+          }} />
+        )}
         <Field label="اسم العميل *"><input value={f.name} onChange={(e) => set("name", e.target.value)} autoFocus={!rec} /></Field>
         <Field label="الجوال">
           <input value={f.phone} placeholder="05xxxxxxxx" dir="ltr" onChange={(e) => set("phone", e.target.value)} />
           <DupHint phone={f.phone} exceptId={rec?.id} />
         </Field>
-        <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={SOURCES} blank="—" /></Field>
+        <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={withCurrent(data.sources, [f.source])} blank="—" /></Field>
         <Field label="المسؤول عن العميل"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} /></Field>
         <Sec>المتابعة</Sec>
         <Field label="درجة الاهتمام"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} /></Field>
         <Field label="الحالة"><Select value={f.status} onChange={(v) => set("status", v)} options={CSTATUS} /></Field>
         <Field label="موعد الاتصال القادم"><input type="date" value={f.nextCall} onChange={(e) => set("nextCall", e.target.value)} /></Field>
-        <Field label="موعد الزيارة (اختياري)" hint="يذكّرك قبلها بيوم عشان تأكد مع العميل">
+        <Field label="موعد الزيارة (اختياري)" hint="سيتم تذكيرك قبلها بيوم لتأكيد الموعد مع العميل">
           <input type="datetime-local" value={f.visitAt} onChange={(e) => set("visitAt", e.target.value)} />
         </Field>
-        <Field label="العقار اللي بيزوره"><Select value={f.visitProperty} onChange={(v) => set("visitProperty", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
-        <Field label="ملاحظات عن العميل" full hint="وش يبي العميل (نوع العقار، الحي، الميزانية…) ينكتب في طلب العميل.">
+        <Field label="العقار المراد زيارته"><Select value={f.visitProperty} onChange={(v) => set("visitProperty", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
+        <Field label="ملاحظات عن العميل" full hint="متطلبات العميل (نوع العقار، الحي، الميزانية…) تُسجَّل في طلبه.">
           <textarea rows={3} value={f.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
       </form>
@@ -154,16 +169,20 @@ export function ClientForm({ id }: { id?: string }) {
   );
 }
 
+/** The editable type list plus any value a record already has, so a type removed later still shows on old records. */
+const withCurrent = (list: string[], cur: (string | null | undefined)[]) =>
+  [...list, ...cur.filter((x): x is string => !!x && !list.includes(x))];
+
 /* ====================================================================== */
 /* Request                                                                */
 /* ====================================================================== */
-export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Request> & { _clientName?: string } }) {
-  const { data, closeModal, toast } = useCrm();
+export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string } }) {
+  const { data, closeModal, openModal, toast } = useCrm();
   const rec = id ? data.requests.find((r) => r.id === id) : undefined;
   const base: Partial<Request> = rec || preset || {};
   const presetClient = clientById(data, base.clientId);
   const { f, set } = useForm({
-    clientId: s(base.clientId), newName: "", newPhone: "",
+    clientId: s(base.clientId), newName: s(preset?._newName), newPhone: s(preset?._newPhone),
     purpose: base.purpose || presetClient?.purpose || "شراء",
     budget: s(base.budget ?? presetClient?.budget),
     propTypes: (base.propTypes || presetClient?.propTypes || []) as string[],
@@ -171,7 +190,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     payment: s(base.payment ?? presetClient?.payment), priority: base.priority || "عادية",
     requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
     source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes),
-    status: base.status || "جديد", assignee: s(base.assignee ?? data.uid),
+    status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && data.isMgr && data.rr.on ? AUTO : data.uid)),
     propertyId: s(base.propertyId), unit: s(base.unit), price: s(base.price), commissionPct: s(base.commissionPct ?? 2.5),
   });
   const [busy, setBusy] = useState(false);
@@ -183,14 +202,16 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   async function save() {
     setBusy(true);
     try {
+      const autoTo = data.isMgr && f.assignee === AUTO ? await nextAssignee(data) : null;
+      if (f.assignee === AUTO && !autoTo) return toast("لا يوجد موظفون نشطون في التوزيع التلقائي — اختر المسؤول يدوياً");
       const demand = {
         purpose: f.purpose, propTypes: f.propTypes, districts: f.districts.join("، ") || null, budget: num(f.budget),
         payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), bedroomsMin: num(f.bedroomsMin),
-        floors: f.floors, requirements: f.requirements.trim() || null,
+        floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
       const body: Partial<Request> = {
         ...demand, clientId: f.clientId, priority: f.priority, source: f.source || null, notes: f.notes.trim() || null,
-        status: f.status || "جديد", assignee: data.isMgr ? f.assignee || null : rec ? rec.assignee : data.uid,
+        status: f.status || "جديد", assignee: data.isMgr ? (f.assignee === AUTO ? autoTo : f.assignee || null) : rec ? rec.assignee : data.uid,
         propertyId: f.propertyId || null, unit: f.unit || null, price: num(f.price), commissionPct: num(f.commissionPct) ?? 2.5,
         updatedAt: nowStamp(),
       };
@@ -202,8 +223,13 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       if (rec && SOLD_ST.includes(rec.status) && !SOLD_ST.includes(body.status!)) {
         body.depositAt = null;
         body.closedAt = null;
+        body.depositBy = null;
+        body.closedBy = null;
         if (rec.propertyId) await releaseUnit(data, rec.propertyId, rec.unit);
       }
+      // A new deposit/sale goes through the deposit form (amount, property, unit reserved) after saving the rest.
+      const closeTo = SOLD_ST.includes(body.status!) && rec?.status !== body.status ? body.status! : null;
+      if (closeTo) body.status = rec ? rec.status : "تفاوض";
       if (body.status === "عربون" && !rec?.depositAt) body.depositAt = nowStamp();
       if (body.status === "تم البيع" && !rec?.closedAt) {
         body.closedAt = nowStamp();
@@ -219,14 +245,23 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
           createdAt: nowStamp(), updatedAt: nowStamp(), ...demand,
         });
       } else if (!rec) {
-        await write("clients", body.clientId, { ...demand, updatedAt: nowStamp() }, "update");
+        const cc = clientById(data, body.clientId);
+        // Recording a request for a client from "للتواصل" (or the archive) makes them an active client again.
+        const revive = cc && (cc.status === TO_CONTACT || cc.status === "غير مهتم")
+          ? { status: "نشط", nextCall: cc.nextCall || today(), lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
+              log: [...(cc.log || []), { at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه" }] }
+          : {};
+        await write("clients", body.clientId, { ...demand, ...revive, updatedAt: nowStamp() }, "update");
       }
+      let reqId = rec?.id;
       if (rec) await write("requests", rec.id, body, "update");
-      else await write("requests", null, { ...body, createdAt: nowStamp() });
-      toast("تم الحفظ");
+      else reqId = await write("requests", null, { ...body, createdAt: nowStamp() });
+      toast(closeTo ? "تم الحفظ — يرجى استكمال بيانات " + (closeTo === "تم البيع" ? "البيع" : "العربون")
+        : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : "تم الحفظ");
       closeModal();
+      if (closeTo && reqId) openModal({ kind: "close", reqId, to: closeTo });
     } catch {
-      toast("تعذّر الحفظ، حاول مرة ثانية");
+      toast("تعذّر الحفظ، يرجى المحاولة مجدداً");
     } finally {
       setBusy(false);
     }
@@ -257,34 +292,39 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         <Field label="عميل موجود"><Select value={f.clientId} onChange={(v) => set("clientId", v)} options={clientOpts} blank="—" /></Field>
         {!f.clientId && (
           <>
-            <Field label="أو عميل جديد: الاسم"><input value={f.newName} placeholder="اكتب الاسم إذا العميل جديد" onChange={(e) => set("newName", e.target.value)} /></Field>
+            <WaPicker onPick={(c) => {
+              if (c.name) set("newName", c.name);
+              set("newPhone", c.phone);
+              if (!f.source && data.sources.includes("واتساب")) set("source", "واتساب");
+            }} />
+            <Field label="أو عميل جديد: الاسم"><input value={f.newName} placeholder="اكتب الاسم إذا كان العميل جديداً" onChange={(e) => set("newName", e.target.value)} /></Field>
             <Field label="جوال العميل الجديد">
               <input value={f.newPhone} placeholder="05xxxxxxxx" dir="ltr" onChange={(e) => set("newPhone", e.target.value)} />
               <DupHint phone={f.newPhone} />
             </Field>
           </>
         )}
-        <Sec>وش يبي؟</Sec>
+        <Sec>متطلبات العميل</Sec>
         <Field label="نوع الطلب"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} /></Field>
         <Field label="الميزانية القصوى (ريال)"><input inputMode="decimal" value={f.budget} onChange={(e) => set("budget", e.target.value)} /></Field>
-        <Field label="نوع العقار (تقدر تختار أكثر من نوع)" full><MultiCheck options={PTYPES} value={f.propTypes} onChange={(v) => set("propTypes", v)} /></Field>
+        <Field label="نوع العقار (يمكن اختيار أكثر من نوع)" full><MultiCheck options={withCurrent(data.propTypes, f.propTypes)} value={f.propTypes} onChange={(v) => set("propTypes", v)} /></Field>
+        {needsFloor(f.propTypes) && <Field label="الدور المطلوب" full><MultiCheck options={FLOORS} value={f.floors} onChange={(v) => set("floors", v)} /></Field>}
         <Field label="الأحياء" full><DistrictPicker all={dists} value={f.districts} onChange={(v) => set("districts", v)} /></Field>
         <Field label="طريقة الدفع"><Select value={f.payment} onChange={(v) => set("payment", v)} options={PAY} blank="—" /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
         <Field label="تفاصيل الطلب" full>
-          <textarea rows={3} value={f.requirements} placeholder="مثال: يبي واجهة شمالية، قريب من مدارس، جاهز للسكن…" onChange={(e) => set("requirements", e.target.value)} />
+          <textarea rows={3} value={f.requirements} placeholder="مثال: واجهة شمالية، قريب من المدارس، جاهز للسكن…" onChange={(e) => set("requirements", e.target.value)} />
         </Field>
-        <More title="تفاصيل أدق (اختياري)" open={!!(f.areaMin || f.bedroomsMin || f.bank || f.source || f.floors.length || f.notes)}>
+        <More title="تفاصيل أدق (اختياري)" open={!!(f.areaMin || f.bedroomsMin || f.bank || f.source || f.notes)}>
           <Field label="أقل مساحة (م²)"><input inputMode="decimal" value={f.areaMin} onChange={(e) => set("areaMin", e.target.value)} /></Field>
           <Field label="أقل عدد غرف"><input inputMode="decimal" value={f.bedroomsMin} onChange={(e) => set("bedroomsMin", e.target.value)} /></Field>
-          <Field label="البنك (إذا تمويل)"><input value={f.bank} onChange={(e) => set("bank", e.target.value)} /></Field>
-          <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={SOURCES} blank="—" /></Field>
-          <Field label="الدور المطلوب (للدور والشقة)" full><MultiCheck options={FLOORS} value={f.floors} onChange={(v) => set("floors", v)} /></Field>
+          <Field label="البنك (في حال التمويل)"><input value={f.bank} onChange={(e) => set("bank", e.target.value)} /></Field>
+          <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={withCurrent(data.sources, [f.source])} blank="—" /></Field>
           <Field label="ملاحظات" full><textarea rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
         </More>
         <Sec>المرحلة والمسؤول</Sec>
-        <Field label="المرحلة"><Select value={f.status} onChange={(v) => set("status", v)} options={REQ} /></Field>
-        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} /></Field>
+        <Field label="المرحلة"><Select value={f.status} onChange={(v) => set("status", v)} options={REQ.filter((v) => can(data, "recordDeals") || !SOLD_ST.includes(v) || v === rec?.status).map((v) => [v, lbl(v)] as [string, string])} /></Field>
+        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr && data.rr.on} /></Field>
         <More title="بيانات البيع (عند العربون أو البيع)" open={!!f.propertyId}>
           <Field label="العقار"><Select value={f.propertyId} onChange={(v) => set("propertyId", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
           <Field label="الوحدة">
@@ -324,7 +364,7 @@ export function PropertyForm({ id }: { id?: string }) {
   function genWa() {
     if (f.waMessage.trim() && !waArmed) {
       setWaArmed(true);
-      return toast("فيه رسالة مكتوبة، اضغط مرة ثانية عشان أستبدلها");
+      return toast("توجد رسالة مكتوبة، اضغط مرة أخرى لاستبدالها");
     }
     setWaArmed(false);
     const me = nameOf(data, data.uid);
@@ -336,12 +376,12 @@ export function PropertyForm({ id }: { id?: string }) {
   }
 
   async function save() {
-    if (!f.title.trim()) return toast("عبّ خانة: اسم العقار");
+    if (!f.title.trim()) return toast("يرجى تعبئة حقل: اسم العقار");
     setBusy(true);
     try {
       const body: Partial<Property> = {
         title: f.title.trim(), type: f.type, purpose: f.purpose, price: num(f.price), status: f.status, district: f.district.trim() || null,
-        area: num(f.area), bedrooms: num(f.bedrooms), bathrooms: num(f.bathrooms), floor: f.floor || null, priceNote: f.priceNote || null,
+        area: num(f.area), bedrooms: num(f.bedrooms), bathrooms: num(f.bathrooms), floor: needsFloor([f.type]) && f.floor ? f.floor : null, priceNote: f.priceNote || null,
         link: f.link.trim() || null, images: f.images, ownerKind: f.ownerKind, contactName: f.contactName.trim() || null,
         contactPhone: f.contactPhone.trim() || null, commissionNote: f.commissionNote.trim() || null, waMessage: f.waMessage.trim() || null,
         units: f.units.filter((u) => u.name || u.area || u.price).map((u, i) => ({ ...u, name: u.name || "وحدة " + (i + 1), status: u.status || "متاح" })),
@@ -349,8 +389,8 @@ export function PropertyForm({ id }: { id?: string }) {
         floors: num(f.floors), facing: f.facing || null, streetWidth: num(f.streetWidth), age: f.age.trim() || null,
         videoLink: f.videoLink.trim() || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
       };
-      if (rec) await write("properties", rec.id, body, "update");
-      else await write("properties", null, { ...body, createdAt: nowStamp() });
+      if (rec) await write("properties", rec.id, { ...body, updatedBy: data.uid }, "update");
+      else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
       toast("تم الحفظ");
       closeModal();
     } catch {
@@ -365,17 +405,25 @@ export function PropertyForm({ id }: { id?: string }) {
       footer={
         <>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="crm-btn primary" disabled={busy} onClick={save}>حفظ</button>
-            <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
-            {rec && <button type="button" className="crm-btn" onClick={() => openModal({ kind: "propReqs", propId: rec.id })}>العملاء المناسبين</button>}
+            {can(data, "manageProps") ? <button type="button" className="crm-btn primary" disabled={busy} onClick={save}>حفظ</button>
+              : <span className="crm-hint self-center">للاطلاع فقط — لا تملك صلاحية تعديل العقارات</span>}
+            <button type="button" className="crm-btn" onClick={closeModal}>إغلاق</button>
+            {rec && <button type="button" className="crm-btn" onClick={() => openModal({ kind: "propReqs", propId: rec.id })}>العملاء المناسبون</button>}
           </div>
-          {rec && <ConfirmButton onConfirm={async () => { await remove("properties", rec.id); toast("تم الحذف"); closeModal(); }}>حذف</ConfirmButton>}
+          {rec && can(data, "manageProps") && <ConfirmButton onConfirm={async () => { await remove("properties", rec.id); toast("تم الحذف"); closeModal(); }}>حذف</ConfirmButton>}
         </>
       }>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
+        {rec && (
+          <p className="crm-hint m-0 sm:col-span-2">
+            أضافه: <b>{rec.createdBy ? nameOf(data, rec.createdBy) : "غير مسجّل"}</b>
+            {rec.createdAt && <> · <span className="num">{fmtStamp(rec.createdAt)}</span></>}
+            {rec.updatedBy && rec.updatedBy !== rec.createdBy && <> — آخر تعديل: <b>{nameOf(data, rec.updatedBy)}</b>{rec.updatedAt && <> · <span className="num">{fmtStamp(rec.updatedAt)}</span></>}</>}
+          </p>
+        )}
         <Sec>العقار</Sec>
         <Field label="اسم العقار *" full><input value={f.title} placeholder="فيلا 250م النرجس" onChange={(e) => set("title", e.target.value)} /></Field>
-        <Field label="النوع"><Select value={f.type} onChange={(v) => set("type", v)} options={PTYPES} /></Field>
+        <Field label="النوع"><Select value={f.type} onChange={(v) => set("type", v)} options={withCurrent(data.propTypes, [f.type])} /></Field>
         <Field label="للـ"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["بيع", "إيجار"]} /></Field>
         <Field label="السعر (ريال)"><input inputMode="decimal" value={f.price} onChange={(e) => set("price", e.target.value)} /></Field>
         <Field label="الحالة"><Select value={f.status} onChange={(v) => set("status", v)} options={PSTATUS} /></Field>
@@ -386,7 +434,7 @@ export function PropertyForm({ id }: { id?: string }) {
         <Field label="المساحة (م²)"><input inputMode="decimal" value={f.area} onChange={(e) => set("area", e.target.value)} /></Field>
         <Field label="غرف النوم"><input inputMode="decimal" value={f.bedrooms} onChange={(e) => set("bedrooms", e.target.value)} /></Field>
         <Field label="دورات المياه"><input inputMode="decimal" value={f.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} /></Field>
-        <Field label="الدور (للدور والشقة)"><Select value={f.floor} onChange={(v) => set("floor", v)} options={FLOORS} blank="—" /></Field>
+        {needsFloor([f.type]) && <Field label="الدور"><Select value={f.floor} onChange={(v) => set("floor", v)} options={FLOORS} blank="—" /></Field>}
         <Field label="السعر"><Select value={f.priceNote} onChange={(v) => set("priceNote", v)} options={["قابل للتفاوض", "نهائي"]} blank="—" /></Field>
         <Field label="رابط الموقع (خرائط)" full><input dir="ltr" value={f.link} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set("link", e.target.value)} /></Field>
 
@@ -410,20 +458,20 @@ export function PropertyForm({ id }: { id?: string }) {
           )}
           <div className="flex gap-2">
             <input className="crm-input flex-1" dir="ltr" value={f.newImg} placeholder="https://… رابط الصورة" onChange={(e) => set("newImg", e.target.value)} />
-            <button type="button" className="crm-btn" onClick={() => { if (f.newImg.trim()) { set("images", [...f.images, f.newImg.trim()]); set("newImg", ""); } }}>+ أضف صورة</button>
+            <button type="button" className="crm-btn" onClick={() => { if (f.newImg.trim()) { set("images", [...f.images, f.newImg.trim()]); set("newImg", ""); } }}>+ إضافة صورة</button>
           </div>
-          <span className="crm-hint">الصورة الأولى هي الغلاف. الصور بالروابط لين يتفعّل تخزين الصور في Firebase.</span>
+          <span className="crm-hint">الصورة الأولى هي الغلاف. تُضاف الصور عبر الروابط إلى حين تفعيل تخزين الصور في Firebase.</span>
         </div>
 
         <Sec>المسؤول عن العقار</Sec>
         <Field label="نوع المعلن"><Select value={f.ownerKind} onChange={(v) => set("ownerKind", v)} options={OWNERK} /></Field>
-        <Field label="اسم المسؤول"><input value={f.contactName} onChange={(e) => set("contactName", e.target.value)} /></Field>
-        <Field label="جوال المسؤول"><input dir="ltr" value={f.contactPhone} placeholder="05xxxxxxxx" onChange={(e) => set("contactPhone", e.target.value)} /></Field>
+        <Field label="اسم المعلن (المالك أو المسوق)"><input value={f.contactName} onChange={(e) => set("contactName", e.target.value)} /></Field>
+        <Field label="جوال المعلن"><input dir="ltr" value={f.contactPhone} placeholder="05xxxxxxxx" onChange={(e) => set("contactPhone", e.target.value)} /></Field>
         <Field label="السعي / الاتفاق"><input value={f.commissionNote} placeholder="2.5% على المشتري" onChange={(e) => set("commissionNote", e.target.value)} /></Field>
 
         <Sec>رسالة الواتساب الجاهزة</Sec>
-        <Field full label="الرسالة اللي ينسخها الموظف ويرسلها للعميل (حط فيها التفاصيل والموقع)"
-          hint={<button type="button" className="crm-btn sm" onClick={genWa}>اكتبها لي تلقائي من بيانات العقار</button>}>
+        <Field full label="الرسالة التي ينسخها الموظف ويرسلها إلى العميل (تتضمن التفاصيل والموقع)"
+          hint={<button type="button" className="crm-btn sm" onClick={genWa}>إنشاء الرسالة تلقائياً من بيانات العقار</button>}>
           <textarea rows={8} value={f.waMessage} onChange={(e) => set("waMessage", e.target.value)}
             placeholder={"السلام عليكم، معك … من بن سلمه العقارية\nفيلا للبيع في حي النرجس…\nالموقع: https://maps.app.goo.gl/…"} />
         </Field>
@@ -438,7 +486,7 @@ export function PropertyForm({ id }: { id?: string }) {
                     {f.units.map((u, i) => (
                       <tr key={i}>
                         <td><input value={s(u.name)} placeholder={"وحدة " + (i + 1)} onChange={(e) => setUnit(i, "name", e.target.value)} /></td>
-                        <td><Select value={u.type} onChange={(v) => setUnit(i, "type", v)} options={PTYPES} blank="نفس المشروع" /></td>
+                        <td><Select value={u.type} onChange={(v) => setUnit(i, "type", v)} options={withCurrent(data.propTypes, [u.type])} blank="نفس المشروع" /></td>
                         <td><input inputMode="decimal" value={s(u.area)} onChange={(e) => setUnit(i, "area", e.target.value)} /></td>
                         <td><input inputMode="decimal" value={s(u.price)} onChange={(e) => setUnit(i, "price", e.target.value)} /></td>
                         <td><input inputMode="decimal" value={s(u.bedrooms)} onChange={(e) => setUnit(i, "bedrooms", e.target.value)} /></td>
@@ -451,11 +499,11 @@ export function PropertyForm({ id }: { id?: string }) {
                 </table>
               </div>
             ) : (
-              <p className="crm-hint m-0 mb-1.5">إذا العقار وحدة وحدة، اترك هذا القسم فاضي. إذا مشروع، أضف كل وحدة بمساحتها وسعرها.</p>
+              <p className="crm-hint m-0 mb-1.5">إذا كان العقار وحدة مستقلة فاترك هذا القسم فارغاً، وإذا كان مشروعاً فأضف كل وحدة بمساحتها وسعرها.</p>
             )}
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <button type="button" className="crm-btn sm" onClick={() => set("units", [...f.units, { name: "", status: "متاح" }])}>+ أضف وحدة</button>
-              {f.units.length > 0 && <button type="button" className="crm-btn sm" onClick={() => set("units", [...f.units, { ...f.units[f.units.length - 1], name: "" }])}>+ كرر آخر وحدة</button>}
+              <button type="button" className="crm-btn sm" onClick={() => set("units", [...f.units, { name: "", status: "متاح" }])}>+ إضافة وحدة</button>
+              {f.units.length > 0 && <button type="button" className="crm-btn sm" onClick={() => set("units", [...f.units, { ...f.units[f.units.length - 1], name: "" }])}>+ تكرار آخر وحدة</button>}
             </div>
           </div>
         </More>
@@ -495,7 +543,7 @@ export function TaskForm({ id, preset }: { id?: string; preset?: Partial<Task> }
   }, [unseenMine, rec]);
 
   async function save() {
-    if (!f.title.trim()) return toast("عبّ خانة: المهمة");
+    if (!f.title.trim()) return toast("يرجى تعبئة حقل: المهمة");
     setBusy(true);
     try {
       const body: Partial<Task> = {
@@ -529,8 +577,8 @@ export function TaskForm({ id, preset }: { id?: string; preset?: Partial<Task> }
         </>
       }>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <Field label="المهمة *" full><input value={f.title} autoFocus={!rec} placeholder="مثال: رتّب معاينة فيلا النرجس مع أنس" onChange={(e) => set("title", e.target.value)} /></Field>
-        <Field label="لمين؟"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} /></Field>
+        <Field label="المهمة *" full><input value={f.title} autoFocus={!rec} placeholder="مثال: ترتيب معاينة فيلا النرجس مع أنس" onChange={(e) => set("title", e.target.value)} /></Field>
+        <Field label="المُسند إليه"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} /></Field>
         <Field label="التاريخ"><input type="date" value={f.due} onChange={(e) => set("due", e.target.value)} /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
         <Field label="العميل (اختياري)"><Select value={f.clientId} onChange={(v) => set("clientId", v)} options={visibleClients(data).map((c) => [c.id, c.name] as [string, string])} blank="—" /></Field>

@@ -6,20 +6,23 @@
  * and overdue clients escalate back to the sales manager.
  */
 import {
-  addDoc, collection, deleteDoc, doc, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, doc, runTransaction, setDoc, updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { assertWritable, isPreview } from "./preview";
 import { REQ, SOLD_ST, UPD, UPD_STAGE } from "./constants";
 import {
   clientById, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
-import type { Client, LogEntry, Request } from "./types";
-import { addDays, dayDiff, fmtVisit, moneyFull, nowStamp, today } from "./util";
+import type { AttendanceDay, Client, LogEntry, Request } from "./types";
+import { addDays, dayDiff, fmtVisit, localDay, moneyFull, nowStamp, today } from "./util";
 
 const LOG_MAX = 80;
 const clean = <T extends object>(o: T) => JSON.parse(JSON.stringify(o)) as T; // drop undefined
 
 export async function write(col: string, id: string | null, data: object, mode: "set" | "update" = "set") {
+  assertWritable();
   if (id) {
     const ref = doc(db, col, id);
     if (mode === "update") await updateDoc(ref, clean(data) as Record<string, unknown>);
@@ -29,7 +32,10 @@ export async function write(col: string, id: string | null, data: object, mode: 
   const ref = await addDoc(collection(db, col), clean(data));
   return ref.id;
 }
-export const remove = (col: string, id: string) => deleteDoc(doc(db, col, id));
+export const remove = (col: string, id: string) => {
+  assertWritable();
+  return deleteDoc(doc(db, col, id));
+};
 
 function pushLog(c: Client, entry: LogEntry) {
   return [entry].concat(c.log || []).slice(0, LOG_MAX);
@@ -97,7 +103,7 @@ export async function confirmVisit(d: CrmData, id: string) {
     id,
     {
       visitConfirmed: true,
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "أكد موعد الزيارة " + fmtVisit(c.visitAt) }),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد الزيارة " + fmtVisit(c.visitAt) }),
       updatedAt: nowStamp(),
     },
     "update"
@@ -114,7 +120,7 @@ export async function visitNoShow(d: CrmData, id: string) {
       visitAt: null,
       visitConfirmed: false,
       nextCall: today(),
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "ما حضر", text: "ما حضر موعد الزيارة " + fmtVisit(c.visitAt) }),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "ما حضر", text: "لم يحضر موعد الزيارة " + fmtVisit(c.visitAt) }),
       updatedAt: nowStamp(),
     },
     "update"
@@ -141,7 +147,7 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
         at: nowStamp(),
         byId: d.uid,
         type: clear ? "إلغاء موعد" : "حدد موعد زيارة",
-        text: clear ? "انلغى موعد الزيارة" : fmtVisit(at) + (note ? " — " + note : ""),
+        text: clear ? "تم إلغاء موعد الزيارة" : fmtVisit(at) + (note ? " — " + note : ""),
         propertyId: propId,
       }),
       lastUpdate: clear ? c.lastUpdate || null : "حدد موعد زيارة",
@@ -180,7 +186,7 @@ export async function saveClose(
   d: CrmData,
   reqId: string,
   to: string,
-  v: { propertyId: string; unit: string | null; price: number; pct: number; extra: string }
+  v: { propertyId: string; unit: string | null; price: number; pct: number; extra: string; depositDay?: string | null }
 ) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return false;
@@ -188,11 +194,20 @@ export async function saveClose(
     status: to, propertyId: v.propertyId, unit: v.unit || null, price: v.price, commissionPct: v.pct, updatedAt: nowStamp(),
   };
   if (to === "عربون") {
-    patch.depositAt = r.depositAt || nowStamp();
+    // Keep the original timestamp unless the user picked a different day for the deposit.
+    patch.depositAt =
+      v.depositDay && v.depositDay !== localDay(r.depositAt)
+        ? (v.depositDay === today() ? nowStamp() : new Date(v.depositDay + "T12:00:00").toISOString())
+        : r.depositAt || nowStamp();
     patch.deposit = v.extra ? Number(v.extra) || null : null;
+    patch.depositBy = r.status === "عربون" && r.depositBy ? r.depositBy : d.uid;
   } else {
+    patch.closedBy = r.status === "تم البيع" && r.closedBy ? r.closedBy : d.uid;
     patch.closedAt = v.extra ? new Date(v.extra + "T12:00:00").toISOString() : nowStamp();
-    if (!r.depositAt) patch.depositAt = patch.closedAt;
+    if (!r.depositAt) {
+      patch.depositAt = patch.closedAt;
+      patch.depositBy = d.uid;
+    }
   }
   await write("requests", r.id, patch, "update");
   if (r.propertyId && SOLD_ST.includes(r.status) && (r.propertyId !== v.propertyId || (r.unit || null) !== (v.unit || null)))
@@ -202,7 +217,8 @@ export async function saveClose(
   if (r.clientId)
     await applyUpdate0(
       d, r.clientId, to === "تم البيع" ? "تم الإغلاق" : "دفع عربون", null,
-      (p ? p.title : "") + (v.unit ? " — " + v.unit : "") + " · " + moneyFull(v.price), v.propertyId
+      (to === "عربون" && patch.deposit ? "عربون " + moneyFull(patch.deposit) + " · " : "") +
+        (p ? p.title : "") + (v.unit ? " — " + v.unit : "") + " · قيمة البيع " + moneyFull(v.price), v.propertyId
     );
   if (to === "تم البيع" && r.clientId) await write("clients", r.clientId, { status: "مغلق" }, "update");
   return true;
@@ -213,7 +229,7 @@ export async function cancelSale(d: CrmData, reqId: string, to: string, note: st
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return false;
   const was = r.status;
-  await write("requests", r.id, { status: to, depositAt: null, closedAt: null, deposit: null, updatedAt: nowStamp() }, "update");
+  await write("requests", r.id, { status: to, depositAt: null, closedAt: null, deposit: null, depositBy: null, closedBy: null, updatedAt: nowStamp() }, "update");
   if (r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
   if (r.clientId) {
     const c = clientById(d, r.clientId);
@@ -262,19 +278,25 @@ export async function markTasksSeen(d: CrmData) {
   for (const t of d.tasks.filter((x) => x.seen === false && x.assignee === d.uid)) await write("tasks", t.id, { seen: true }, "update");
 }
 
-export async function checkIO(uid: string, kind: "in" | "out") {
+export async function checkIO(uid: string, kind: "in" | "out", loc: AttendanceDay["inLoc"] = null) {
+  assertWritable();
   const ref = doc(db, "attendance", uid, "days", today());
-  if (kind === "in") await setDoc(ref, { date: today(), in: nowStamp(), out: null });
-  else await updateDoc(ref, { out: nowStamp() });
+  if (kind === "in") await setDoc(ref, { date: today(), in: nowStamp(), out: null, inLoc: loc });
+  else await updateDoc(ref, { out: nowStamp(), outLoc: loc });
 }
 
 export async function saveAttendance(uid: string, date: string, inT: string, outT: string, by: string) {
+  assertWritable();
   const mk = (v: string) => (v ? new Date(date + "T" + v + ":00").toISOString() : null);
   await setDoc(doc(db, "attendance", uid, "days", date), { date, in: mk(inT), out: mk(outT), editedBy: by });
 }
-export const deleteAttendance = (uid: string, date: string) => deleteDoc(doc(db, "attendance", uid, "days", date));
+export const deleteAttendance = (uid: string, date: string) => {
+  assertWritable();
+  return deleteDoc(doc(db, "attendance", uid, "days", date));
+};
 
 export async function sendChat(d: CrmData, text: string, clientId: string | null) {
+  assertWritable();
   await addDoc(collection(db, "chat"), { text: text.slice(0, 2000), by: d.uid, at: nowStamp(), clientId: clientId || null });
 }
 
@@ -296,8 +318,8 @@ export async function runEscalation(d: CrmData, mgr: string, days: number, done:
       {
         assignee: mgr, escalatedFrom: c.assignee, escalatedAt: nowStamp(), assignedAt: nowStamp(), assignedBy: null, unseen: true,
         log: pushLog(c, {
-          at: nowStamp(), byId: d.uid, type: "رجع لمدير المبيعات",
-          text: "ما تم التواصل خلال " + days + " أيام من الموعد (كان عند " + nameOf(d, c.assignee) + ")",
+          at: nowStamp(), byId: d.uid, type: "أُعيد إلى مدير المبيعات",
+          text: "لم يتم التواصل خلال " + days + " أيام من الموعد (كان عند " + nameOf(d, c.assignee) + ")",
         }),
         updatedAt: nowStamp(),
       },
@@ -307,4 +329,47 @@ export async function runEscalation(d: CrmData, mgr: string, days: number, done:
     if (r && r.assignee === c.assignee) await write("requests", r.id, { assignee: mgr, updatedAt: nowStamp() }, "update");
   }
   return list.length;
+}
+
+/**
+ * Round-robin: the next active employee in crm/lists.rr.order after the last one who got a request.
+ * Runs in a transaction so two managers adding requests at once never get the same turn.
+ * Returns null when auto-assignment is off or nobody in the list is active.
+ */
+export async function nextAssignee(d: CrmData): Promise<string | null> {
+  assertWritable();
+  const ref = doc(db, "crm", "lists");
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const rr = (snap.exists() ? snap.data().rr : null) as { on?: boolean; order?: string[]; last?: string | null } | null;
+    const order = (rr?.order || []).filter((id) => d.staff.some((s) => s.id === id && s.active));
+    if (!rr?.on || !order.length) return null;
+    const i = rr.last ? order.indexOf(rr.last) : -1;
+    const next = order[(i + 1) % order.length];
+    tx.set(ref, { rr: { ...rr, last: next } }, { merge: true });
+    return next;
+  });
+}
+
+/** Private message to one colleague (collection "dm"). */
+export async function sendDm(d: CrmData, to: string, text: string, clientId: string | null) {
+  assertWritable();
+  const members = [d.uid, to].sort() as [string, string];
+  await addDoc(collection(db, "dm"), { members, by: d.uid, to, text: text.slice(0, 2000), at: nowStamp(), clientId: clientId || null, read: false });
+}
+/** Marks private messages sent to me as read (only the "read" flag may change). */
+export async function markDmRead(ids: string[]) {
+  if (isPreview() || !ids.length) return;
+  const b = writeBatch(db);
+  ids.forEach((id) => b.update(doc(db, "dm", id), { read: true }));
+  await b.commit().catch(() => {});
+}
+
+/** Deletes a request after a confirmation; a property/unit it had reserved or sold goes back on the market. */
+export async function deleteRequest(d: CrmData, r: Request) {
+  const c = clientById(d, r.clientId);
+  if (!window.confirm("حذف هذا الطلب" + (c ? " للعميل " + c.name : "") + " نهائياً؟ يبقى العميل نفسه.")) return false;
+  await remove("requests", r.id);
+  if (SOLD_ST.includes(r.status) && r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
+  return true;
 }

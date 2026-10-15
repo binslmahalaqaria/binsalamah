@@ -29,11 +29,11 @@ interface View {
 }
 
 const ERR: Record<string, string> = {
-  no_key: "المساعد يحتاج مفتاح Claude API على السيرفر (ANTHROPIC_API_KEY). كلّم المالك.",
-  bad_key: "مفتاح Claude API غير صحيح. كلّم المالك.",
-  rate_limited: "طلبات كثيرة ورا بعض، انتظر شوي وجرب.",
-  forbidden: "حسابك ما عنده صلاحية على المساعد.",
-  unauthorized: "سجّل دخولك من جديد.",
+  no_key: "يتطلب المساعد مفتاح Claude API على الخادم (ANTHROPIC_API_KEY). يرجى التواصل مع المالك.",
+  bad_key: "مفتاح Claude API غير صحيح. يرجى التواصل مع المالك.",
+  rate_limited: "عدد الطلبات كبير، يرجى الانتظار قليلاً ثم المحاولة مجدداً.",
+  forbidden: "لا يملك حسابك صلاحية استخدام المساعد.",
+  unauthorized: "يرجى تسجيل الدخول مجدداً.",
 };
 const MAX_STEPS = 15;
 
@@ -89,14 +89,14 @@ export function Assistant() {
           signal: ctl.current.signal,
         });
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(ERR[body.error] || "صار خطأ، جرب مرة ثانية.");
+        if (!res.ok) throw new Error(ERR[body.error] || "حدث خطأ، يرجى المحاولة مجدداً.");
         const msg = body as Anthropic.Beta.BetaMessage;
         // Keep the assistant turn exactly as returned (thinking/fallback blocks included).
         hist.current.push({ role: "assistant", content: msg.content as Anthropic.Beta.BetaContentBlockParam[] });
         const said = msg.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
         if (said) patchLast((v) => ({ ...v, text: said }));
-        if (msg.stop_reason === "refusal") throw new Error("المساعد ما قدر ينفذ هذا الطلب.");
-        if (msg.stop_reason === "max_tokens") throw new Error("الرد طويل مرة، جرب تقسم الطلب.");
+        if (msg.stop_reason === "refusal") throw new Error("تعذّر على المساعد تنفيذ هذا الطلب.");
+        if (msg.stop_reason === "max_tokens") throw new Error("الرد طويل جداً، يرجى تقسيم الطلب.");
         if (msg.stop_reason !== "tool_use") break;
         const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
         for (const b of msg.content) {
@@ -113,7 +113,7 @@ export function Assistant() {
         hist.current.push({ role: "user", content: results });
       }
     } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) patchLast((v) => ({ ...v, err: e instanceof Error ? e.message : "صار خطأ" }));
+      if (!(e instanceof DOMException && e.name === "AbortError")) patchLast((v) => ({ ...v, err: e instanceof Error ? e.message : "حدث خطأ" }));
       // Leave history valid: if the last turn is our unanswered user text, drop it so the next message starts cleanly.
       const last = hist.current[hist.current.length - 1];
       if (last?.role === "user" && typeof last.content === "string") hist.current.pop();
@@ -121,7 +121,7 @@ export function Assistant() {
       else if (last?.role === "assistant" && Array.isArray(last.content)) {
         const pendingCalls = last.content.filter((b) => b.type === "tool_use") as Anthropic.Beta.BetaToolUseBlockParam[];
         if (pendingCalls.length)
-          hist.current.push({ role: "user", content: pendingCalls.map((b) => ({ type: "tool_result" as const, tool_use_id: b.id, content: "انلغى قبل التنفيذ", is_error: true })) });
+          hist.current.push({ role: "user", content: pendingCalls.map((b) => ({ type: "tool_result" as const, tool_use_id: b.id, content: "أُلغي قبل التنفيذ", is_error: true })) });
       }
     } finally {
       patchLast((v) => ({ ...v, pending: false }));
@@ -140,12 +140,12 @@ export function Assistant() {
   };
 
   const sugs = [
-    "وش اتصالاتي اليوم؟",
-    "طلب جديد: خالد 0551234567 يبي فيلا في الملقا أو حطين، ميزانيته 3 مليون، تمويل بنكي",
-    "فهد أرسلت له الموقع، كلمه بعد 3 أيام",
-    "سوّ لي مهمة بكرة: معاينة فيلا النرجس",
-    "عرض: فيلا 300م في الملقا بـ 3.2 مليون، مين يناسبه؟",
-  ].concat(data.isMgr ? ["وزّع العملاء غير المسندين على الموظفين بالتساوي", "عطني ملخص أداء الفريق اليوم"] : []);
+    "ما الاتصالات المطلوبة مني اليوم؟",
+    "طلب جديد: خالد 0551234567 يرغب في فيلا في الملقا أو حطين، الميزانية 3 ملايين، تمويل بنكي",
+    "تم إرسال الموقع إلى فهد، والاتصال به بعد 3 أيام",
+    "أنشئ مهمة للغد: معاينة فيلا النرجس",
+    "عرض: فيلا 300م في الملقا بـ 3.2 مليون، من العملاء المناسبون له؟",
+  ].concat(data.isMgr ? ["وزّع العملاء غير المسندين على الموظفين بالتساوي", "اعرض ملخص أداء الفريق اليوم"] : []);
 
   if (!open)
     return (
@@ -171,7 +171,7 @@ export function Assistant() {
       <div ref={box} className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3.5">
         {!views.length && (
           <div>
-            <p className="mb-2.5 text-sm text-[var(--crm-ink-2)]">اكتب لي وش تبي وأنا أسويه داخل النظام: أسجّل الطلبات والعملاء، أضيف عقارات، أسجّل التحديثات، أسوي مهام، أوزّع العملاء، وأجهّز رسائل واتساب.</p>
+            <p className="mb-2.5 text-sm text-[var(--crm-ink-2)]">اكتب ما تريد تنفيذه داخل النظام: تسجيل الطلبات والعملاء، وإضافة العقارات، وتسجيل التحديثات، وإنشاء المهام، وتوزيع العملاء، وإعداد رسائل واتساب.</p>
             <div className="flex flex-col gap-1.5">
               {sugs.map((s) => (
                 <button key={s} type="button" onClick={() => send(s)}
@@ -185,7 +185,7 @@ export function Assistant() {
             <div key={i} className="max-w-[92%] self-start rounded-xl bg-[var(--crm-ink)] px-3 py-2 text-[14.5px] whitespace-pre-wrap text-white">{m.text}</div>
           ) : (
             <div key={i} className="grid w-full max-w-full gap-2 self-end rounded-xl bg-[var(--crm-surface-2)] px-3 py-2 text-[14.5px]">
-              {m.text ? <div className="break-words">{mdLite(m.text)}</div> : m.pending && <div className="animate-pulse text-[13.5px] text-[var(--crm-ink-3)]">{m.actions.length ? "أنفّذ…" : "أفكر…"}</div>}
+              {m.text ? <div className="break-words">{mdLite(m.text)}</div> : m.pending && <div className="animate-pulse text-[13.5px] text-[var(--crm-ink-3)]">{m.actions.length ? "جارٍ التنفيذ…" : "جارٍ التفكير…"}</div>}
               {m.actions.length > 0 && (
                 <div className="grid gap-1 border-t border-[var(--crm-line)] pt-1.5">
                   {m.actions.map((a, j) => (
@@ -198,7 +198,7 @@ export function Assistant() {
               )}
               {m.offer && (
                 <div className="grid gap-0.5 border-t border-[var(--crm-line)] pt-1.5">
-                  <b className="mb-1 text-[13px]">{m.offer.items.length ? m.offer.items.length + " عميل يناسبهم: " + m.offer.title : "ما لقيت عملاء يناسبهم: " + m.offer.title}</b>
+                  <b className="mb-1 text-[13px]">{m.offer.items.length ? m.offer.items.length + " عميل يناسبهم: " + m.offer.title : "لم يُعثر على عملاء مناسبين: " + m.offer.title}</b>
                   {m.offer.items.map((x) => (
                     <div key={x.cid} className="flex items-center gap-2 border-t border-dashed border-[var(--crm-line)] py-1.5 first:border-0">
                       <span className="num min-w-[38px] font-heading text-[var(--crm-gold-ink)]">{x.score}%</span>
@@ -210,7 +210,7 @@ export function Assistant() {
                         <a className="crm-btn sm wa" href={x.link} target="_blank" rel="noopener" onClick={() => {
                           const d = dataRef.current;
                           (m.offer!.pid && x.rid ? reqSent(d, x.rid, m.offer!.pid) : applyUpdate(d, x.cid, "تم إرسال التفاصيل", addDays(3), "عرض: " + m.offer!.title, null))
-                            .then(() => toast("سجّلت: أرسلت العرض — اتصال بعد 3 أيام"));
+                            .then(() => toast("تم التسجيل: إرسال العرض — الاتصال بعد 3 أيام"));
                         }}>أرسل</a>
                       ) : <span className="muted text-xs">بدون جوال</span>}
                     </div>
@@ -225,7 +225,7 @@ export function Assistant() {
       </div>
 
       <div className="flex gap-2 border-t border-[var(--crm-line)] px-3 py-2.5">
-        <textarea rows={2} className="flex-1 resize-none" value={input} disabled={busy} placeholder="مثال: طلب جديد لسعد 0550000000 يبي شقة في الياسمين…"
+        <textarea rows={2} className="flex-1 resize-none" value={input} disabled={busy} placeholder="مثال: طلب جديد لسعد 0550000000 يرغب في شقة في الياسمين…"
           onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} />
         {busy ? (
           <button type="button" className="crm-btn" onClick={() => ctl.current?.abort()}>إيقاف</button>
@@ -233,7 +233,7 @@ export function Assistant() {
           <button type="button" className="crm-btn primary" onClick={() => send(input)}>نفّذ</button>
         )}
       </div>
-      <div className="crm-hint px-3 pb-2.5">راجع اللي سواه المساعد من زر &quot;فتح&quot;.</div>
+      <div className="crm-hint px-3 pb-2.5">راجع ما نفّذه المساعد من زر &quot;فتح&quot;.</div>
     </aside>
   );
 }

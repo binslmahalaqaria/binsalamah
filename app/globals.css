@@ -95,8 +95,12 @@ body {
 .crm-btn.danger { color: var(--crm-danger); border-color: var(--crm-danger-soft); }
 .crm-btn.danger.armed { background: var(--crm-danger); color: #fff; }
 
-.crm-input, .crm select, .crm textarea { border: 1px solid var(--crm-line); border-radius: 10px; background: var(--crm-surface); padding: 8px 11px; font: inherit; color: inherit; }
-.crm-input:focus, .crm select:focus, .crm textarea:focus { outline: none; border-color: var(--crm-gold); box-shadow: 0 0 0 3px rgb(183 149 121 / .18); }
+/* Every text-like field gets the same box (inputs without .crm-input used to render borderless). */
+.crm-input, .crm input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), .crm select, .crm textarea { border: 1px solid var(--crm-line); border-radius: 10px; background: var(--crm-surface); padding: 8px 11px; font: inherit; color: inherit; }
+.crm-input:focus, .crm input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):focus, .crm select:focus, .crm textarea:focus { outline: none; border-color: var(--crm-gold); box-shadow: 0 0 0 3px rgb(183 149 121 / .18); }
+/* A select that reads as plain text until hovered/focused — for inline edits in dense lists. */
+.crm select.crm-quiet { border-color: transparent; background-color: transparent; padding: 4px 8px; cursor: pointer; }
+.crm select.crm-quiet:hover { border-color: var(--crm-line); background-color: var(--crm-surface); }
 
 .crm-pill { display: inline-block; border-radius: 99px; padding: 0 9px; font-size: 12px; font-weight: 600; line-height: 20px; white-space: nowrap; }
 .crm-pill:empty { display: none; }
@@ -165,3 +169,14 @@ body {
 .crm-grp.late { color: var(--crm-danger); }
 .crm-head { padding: 8px 16px; font-size: 11.5px; color: var(--crm-ink-3); font-weight: 600; letter-spacing: .02em; }
 @media (max-width: 900px) { .crm-head { display: none; } .crm-row { padding: 12px; } }
+
+/* Printable report (/admin/report): print only the report, in colour, on A4. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body * { visibility: hidden; }
+  .crm-report, .crm-report * { visibility: visible; }
+  .crm-report { position: absolute; inset: 0 0 auto 0; }
+  .crm-noprint { display: none !important; }
+  html, body, .crm { background: #fff !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

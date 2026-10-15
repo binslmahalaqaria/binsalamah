@@ -12,6 +12,7 @@ import { useState } from "react";
 import { doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
+import { assertWritable } from "@/lib/crm/preview";
 
 const COLS = ["clients", "properties", "requests", "tasks", "goals", "chat"] as const;
 const PERSON_KEYS = ["assignee", "byId", "by", "createdBy", "assignedBy", "escalatedFrom", "doneBy", "uid"];
@@ -36,6 +37,7 @@ export function ImportOld() {
 
   async function run() {
     if (!bundle) return;
+    assertWritable();
     setBusy(true);
     try {
       let n = 0;
@@ -66,7 +68,7 @@ export function ImportOld() {
       toast("تم استيراد " + n + " سجل");
       setBundle(null);
     } catch {
-      toast("تعذّر الاستيراد — تأكد إن قواعد Firestore الجديدة منشورة");
+      toast("تعذّر الاستيراد — تأكد من نشر قواعد Firestore الجديدة");
     } finally {
       setBusy(false);
     }
@@ -82,7 +84,7 @@ export function ImportOld() {
         try {
           setBundle(JSON.parse(await f.text()));
         } catch {
-          toast("الملف مو JSON صحيح");
+          toast("الملف ليس بصيغة JSON صحيحة");
         }
       }} />
       {bundle && (
@@ -90,7 +92,7 @@ export function ImportOld() {
           <div className="flex flex-wrap gap-1.5">
             {COLS.map((c) => <span key={c} className="crm-chip">{c}: <span className="num">{(bundle[c] || []).length}</span></span>)}
           </div>
-          <button type="button" className="crm-btn primary justify-self-start" disabled={busy} onClick={run}>{busy ? "جاري الاستيراد…" : "استورد"}</button>
+          <button type="button" className="crm-btn primary justify-self-start" disabled={busy} onClick={run}>{busy ? "جارٍ الاستيراد…" : "استيراد"}</button>
         </div>
       )}
     </div>

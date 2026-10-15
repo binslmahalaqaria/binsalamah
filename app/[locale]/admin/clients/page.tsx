@@ -3,15 +3,15 @@
 /** "العملاء" — client list with search, filters, assignment, and quick actions. */
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { CSTATUS, PAY, PTYPES, TEMPS, UPD } from "@/lib/crm/constants";
+import { CSTATUS, PAY, TEMPS, TO_CONTACT, UPD, lbl } from "@/lib/crm/constants";
 import {
-  demandOf, matchesFor, members, nameOf, propById, reqsOf, typesOf, visibleClients,
-} from "@/lib/crm/logic";
+  demandOf, matchesFor, members, nameOf, propById, reqsOf, typesOf, visibleClients, wantLine, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Client } from "@/lib/crm/types";
-import { exportCsv, fmtStamp, num, relDay, today } from "@/lib/crm/util";
+import { exportCsv, fmtStamp, fmtVisit, num, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Empty, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
-import { ClientChips, TempPill, UpdPill } from "@/components/crm/bits";
+import { TempPill } from "@/components/crm/bits";
+import { TransferClients } from "@/components/crm/TransferClients";
 
 type Filters = Record<string, string>;
 
@@ -20,9 +20,10 @@ export default function ClientsPage() {
   const [q, setQ] = useState("");
   const [showF, setShowF] = useState(false);
   const [F, setF] = useState<Filters>({});
+  const [moving, setMoving] = useState(false);
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
 
-  if (!loaded) return <Empty>جاري تحميل البيانات…</Empty>;
+  if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
 
   let list = visibleClients(data).slice();
   const qq = q.trim();
@@ -31,7 +32,10 @@ export default function ClientsPage() {
       const d = demandOf(data, c);
       return [c.name, c.phone, d.districts, c.notes, d.requirements, nameOf(data, c.assignee), d.bank].join(" ").includes(qq);
     });
+  // "للتواصل" clients live on their own page and "غير مهتم" ones are the archive; both show only when that status is picked.
+  const archived = list.filter((c) => c.status === "غير مهتم").length;
   if (F.status) list = list.filter((c) => (c.status || "نشط") === F.status);
+  else list = list.filter((c) => c.status !== TO_CONTACT && c.status !== "غير مهتم");
   if (F.temp) list = list.filter((c) => c.temp === F.temp);
   if (F.purpose) list = list.filter((c) => (demandOf(data, c).purpose || "شراء") === F.purpose);
   if (F.type) list = list.filter((c) => typesOf(demandOf(data, c)).includes(F.type));
@@ -58,35 +62,39 @@ export default function ClientsPage() {
         "آخر تحديث": c.lastUpdate || "", "تاريخ آخر تحديث": fmtStamp(c.lastUpdateAt), "الاتصال القادم": c.nextCall || "",
         "المسؤول": nameOf(data, c.assignee), "المصدر": c.source || "", "ملاحظات": c.notes || "",
       };
-    })) || toast("ما فيه بيانات للتصدير");
+    })) || toast("لا توجد بيانات للتصدير");
 
   const row = (c: Client) => {
     const mc = matchesFor(data, c).length;
     const r0 = reqsOf(data, c)[0];
     return (
-      <article key={c.id} className="crm-card grid items-center gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_auto_auto] md:gap-4">
-        <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
+      <article key={c.id} className={"crm-card grid grid-cols-2 items-center gap-3 p-3.5 sm:grid-cols-3 xl:gap-4 " + (data.isMgr ? "xl:grid-cols-[minmax(0,1fr)_110px_120px_150px_auto]" : "xl:grid-cols-[minmax(0,1fr)_110px_120px_auto]")}>
+        <div className="col-span-full min-w-0 cursor-pointer xl:col-span-1" onClick={() => openClient(c.id)}>
           <div className="flex flex-wrap items-center gap-2">
             <b className="font-heading text-[15.5px]">{c.name}</b>
             <TempPill t={c.temp} />
-            <UpdPill c={c} />
             {c.status && c.status !== "نشط" && <Pill tone="muted">{c.status}</Pill>}
             {c.unseen && c.assignee === data.uid && <Pill tone="hot">جديد</Pill>}
           </div>
-          <ClientChips c={c} />
+          <div className="mt-1 truncate text-[13px] text-[var(--crm-ink-2)]">
+            {wantLine(data, c) || <span className="muted">لم يُسجَّل طلبه</span>}
+            {c.visitAt && <span className="text-[var(--crm-gold-ink)]"> · زيارة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</span>}
+          </div>
+          {c.lastUpdate && <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">آخر تواصل: {lbl(c.lastUpdate)}</div>}
         </div>
-        <div className="flex gap-4.5">
-          <div className="grid text-xs text-[var(--crm-ink-3)]"><span>الاتصال القادم</span><b className={"text-[13.5px] " + (c.nextCall && c.nextCall < today() ? "text-[var(--crm-danger)]" : "text-[var(--crm-ink)]")}>{relDay(c.nextCall)}</b></div>
-          {r0 && <div className="grid text-xs text-[var(--crm-ink-3)]"><span>الطلب</span><b className="text-[13.5px] text-[var(--crm-ink)]">{r0.status || "جديد"}</b></div>}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
-          {data.isMgr && (
-            <select className="max-w-[150px] !py-1.5 text-[13px]" aria-label="إسناد العميل" value={c.assignee || ""}
-              onChange={async (e) => { const x = await assignClient(data, c.id, e.target.value || null); toast(x.name ? "انسند إلى " + x.name + (x.n ? " مع " + (x.n === 1 ? "طلبه" : x.n + " طلبات") : "") : "صار غير مسند"); }}>
+        <div className="grid text-xs text-[var(--crm-ink-3)]"><span>الاتصال القادم</span><b className={"text-[13.5px] " + (c.nextCall && c.nextCall < today() ? "text-[var(--crm-danger)]" : "text-[var(--crm-ink)]")}>{relDay(c.nextCall)}</b></div>
+        <div className="grid text-xs text-[var(--crm-ink-3)]"><span>مرحلة الطلب</span><b className="text-[13.5px] text-[var(--crm-ink)]">{r0 ? lbl(r0.status) || "جديد" : "—"}</b></div>
+        {data.isMgr && (
+          <div className="grid text-xs text-[var(--crm-ink-3)]">
+            <span>المسؤول</span>
+            <select className={"crm-quiet -ms-2 !text-[13.5px] !font-semibold " + (c.assignee ? "!text-[var(--crm-ink)]" : "!text-[var(--crm-warn)]")} aria-label="إسناد العميل" value={c.assignee || ""}
+              onChange={async (e) => { const x = await assignClient(data, c.id, e.target.value || null); toast(x.name ? "تم الإسناد إلى " + x.name + (x.n ? " مع " + (x.n === 1 ? "طلبه" : x.n + " طلبات") : "") : "أصبح غير مسند"); }}>
               <option value="">غير مسند</option>
               {members(data).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
             </select>
-          )}
+          </div>
+        )}
+        <div className="col-span-full flex items-center justify-end gap-1.5 xl:col-span-1">
           <ContactIcons phone={c.phone} />
           <Kebab items={[
             { label: "تحديث", onClick: () => openModal({ kind: "update", clientId: c.id }) },
@@ -103,22 +111,28 @@ export default function ClientsPage() {
   return (
     <>
       <PageHeader eyebrow="المبيعات" title="العملاء" sub="بيانات العملاء ومتابعتهم"
-        action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "client" })}>+ عميل جديد</button>} />
+        action={
+          <div className="flex flex-wrap gap-2">
+            {data.isMgr && <button type="button" className={"crm-btn" + (moving ? " primary" : "")} onClick={() => setMoving((v) => !v)}>⇄ تحويل عملاء</button>}
+            <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "client" })}>+ عميل جديد</button>
+          </div>
+        } />
+      {moving && data.isMgr && <TransferClients onClose={() => setMoving(false)} />}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input className="crm-input min-w-[200px] flex-1" placeholder="ابحث بالاسم أو الجوال أو الحي" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="button" className="crm-btn" aria-expanded={showF} onClick={() => setShowF((v) => !v)}>
           فلترة{nF > 0 && <span className="num rounded-full bg-[var(--crm-ink)] px-1.5 text-[11px] text-white">{nF}</span>}
         </button>
-        <button type="button" className="crm-btn" onClick={exportRows}>تصدير Excel</button>
+        {can(data, "export") && <button type="button" className="crm-btn" onClick={exportRows}>تصدير Excel</button>}
       </div>
       {showF && (
         <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-2.5">
           <Select value={F.status} onChange={(v) => set("status", v)} options={CSTATUS} blank="كل الحالات" />
           <Select value={F.temp} onChange={(v) => set("temp", v)} options={TEMPS} blank="كل درجات الاهتمام" />
           <Select value={F.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} blank="شراء وإيجار" />
-          <Select value={F.type} onChange={(v) => set("type", v)} options={PTYPES} blank="كل الأنواع" />
+          <Select value={F.type} onChange={(v) => set("type", v)} options={data.propTypes} blank="كل الأنواع" />
           <Select value={F.payment} onChange={(v) => set("payment", v)} options={PAY} blank="كل طرق الدفع" />
-          <Select value={F.upd} onChange={(v) => set("upd", v)} options={UPD.map((u) => u.k)} blank="آخر تحديث: الكل" />
+          <Select value={F.upd} onChange={(v) => set("upd", v)} options={UPD.map((u) => [u.k, lbl(u.k)] as [string, string])} blank="آخر تحديث: الكل" />
           <Select value={F.due} onChange={(v) => set("due", v)} options={[["late", "متأخر"], ["today", "اليوم"], ["none", "بدون موعد"]]} blank="موعد الاتصال: الكل" />
           <input className="w-[150px]" placeholder="الحي" value={F.district || ""} onChange={(e) => set("district", e.target.value)} />
           <input className="w-[120px]" inputMode="decimal" placeholder="ميزانية من" value={F.bmin || ""} onChange={(e) => set("bmin", e.target.value)} />
@@ -126,8 +140,13 @@ export default function ClientsPage() {
           {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => setF({})}>مسح الفلاتر</button>}
         </div>
       )}
-      <div className="muted mb-2 text-[13px]">{list.length} عميل</div>
-      {list.length ? <div className="grid gap-2.5">{list.map(row)}</div> : <Empty>{data.clients.length ? "ما فيه نتائج." : "ما فيه عملاء للحين."}</Empty>}
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+        <span className="muted">{list.length} عميل{F.status === "غير مهتم" ? " في الأرشيف" : ""}</span>
+        {F.status === "غير مهتم"
+          ? <button type="button" className="crm-btn ghost sm" onClick={() => set("status", "")}>رجوع إلى العملاء</button>
+          : !F.status && archived > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => set("status", "غير مهتم")}>الأرشيف (غير مهتمين): <span className="num">{archived}</span></button>}
+      </div>
+      {list.length ? <div className="grid gap-2.5">{list.map(row)}</div> : <Empty>{data.clients.length ? "لا توجد نتائج." : "لا يوجد عملاء بعد."}</Empty>}
     </>
   );
 }

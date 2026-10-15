@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { activeStaffUid } from "@/lib/verify-staff";
 
 /**
  * CRM AI assistant: one Claude Messages API turn per request. The browser
@@ -15,27 +15,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
  * API (staff may read their own doc), so it needs no service-account key.
  */
 
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!;
 const MODEL = "claude-opus-5-5";
-
-const firebaseJwks = createRemoteJWKSet(
-  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
-);
-
-async function activeStaffUid(idToken: string): Promise<string | null> {
-  const { payload } = await jwtVerify(idToken, firebaseJwks, {
-    issuer: `https://securetoken.google.com/${PROJECT_ID}`,
-    audience: PROJECT_ID,
-  });
-  if (!payload.sub) return null;
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/staff/${payload.sub}`,
-    { headers: { Authorization: `Bearer ${idToken}` } }
-  );
-  if (!res.ok) return null;
-  const doc = await res.json();
-  return doc?.fields?.active?.booleanValue === true ? payload.sub : null;
-}
 
 export async function POST(req: NextRequest) {
   const idToken = req.headers.get("authorization")?.replace(/^Bearer /, "");

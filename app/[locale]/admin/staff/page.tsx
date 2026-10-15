@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
-import { listStaff, setStaffActive, setStaffRole, createStaffAccount } from "@/lib/staff-client";
+import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink } from "@/lib/staff-client";
 import type { Staff, StaffRole } from "@/lib/types";
 
 function Icon({ path, className }: { path: string; className?: string }) {
@@ -26,6 +26,7 @@ const ICONS = {
   plus: "M12 5v14M5 12h14",
   lock: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6-4V8a6 6 0 1 0-12 0v3m-1 0h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z",
   power: "M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0",
+  key: "M15.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM12 11v10m0-4h3m-3 2.5h2",
 };
 
 const inputClass =
@@ -53,6 +54,9 @@ export default function AdminStaffPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<StaffRole>("sales");
   const [error, setError] = useState<string | null>(null);
+  const [resetMsg, setResetMsg] = useState<{ id: string; text: string } | null>(null);
+  /** Two clicks: the first asks to confirm, the second emails the reset link. */
+  const [resetAsk, setResetAsk] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function reload() {
@@ -73,8 +77,7 @@ export default function AdminStaffPage() {
     }
     setSubmitting(true);
     try {
-      const idToken = await user.getIdToken();
-      await createStaffAccount(idToken, { name: name.trim(), email: email.trim(), password, role });
+      await createStaffAccount({ name: name.trim(), email: email.trim(), password, role });
       setName("");
       setEmail("");
       setPassword("");
@@ -218,7 +221,21 @@ export default function AdminStaffPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-end gap-1">
+                      {resetMsg?.id === s.id && <span className="max-w-[220px] text-xs text-navy/60">{resetMsg.text}</span>}
+                      <button
+                        onClick={async () => {
+                          if (resetAsk !== s.id) { setResetAsk(s.id); setResetMsg({ id: s.id, text: "اضغط مرة أخرى لإرسال رابط تغيير كلمة المرور إلى " + s.email }); return; }
+                          setResetAsk(null);
+                          const r = await sendResetLink(s.email);
+                          setResetMsg({ id: s.id, text: r === "sent" ? "✓ أُرسل الرابط إلى " + s.email + " — يختار منه كلمة مرور جديدة" : r === "no_user" ? "هذا الحساب ليس له دخول (حساب تجريبي)" : r === "bad_email" ? "البريد غير صحيح" : "تعذّر الإرسال، حاول لاحقاً" });
+                        }}
+                        title="إرسال رابط تغيير كلمة المرور"
+                        aria-label="إرسال رابط تغيير كلمة المرور"
+                        className={"flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-navy/5 hover:text-navy " + (resetAsk === s.id ? "bg-gold/20 text-navy" : "text-navy/50")}
+                      >
+                        <Icon path={ICONS.key} className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={async () => {
                           await setStaffActive(s.id, !s.active);

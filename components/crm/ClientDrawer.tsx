@@ -3,11 +3,14 @@
 /** Client file: contact, next step, requests with their journey, open tasks, notes, and the full log. */
 import { useEffect } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { clientById, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
-import { confirmVisit, postpone, write } from "@/lib/crm/actions";
+import { can, clientById, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
+import { confirmVisit, deleteRequest, postpone, write } from "@/lib/crm/actions";
+import { isPreview } from "@/lib/crm/preview";
 import { fmtStamp, fmtVisit, money, relDay, today } from "@/lib/crm/util";
 import { Chip, ContactIcons, Empty, Icon, Kebab, Pill } from "./ui";
-import { DemandChips, JourneyBox, Stepper, TempPill } from "./bits";
+import { SendRequestButton, WaChatButton } from "./WaButtons";
+import { DealBox, DemandChips, JourneyBox, Stepper, TempPill } from "./bits";
+import { SOLD_ST, lbl } from "@/lib/crm/constants";
 import { TaskRow } from "./TaskRow";
 
 export function ClientDrawer() {
@@ -23,7 +26,8 @@ export function ClientDrawer() {
 
   // Opening a newly assigned client clears its "new" badge.
   useEffect(() => {
-    if (c && c.unseen && c.assignee === data.uid) write("clients", c.id, { unseen: false }, "update").catch(() => {});
+    // Background "seen" markers are skipped while previewing as an employee.
+    if (c && c.unseen && c.assignee === data.uid && !isPreview()) write("clients", c.id, { unseen: false }, "update").catch(() => {});
   }, [c, data.uid]);
 
   if (!drawer || !c) return null;
@@ -61,17 +65,19 @@ export function ClientDrawer() {
               <>
                 <span className="num me-1 text-[15px] font-semibold">{c.phone}</span>
                 <ContactIcons phone={c.phone} />
+                <WaChatButton phone={c.phone} />
+                <SendRequestButton c={c} />
                 <button type="button" className="crm-btn sm" onClick={() => navigator.clipboard?.writeText(c.phone || "").then(() => toast("تم نسخ الرقم"))}>نسخ</button>
               </>
             ) : (
-              <span className="muted">ما فيه جوال</span>
+              <span className="muted">لا يوجد رقم جوال</span>
             )}
             <span className="flex-1" />
             <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "client", id: c.id })}>تعديل البيانات</button>
           </div>
 
           <section className="crm-card grid gap-2.5 p-3.5">
-            <h3 className="text-[14.5px]">الخطوة الجاية</h3>
+            <h3 className="text-[14.5px]">الخطوة التالية</h3>
             <div className="grid gap-2.5 sm:grid-cols-2">
               <div className="grid gap-0.5 rounded-xl bg-[var(--crm-surface-2)] p-2.5">
                 <span className="muted text-xs">الاتصال القادم</span>
@@ -85,7 +91,7 @@ export function ClientDrawer() {
                   {c.visitAt ? (
                     <>
                       {fmtVisit(c.visitAt)}{vp ? " · " + vp.title : ""}{" "}
-                      {c.visitConfirmed ? <Pill tone="ok">مؤكد</Pill> : <Pill tone="warm">يحتاج تأكيد</Pill>}
+                      {c.visitConfirmed ? <Pill tone="ok">مؤكد</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}
                     </>
                   ) : "—"}
                 </b>
@@ -93,9 +99,9 @@ export function ClientDrawer() {
             </div>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "update", clientId: c.id })}>تحديث</button>
-              <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تأجّل إلى " + n); }}>أجّل 3 أيام</button>
+              <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تم التأجيل إلى " + n); }}>تأجيل 3 أيام</button>
               {c.visitAt && !c.visitConfirmed && (
-                <button type="button" className="crm-btn" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>أكّد الزيارة</button>
+                <button type="button" className="crm-btn" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الزيارة</button>
               )}
               <button type="button" className="crm-btn" onClick={() => openModal({ kind: "task", preset: { clientId: c.id, assignee: c.assignee || data.uid } })}>+ مهمة</button>
             </div>
@@ -111,22 +117,24 @@ export function ClientDrawer() {
                 const mc = data.props.filter((p) => match(r, p)).length;
                 const open = OPEN_REQ(r);
                 return (
-                  <div key={r.id} className={"grid gap-2 rounded-xl border p-3 " + (drawer.req === r.id ? "border-[var(--crm-gold)]" : "border-[var(--crm-line)]") + (open ? "" : " opacity-70")}>
+                  <div key={r.id} className={"grid gap-2 rounded-xl border p-3 " + (drawer.req === r.id ? "border-[var(--crm-gold)]" : "border-[var(--crm-line)]") + (r.status === "ملغي" ? " opacity-70" : "")}>
                     <Stepper st={r.status} />
                     <div className="flex flex-wrap gap-1.5"><DemandChips r={r} /></div>
                     {r.requirements && <div className="muted text-[13px]">{r.requirements}</div>}
-                    <JourneyBox r={r} />
-                    {open ? (
+                    {open && c.phone && <div><SendRequestButton c={c} r={r} /></div>}
+                    {SOLD_ST.includes(r.status) ? <DealBox r={r} /> : <JourneyBox r={r} />}
+                    {SOLD_ST.includes(r.status) ? null : open ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button type="button" className={"crm-btn sm " + (mc ? "primary" : "")} onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>
-                          {mc ? mc + " عقار مناسب" : "ما فيه مطابق"}
+                          {mc ? mc + " عقار مناسب" : "لا يوجد عقار مطابق"}
                         </button>
-                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: c.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id })}>أرسلت الموقع</button>
-                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: r.id })}>{c.visitAt ? "تعديل الموعد" : "حدد موعد"}</button>
+                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: c.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id })}>تم إرسال الموقع</button>
+                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: r.id })}>{c.visitAt ? "تعديل الموعد" : "تحديد موعد"}</button>
                         <Kebab items={[
-                          { label: "سجّل عربون", onClick: () => openModal({ kind: "close", reqId: r.id, to: "عربون" }) },
-                          { label: "تم البيع", onClick: () => openModal({ kind: "close", reqId: r.id, to: "تم البيع" }) },
+                          can(data, "recordDeals") && { label: "تسجيل عربون", onClick: () => openModal({ kind: "close", reqId: r.id, to: "عربون" }) },
+                          can(data, "recordDeals") && { label: "تم البيع", onClick: () => openModal({ kind: "close", reqId: r.id, to: "تم البيع" }) },
                           { label: "تعديل الطلب", onClick: () => openModal({ kind: "request", id: r.id }) },
+                          { label: "🗑 حذف الطلب", onClick: async () => { if (await deleteRequest(data, r)) toast("تم حذف الطلب"); } },
                         ]} />
                       </div>
                     ) : r.price ? (
@@ -139,8 +147,8 @@ export function ClientDrawer() {
               })
             ) : (
               <Empty>
-                ما سجّلت وش يبي العميل.{" "}
-                <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "request", preset: { clientId: c.id, assignee: c.assignee || data.uid } })}>سجّل طلبه</button>
+                لم يُسجَّل طلب العميل بعد.{" "}
+                <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "request", preset: { clientId: c.id, assignee: c.assignee || data.uid } })}>تسجيل طلبه</button>
               </Empty>
             )}
           </section>
@@ -167,7 +175,7 @@ export function ClientDrawer() {
                   <li key={i} className="grid gap-1 border-b border-dashed border-[var(--crm-line)] py-2 text-[13.5px] last:border-0 sm:grid-cols-[118px_1fr] sm:gap-2.5">
                     <span className="num muted text-xs">{fmtStamp(l.at)}</span>
                     <div>
-                      <b>{l.type || "ملاحظة"}</b>{l.text ? " — " + l.text : ""}
+                      <b>{lbl(l.type) || "ملاحظة"}</b>{l.text ? " — " + l.text : ""}
                       {l.propertyId && propById(data, l.propertyId) && <span className="muted"> ({propById(data, l.propertyId)!.title})</span>}
                       {l.byId && <div className="muted text-xs">{nameOf(data, l.byId)}</div>}
                     </div>
@@ -175,7 +183,7 @@ export function ClientDrawer() {
                 ))}
               </ol>
             ) : (
-              <p className="crm-hint">ما فيه سجل للحين.</p>
+              <p className="crm-hint">لا يوجد سجل بعد.</p>
             )}
           </section>
         </div>

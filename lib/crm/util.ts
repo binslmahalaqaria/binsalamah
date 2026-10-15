@@ -54,10 +54,12 @@ export function relDay(d: string | null | undefined) {
   const x = dayDiff(d);
   if (x == null) return "بدون موعد";
   if (x === 0) return "اليوم";
-  if (x === 1) return "بكرة";
+  if (x === 1) return "غداً";
   if (x === -1) return "أمس";
-  if (x < 0) return "متأخر " + -x + " أيام";
-  return "بعد " + x + " أيام";
+  if (x === -2) return "متأخر يومين";
+  if (x < 0) return "متأخر " + -x + (-x <= 10 ? " أيام" : " يوماً");
+  if (x === 2) return "بعد يومين";
+  return "بعد " + x + (x <= 10 ? " أيام" : " يوماً");
 }
 
 export function lateTxt(d: string | null | undefined) {
@@ -65,9 +67,9 @@ export function lateTxt(d: string | null | undefined) {
   if (x == null) return "";
   if (x === 0) return "اليوم";
   if (x < -30) return "متأخر أكثر من شهر";
-  if (x === -1) return "متأخر يوم";
+  if (x === -1) return "متأخر يوماً واحداً";
   if (x === -2) return "متأخر يومين";
-  if (x < 0) return "متأخر " + -x + " أيام";
+  if (x < 0) return "متأخر " + -x + (-x <= 10 ? " أيام" : " يوماً");
   if (x > 14) return d as string;
   return relDay(d);
 }
@@ -75,7 +77,7 @@ export function lateTxt(d: string | null | undefined) {
 export function ageDays(s: string | null | undefined) {
   if (!s) return "";
   const d = Math.floor((Date.now() - new Date(s).getTime()) / 864e5);
-  return d <= 0 ? "اليوم" : d === 1 ? "أمس" : "من " + d + " أيام";
+  return d <= 0 ? "اليوم" : d === 1 ? "أمس" : d === 2 ? "منذ يومين" : d <= 10 ? "منذ " + d + " أيام" : "منذ " + d + " يوماً";
 }
 
 export function fmtStamp(s: string | null | undefined) {
@@ -99,7 +101,7 @@ export function fmtVisit(v: string | null | undefined) {
     day === today()
       ? "اليوم"
       : day === addDays(1)
-        ? "بكرة"
+        ? "غداً"
         : day === addDays(-1)
           ? "أمس"
           : d.toLocaleDateString(AR_DATE, { weekday: "long", day: "numeric", month: "numeric" });
@@ -113,6 +115,7 @@ export function intl(p: string | null | undefined) {
     .replace(/\D/g, "");
   if (!d) return null;
   if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("9660")) d = "966" + d.slice(4); // "+966 05…" written with the leading zero
   if (d.startsWith("05")) d = "966" + d.slice(1);
   else if (d.length === 9 && d.startsWith("5")) d = "966" + d;
   return d;

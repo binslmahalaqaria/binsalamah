@@ -99,6 +99,46 @@ service cloud.firestore {
       allow create: if isActiveStaff() && request.resource.data.by == request.auth.uid;
       allow update, delete: if isAdmin();
     }
+    // Private messages between two staff members: only the two members can
+    // read them; you can only send as yourself, to one other person; the
+    // recipient may only flip "read".
+    match /dm/{id} {
+      allow read: if isActiveStaff() && request.auth.uid in resource.data.members;
+      allow create: if isActiveStaff()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.members.size() == 2
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.to in request.resource.data.members
+        && request.resource.data.to != request.auth.uid;
+      allow update: if isActiveStaff() && request.auth.uid == resource.data.to
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+    // Tax invoices: staff create and edit drafts; once issued an invoice is
+    // frozen — only a manager may cancel it (status/reason fields only).
+    // Drafts may be deleted; issued invoices never.
+    match /invoices/{id} {
+      allow read, create: if isActiveStaff();
+      allow update: if isActiveStaff() && (
+        resource.data.status == 'مسودة' ||
+        (isManager() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'cancelReason', 'cancelledAt', 'cancelledBy', 'creditNoteId', 'updatedAt'])) ||
+        // ZATCA result, written by the server route with the issuer's own token.
+        (resource.data.status != 'مسودة' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['zatca'])));
+      allow delete: if isActiveStaff() && resource.data.status == 'مسودة';
+    }
+    // ZATCA e-invoicing device (EGS): certificate + chain state. The private key and
+    // secret are stored encrypted with a key only the server has. Staff advance the
+    // invoice chain (icv / pih) when their invoice is sent; everything else is owner-only.
+    match /zatca/{id} {
+      allow read: if isActiveStaff();
+      allow write: if isAdmin() || (isActiveStaff() && resource != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['icv', 'pih', 'lastInvoice', 'updatedAt']));
+    }
+    // Sequential counters (invoice numbers), advanced inside transactions.
+    match /counters/{id} {
+      allow read, write: if isActiveStaff();
+    }
     // Monthly goals: everyone sees them, managers set them.
     match /goals/{id} {
       allow read: if isActiveStaff();
@@ -108,6 +148,10 @@ service cloud.firestore {
     match /crm/{id} {
       allow read: if isActiveStaff();
       allow write: if isAdmin();
+    }
+    // Option lists (property types) — sales managers may edit them too.
+    match /crm/lists {
+      allow write: if isManager();
     }
     // HR files and payroll: owner only.
     match /hr/{id} {

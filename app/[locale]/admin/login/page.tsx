@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Logo } from "@/components/Logo";
+import { sendResetLink } from "@/lib/staff-client";
 
 export default function AdminLoginPage() {
   const t = useTranslations("Admin.login");
@@ -15,6 +16,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resetNote, setResetNote] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +63,21 @@ export default function AdminLoginPage() {
             />
           </label>
           {error && <p className="text-sm text-red-600">{t("error")}</p>}
+          <button
+            type="button"
+            className="-mt-1 self-start text-sm text-navy/60 underline-offset-2 hover:text-navy hover:underline"
+            onClick={async () => {
+              const ar = locale === "ar";
+              if (!email.trim()) return setResetNote(ar ? "اكتب بريدك الإلكتروني أولاً، ثم اضغط «نسيت كلمة المرور؟»" : "Enter your email first.");
+              const r = await sendResetLink(email);
+              setResetNote(r === "bad_email" ? (ar ? "البريد الإلكتروني غير صحيح" : "Invalid email")
+                : r === "error" ? (ar ? "تعذّر الإرسال، حاول لاحقاً" : "Could not send, try again later")
+                : ar ? "إذا كان البريد مسجّلاً لدينا، وصلك رابط لتعيين كلمة مرور جديدة (تحقق من البريد غير الهام أيضاً)." : "If this email is registered, a reset link is on its way.");
+            }}
+          >
+            {locale === "ar" ? "نسيت كلمة المرور؟" : "Forgot password?"}
+          </button>
+          {resetNote && <p className="-mt-2 text-sm text-navy/70">{resetNote}</p>}
           <button
             type="submit"
             disabled={submitting}

@@ -31,7 +31,7 @@ export function TasksView() {
         <div className="muted flex-1">{open.length} مهمة مفتوحة{data.isMgr && !data.viewAs ? " لكل الفريق" : ""}</div>
         <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "task", preset: { assignee: data.isMgr && data.viewAs && data.viewAs !== "none" ? data.viewAs : data.uid } })}>+ مهمة جديدة</button>
       </div>
-      {!all.length && <Empty>ما فيه مهام. أضف مهمة لك أو لأحد من الفريق.</Empty>}
+      {!all.length && <Empty>لا توجد مهام. أضف مهمة لك أو لأحد أعضاء الفريق.</Empty>}
       {groups.map(([l, arr, late]) =>
         arr.length ? (
           <div key={l}>

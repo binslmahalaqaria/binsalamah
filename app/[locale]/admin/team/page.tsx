@@ -11,24 +11,25 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { GOALK } from "@/lib/crm/constants";
 import {
-  actualsFor, fmtK, goalOf, goalVals, hoursOf, hrOf, isMgrId, lateMin, members, nameOf, pace, payFor, planFor, statsFor,
+  absentDays, actualsFor, dailyHoursOf, earlyMin, fmtDur, overtimeMin, workDaysOf, fmtK, goalOf, goalVals, hoursOf, hrOf, isMgrId, lateMin, shiftOf, members, nameOf, pace, payFor, planFor, statsFor,
   type Pace,
 } from "@/lib/crm/logic";
 import { write } from "@/lib/crm/actions";
-import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { assertWritable } from "@/lib/crm/preview";
+import { fmtDist, getFix, mapLink, officeOf, parsePoint } from "@/lib/crm/geo";
 import { dayDiff, exportCsv, fmtInt, fmtStamp, hm, iso, money, monthName, num, nowStamp, today, ym } from "@/lib/crm/util";
 import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
-import { ImportOld } from "@/components/crm/ImportOld";
 
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف" };
 
 export default function TeamPage() {
   const { data, loaded, me } = useCrm();
   const [tab, setTab] = useState("perf");
-  if (!loaded || !me) return <Empty>جاري تحميل البيانات…</Empty>;
+  if (!loaded || !me) return <Empty>جارٍ تحميل البيانات…</Empty>;
   const tabs: [string, string][] = data.isAdmin
-    ? [["perf", "الأداء"], ["goals", "الأهداف"], ["staff", "الملفات"], ["att", "الحضور"], ["pay", "الرواتب"], ["settings", "الإعدادات"]]
+    ? [["perf", "الأداء"], ["goals", "الأهداف"], ["staff", "الملفات"], ["att", "الحضور"], ["pay", "الرواتب"]]
     : data.isMgr ? [["perf", "الأداء"], ["goals", "الأهداف"]] : [];
   return (
     <>
@@ -43,15 +44,18 @@ export default function TeamPage() {
       {tab === "staff" && <HrFiles />}
       {tab === "att" && <Attendance />}
       {tab === "pay" && <Payroll />}
-      {tab === "settings" && <Settings />}
     </>
   );
 }
 
 function Perf() {
-  const { data, me, setViewAs, openModal, toast } = useCrm();
+  const { data, me, realMe, previewAs, startPreview, setViewAs, openModal, toast } = useCrm();
   const router = useRouter();
   const self = data.staff.find((s) => s.id === data.uid);
+  // "الدخول كموظف": managers preview sales staff; the owner may also preview managers.
+  const canPreview = (s: { id: string; role: string }) =>
+    !previewAs && !!realMe && s.id !== realMe.id && s.role !== "admin" &&
+    (realMe.role === "admin" || (realMe.role === "manager" && s.role === "sales"));
   const [nick, setNick] = useState(self?.name || "");
   const [phone, setPhone] = useState(self?.phone || "");
   const ids = members(data);
@@ -61,8 +65,8 @@ function Perf() {
         <div className="crm-card mb-3 p-4">
           <h2 className="mb-1.5 text-base">إضافة موظف</h2>
           <p className="m-0 text-sm text-[var(--crm-ink-2)]">
-            {data.isAdmin ? <>من صفحة <Link href="/admin/staff" className="font-semibold text-[var(--crm-gold-ink)] underline">حسابات الموظفين</Link> تنشئ له حساب (إيميل وكلمة مرور مؤقتة) وتختار دوره. </> : "المالك ينشئ حسابات الموظفين. "}
-            الموظف يشوف عملاءه بس، ومدير المبيعات والمالك يشوفون الكل ويسندون العملاء.
+            {data.isAdmin ? <>من صفحة <Link href="/admin/staff" className="font-semibold text-[var(--crm-gold-ink)] underline">حسابات الموظفين</Link> يمكنك إنشاء حساب له (بريد إلكتروني وكلمة مرور مؤقتة) وتحديد دوره. </> : "يتولى المالك إنشاء حسابات الموظفين. "}
+            يطّلع الموظف على عملائه فقط، بينما يطّلع مدير المبيعات والمالك على جميع العملاء ويتولّيان إسنادهم.
           </p>
         </div>
       )}
@@ -86,7 +90,7 @@ function Perf() {
               {st && (
                 <>
                   <div className="grid grid-cols-4 gap-1.5 text-center">
-                    {[[st.active, "عملاء نشطين", false], [st.due, "اتصالات اليوم" + (st.late ? " (" + st.late + " متأخر)" : ""), st.late > 0], [st.tasks, "مهام مفتوحة", st.tlate > 0], [st.deals, "صفقات مفتوحة", false]].map(([v, l, red], i) => (
+                    {[[st.active, "عملاء نشطون", false], [st.due, "اتصالات اليوم" + (st.late ? " (" + st.late + " متأخر)" : ""), st.late > 0], [st.tasks, "مهام مفتوحة", st.tlate > 0], [st.deals, "صفقات مفتوحة", false]].map(([v, l, red], i) => (
                       <div key={i} className="rounded-lg bg-[var(--crm-surface-2)] px-0.5 py-1.5">
                         <b className={"num block font-heading text-lg " + (red ? "text-[var(--crm-danger)]" : "")}>{String(v)}</b>
                         <span className="text-[11.5px] text-[var(--crm-ink-3)]">{String(l)}</span>
@@ -104,7 +108,11 @@ function Perf() {
                     {s.lastSeen && <span className="muted">آخر دخول: {fmtStamp(s.lastSeen)}</span>}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <button type="button" className="crm-btn sm" onClick={() => { setViewAs(id); router.push("/admin"); }}>اعرض شغله</button>
+                    <button type="button" className="crm-btn sm" onClick={() => { setViewAs(id); router.push("/admin"); }}>عرض أعماله</button>
+                    {s && canPreview(s) && (
+                      <button type="button" className="crm-btn sm" title="تصفح النظام كما يراه هذا الموظف (للاطلاع فقط)"
+                        onClick={() => { startPreview(id); router.push("/admin"); }}>الدخول كموظف</button>
+                    )}
                     <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "task", preset: { assignee: id } })}>+ مهمة له</button>
                     <ContactIcons phone={s.phone} />
                   </div>
@@ -118,7 +126,7 @@ function Perf() {
         <div className="crm-card mt-3 p-4">
           <h2 className="mb-2 text-base">ملفي</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="crm-field"><label htmlFor="pf-nick">الاسم اللي يظهر للفريق</label><input id="pf-nick" value={nick} onChange={(e) => setNick(e.target.value)} /></div>
+            <div className="crm-field"><label htmlFor="pf-nick">الاسم الظاهر للفريق</label><input id="pf-nick" value={nick} onChange={(e) => setNick(e.target.value)} /></div>
             <div className="crm-field"><label htmlFor="pf-phone">جوالي</label><input id="pf-phone" dir="ltr" value={phone} placeholder="05xxxxxxxx" onChange={(e) => setPhone(e.target.value)} /></div>
           </div>
           <button type="button" className="crm-btn primary mt-2.5" onClick={async () => {
@@ -170,7 +178,7 @@ function Goals() {
                 <tr key={id}>
                   <td><b className="link" onClick={() => { setViewAs(id); router.push("/admin"); }}>{nameOf(data, id)}</b>{isMgrId(data, id) && <span className="muted text-xs"> مدير</span>}{g?.note && <div className="muted text-xs">{g.note}</div>}</td>
                   {cells}
-                  <td>{!g ? <Pill tone="muted">ما تحدد له أهداف</Pill> : w === "bad" ? <Pill tone="hot">متأخر</Pill> : w === "warn" ? <Pill tone="warm">يحتاج متابعة</Pill> : <Pill tone="ok">ماشي صح</Pill>}</td>
+                  <td>{!g ? <Pill tone="muted">لم تُحدَّد له أهداف</Pill> : w === "bad" ? <Pill tone="hot">متأخر</Pill> : w === "warn" ? <Pill tone="warm">يحتاج إلى متابعة</Pill> : <Pill tone="ok">على المسار الصحيح</Pill>}</td>
                   {data.isMgr && <td><button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "goal", uid: id, month })}>{g ? "تعديل" : "حدد"}</button></td>}
                 </tr>
               );
@@ -178,7 +186,7 @@ function Goals() {
           </tbody>
         </table>
       </div>
-      <p className="crm-hint mt-2.5">الأرقام تنحسب تلقائياً من شغل الموظف: المكالمات من التحديثات اللي يسجّلها، والزيارات من «زار العقار»، والعربون والبيع والسعي من قسم الطلبات. «ماشي صح» يعني وصل للنسبة المتوقعة حسب الأيام اللي مضت من الشهر. اضغط اسم الموظف وتشوف شغله.</p>
+      <p className="crm-hint mt-2.5">تُحتسب الأرقام تلقائياً من أعمال الموظف: المكالمات من التحديثات التي يسجّلها، والزيارات من «زار العقار»، والعربون والبيع والسعي من قسم الطلبات. وتعني «على المسار الصحيح» أنه بلغ النسبة المتوقعة وفق الأيام المنقضية من الشهر. اضغط على اسم الموظف لعرض أعماله.</p>
     </>
   );
 }
@@ -200,7 +208,7 @@ function HrFiles() {
               <div className="flex items-center gap-2.5">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--crm-surface-2)] font-semibold">{nameOf(data, id).slice(0, 1)}</div>
                 <div><b>{nameOf(data, id)}</b><div className="muted text-[13px]">{x.jobTitle || "بدون مسمى"}{x.contractType ? " · " + x.contractType : ""}</div></div>
-                <button type="button" className="crm-btn sm ms-auto" onClick={() => openModal({ kind: "hr", uid: id })}>{has ? "تعديل الملف" : "أنشئ ملف"}</button>
+                <button type="button" className="crm-btn sm ms-auto" onClick={() => openModal({ kind: "hr", uid: id })}>{has ? "تعديل الملف" : "إنشاء ملف"}</button>
               </div>
               {has ? (
                 <>
@@ -215,12 +223,12 @@ function HrFiles() {
                     <span className="muted">الدوام: {x.workStart || "09:00"} – {x.workEnd || "17:00"}</span>
                   </div>
                 </>
-              ) : <p className="crm-hint m-0">ما فيه ملف موارد بشرية لهذا الموظف.</p>}
+              ) : <p className="crm-hint m-0">لا يوجد ملف موارد بشرية لهذا الموظف.</p>}
             </article>
           );
         })}
       </div>
-      <p className="crm-hint mt-2.5">ملفات الموظفين والرواتب والحضور يشوفها المالك بس. الموظف يشوف حضوره هو.</p>
+      <p className="crm-hint mt-2.5">ملفات الموظفين والرواتب والحضور متاحة للمالك فقط، ويطّلع كل موظف على حضوره.</p>
     </>
   );
 }
@@ -233,42 +241,66 @@ function Attendance() {
   const t = today();
   return (
     <>
+      <OfficeLocation />
+      <ShiftTimes />
       <div className="mb-3 flex items-center gap-2"><label className="muted" htmlFor="attM">الشهر:</label><input id="attM" type="month" value={month} onChange={(e) => setMonth(e.target.value || ym())} /></div>
       <div className="crm-card mb-2.5 flex flex-wrap gap-1.5 p-3.5">
         <b className="me-1">اليوم:</b>
         {ids.map((id) => {
           const r = (data.att[id] || []).find((x) => x.id === t);
-          const lm = lateMin(data, r, id);
-          return <span key={id} className={"crm-chip " + (r ? "" : "warn")}>{nameOf(data, id)}: {r ? hm(r.in) + (r.out ? " – " + hm(r.out) : "") + (lm ? " (متأخر " + lm + "د)" : "") : "ما حضر"}</span>;
+          const lm = lateMin(data, r, id), em = earlyMin(data, r, id);
+          return (
+            <span key={id} className={"crm-chip " + (r ? "" : "warn")}>
+              {nameOf(data, id)}: {r ? hm(r.in) + (r.out ? " – " + hm(r.out) : "") + (lm ? " (متأخر " + fmtDur(lm) + ")" : "") + (em ? " (خرج مبكراً " + fmtDur(em) + ")" : "") : "ما حضر"}
+            </span>
+          );
         })}
       </div>
       <div className="crm-card overflow-x-auto p-1.5">
-        <table className="crm-table min-w-[760px]">
-          <thead><tr><th>الموظف</th><th>أيام الحضور</th><th>مرات التأخير</th><th>دقائق التأخير</th><th>ساعات العمل</th><th>بدون انصراف</th><th /></tr></thead>
+        <table className="crm-table min-w-[860px]">
+          <thead><tr><th>الموظف</th><th>الدوام</th><th>أيام الحضور</th><th>مرات التأخير</th><th>مجموع التأخير</th><th>انصراف مبكر</th><th>ساعات العمل</th><th>الفائض</th><th>غياب</th><th>بدون انصراف</th><th /></tr></thead>
           <tbody>
             {ids.flatMap((id) => {
               const rs = (data.att[id] || []).filter((x) => x.id.slice(0, 7) === month);
               const late = rs.map((r) => lateMin(data, r, id)).filter(Boolean);
+              const early = rs.map((r) => earlyMin(data, r, id)).filter(Boolean);
+              const extra = rs.reduce((m, r) => m + overtimeMin(data, r, id), 0);
+              const [y, mo] = month.split("-").map(Number);
+              const absent = absentDays(data, id, month + "-01", month + "-" + String(new Date(y, mo, 0).getDate()).padStart(2, "0"));
+              const sh = shiftOf(data, id);
               const rows = [
                 <tr key={id}>
-                  <td><b>{nameOf(data, id)}</b></td><td className="num">{rs.length}</td><td className="num">{late.length}</td>
-                  <td className="num">{late.reduce((a, b) => a + b, 0)}</td><td className="num">{rs.reduce((a, r) => a + hoursOf(r), 0).toFixed(1)}</td>
+                  <td><b>{nameOf(data, id)}</b></td>
+                  <td className="num text-[12.5px]">{sh.start} – {sh.end}<div className="muted text-[11px]">{dailyHoursOf(data, id)} س × {workDaysOf(data, id).length} أيام</div></td>
+                  <td className="num">{rs.length}</td>
+                  <td className="num">{late.length}</td>
+                  <td className={"num " + (late.length ? "text-[var(--crm-warn)]" : "")}>{late.length ? fmtDur(late.reduce((a, b) => a + b, 0)) : "—"}</td>
+                  <td className="num">{early.length ? early.length + " مرة · " + fmtDur(early.reduce((a, b) => a + b, 0)) : "—"}</td>
+                  <td className="num">{fmtDur(Math.round(rs.reduce((a, r) => a + hoursOf(r), 0) * 60))}</td>
+                  <td className={"num " + (extra ? "font-semibold text-[var(--crm-ok)]" : "")}>{extra ? fmtDur(extra) : "—"}</td>
+                  <td className={"num " + (absent ? "text-[var(--crm-danger)]" : "")}>{absent || "—"}</td>
                   <td className="num">{rs.filter((r) => r.in && !r.out).length}</td>
                   <td><button type="button" className="crm-btn ghost sm" onClick={() => setOpen(open === id ? null : id)}>التفاصيل</button></td>
                 </tr>,
               ];
               if (open === id)
                 rows.push(
-                  <tr key={id + "-d"}><td colSpan={7}>
+                  <tr key={id + "-d"}><td colSpan={11}>
                     <div className="grid gap-1 rounded-lg bg-[var(--crm-surface-2)] p-2">
-                      {rs.length ? rs.sort((a, b) => b.id.localeCompare(a.id)).map((r) => (
-                        <div key={r.id} className="grid grid-cols-[100px_1fr_1fr_60px_auto_auto] items-center gap-2 text-[13px]">
-                          <span className="num">{r.id}</span><span>حضور {hm(r.in)}</span><span>انصراف {hm(r.out)}</span><span>{hoursOf(r).toFixed(1)} س</span>
-                          {lateMin(data, r, id) ? <Pill tone="warm">متأخر {lateMin(data, r, id)}د</Pill> : <span />}
-                          <button type="button" className="crm-btn ghost sm" onClick={() => openModal({ kind: "attEdit", uid: id, date: r.id })}>تعديل</button>
-                        </div>
-                      )) : <span className="crm-hint">ما فيه سجلات هذا الشهر.</span>}
-                      <button type="button" className="crm-btn sm justify-self-start" onClick={() => openModal({ kind: "attEdit", uid: id, date: "" })}>+ أضف يوم</button>
+                      {rs.length ? rs.sort((a, b) => b.id.localeCompare(a.id)).map((r) => {
+                        const lm = lateMin(data, r, id), em = earlyMin(data, r, id), om = overtimeMin(data, r, id);
+                        return (
+                          <div key={r.id} className="grid grid-cols-[100px_1fr_1fr_80px_auto_auto_auto] items-center gap-2 text-[13px]">
+                            <span className="num">{r.id}</span>
+                            <span>حضور {hm(r.in)}{r.inLoc && <a className="link ms-1 text-[11.5px]" href={mapLink(r.inLoc)} target="_blank" rel="noopener">📍{r.inLoc.dist != null ? fmtDist(r.inLoc.dist) : "الموقع"}</a>}</span>
+                            <span>انصراف {hm(r.out)}{r.outLoc && <a className="link ms-1 text-[11.5px]" href={mapLink(r.outLoc)} target="_blank" rel="noopener">📍{r.outLoc.dist != null ? fmtDist(r.outLoc.dist) : "الموقع"}</a>}</span><span>{fmtDur(Math.round(hoursOf(r) * 60))}</span>
+                            {lm ? <Pill tone="warm">متأخر {fmtDur(lm)}</Pill> : <span />}
+                            {em ? <Pill tone="muted">خرج مبكراً {fmtDur(em)}</Pill> : om ? <Pill tone="ok">فائض {fmtDur(om)}</Pill> : <span />}
+                            <button type="button" className="crm-btn ghost sm" onClick={() => openModal({ kind: "attEdit", uid: id, date: r.id })}>تعديل</button>
+                          </div>
+                        );
+                      }) : <span className="crm-hint">لا توجد سجلات لهذا الشهر.</span>}
+                      <button type="button" className="crm-btn sm justify-self-start" onClick={() => openModal({ kind: "attEdit", uid: id, date: "" })}>+ إضافة يوم</button>
                     </div>
                   </td></tr>
                 );
@@ -277,8 +309,151 @@ function Attendance() {
           </tbody>
         </table>
       </div>
-      <p className="crm-hint mt-2.5">التأخير يُحسب بعد 15 دقيقة من بداية الدوام في ملف الموظف (الافتراضي 9:00).</p>
+      <p className="crm-hint mt-2.5">التأخير يُحسب من بداية دوام كل موظف بعد سماح 15 دقيقة، والانصراف المبكر من نهاية الدوام — في أيام الدوام فقط. الفائض: ما زاد على ساعات العمل المطلوبة، وكل العمل في أيام الإجازة. الغياب: أيام دوام مضت بلا تسجيل حضور.</p>
     </>
+  );
+}
+
+/** "موقع الدوام": the office point and allowed radius for check-in/out, and whether the rule is enforced (owner). */
+function OfficeLocation() {
+  const { data, settings, toast } = useCrm();
+  const office = officeOf(settings);
+  const [txt, setTxt] = useState("");
+  const [radius, setRadius] = useState(String(settings.officeRadius || 200));
+  const [busy, setBusy] = useState(false);
+  if (!data.isAdmin) return null;
+  async function save(patch: Record<string, unknown>, msg: string) {
+    assertWritable();
+    setBusy(true);
+    try {
+      await setDoc(doc(db, "crm", "settings"), patch, { merge: true });
+      toast(msg);
+    } catch {
+      toast("تعذّر الحفظ");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function here() {
+    setBusy(true);
+    try {
+      const f = await getFix();
+      setBusy(false);
+      await save({ officeLat: f.lat, officeLng: f.lng }, "تم تحديد موقع المكتب من موقعك الحالي (دقة ±" + f.acc + " م)");
+    } catch {
+      setBusy(false);
+      toast("تعذّر تحديد موقعك — اسمح للمتصفح بالوصول إلى الموقع");
+    }
+  }
+  return (
+    <div className="crm-card mb-3 grid gap-2.5 p-3.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <b className="flex-1 text-[14.5px]">موقع الدوام</b>
+        <label className="flex items-center gap-1.5 text-[13.5px]">
+          <input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={!!settings.geoOn} disabled={busy || !office}
+            onChange={(e) => save({ geoOn: e.target.checked }, e.target.checked ? "تم تفعيل التحقق من الموقع" : "تم إيقاف التحقق من الموقع")} />
+          التسجيل من موقع العمل فقط
+        </label>
+      </div>
+      <p className="crm-hint m-0">عند التفعيل لا يُقبل تسجيل الحضور أو الانصراف إلا داخل النطاق المحدد حول المكتب (من جوال الموظف أو جهازه). يُحفظ موقع كل تسجيل وبُعده عن المكتب. يمكن استثناء موظف من «مواعيد الدوام» (للعمل الميداني).</p>
+      <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
+        {office ? (
+          <span>المكتب: <a className="link num" href={mapLink(office)} target="_blank" rel="noopener" dir="ltr">{office.lat.toFixed(5)}, {office.lng.toFixed(5)}</a></span>
+        ) : <span className="text-[var(--crm-warn)]">لم يُحدَّد موقع المكتب بعد</span>}
+        <button type="button" className="crm-btn sm primary" disabled={busy} onClick={here}>📍 موقعي الحالي هو المكتب</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="min-w-[220px] flex-1" dir="ltr" placeholder="أو الصق رابط خرائط قوقل / الإحداثيات: 24.71, 46.67" value={txt} onChange={(e) => setTxt(e.target.value)} />
+        <button type="button" className="crm-btn sm" disabled={busy || !txt.trim()} onClick={() => {
+          const pt = parsePoint(txt);
+          if (!pt) return toast("لم أتعرّف على الإحداثيات — الصق رابطاً فيه الإحداثيات أو اكتبها مثل 24.71, 46.67");
+          save({ officeLat: pt.lat, officeLng: pt.lng }, "تم حفظ موقع المكتب").then(() => setTxt(""));
+        }}>حفظ الموقع</button>
+        <label className="flex items-center gap-1 text-[13px] text-[var(--crm-ink-3)]">النطاق المسموح
+          <select className="!w-auto" value={radius} onChange={(e) => { setRadius(e.target.value); save({ officeRadius: Number(e.target.value) }, "النطاق: " + e.target.value + " م"); }}>
+            {["100", "150", "200", "300", "500", "1000"].map((r) => <option key={r} value={r}>{r} م</option>)}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+/** "مواعيد الدوام": the owner sets each employee's shift, working days and required daily hours (stored on their HR file). */
+const WEEK: [number, string][] = [[0, "أحد"], [1, "إثنين"], [2, "ثلاثاء"], [3, "أربعاء"], [4, "خميس"], [5, "جمعة"], [6, "سبت"]];
+function ShiftTimes() {
+  const { data, toast } = useCrm();
+  const ids = members(data);
+  type V = { start: string; end: string; days: number[]; hours: string };
+  const [edit, setEdit] = useState<Record<string, V>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const val = (id: string): V => edit[id] || { ...shiftOf(data, id), days: workDaysOf(data, id), hours: String(hrOf(data, id).dailyHours || "") };
+  const change = (id: string, p: Partial<V>) => setEdit((x) => ({ ...x, [id]: { ...val(id), ...p } }));
+  async function save(id: string) {
+    assertWritable();
+    const v = val(id);
+    if (!v.start || !v.end || v.end <= v.start) return toast("وقت نهاية الدوام يجب أن يكون بعد بدايته");
+    if (!v.days.length) return toast("اختر يوم دوام واحداً على الأقل");
+    const h = num(v.hours);
+    if (v.hours && (!h || h <= 0 || h > 16)) return toast("عدد ساعات العمل غير صحيح");
+    setBusy(id);
+    try {
+      await setDoc(doc(db, "hr", id), { workStart: v.start, workEnd: v.end, workDays: [...v.days].sort(), dailyHours: h || null }, { merge: true });
+      setEdit((e) => { const n = { ...e }; delete n[id]; return n; });
+      toast("تم حفظ دوام " + nameOf(data, id));
+    } catch {
+      toast("تعذّر الحفظ");
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <div className="crm-card mb-3 grid gap-2 p-3.5">
+      <b className="text-[14.5px]">مواعيد الدوام</b>
+      <p className="crm-hint m-0">لكل موظف: وقت الدوام، أيام الدوام، وعدد ساعات العمل المطلوبة يومياً (إن تُرك فارغاً تُحسب من وقت الدوام). ما يزيد على الساعات المطلوبة يُحسب فائضاً، والعمل في يوم الإجازة كله فائض.</p>
+      <div className="grid gap-2 lg:grid-cols-2">
+        {ids.map((id) => {
+          const v = val(id), dirty = !!edit[id];
+          const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+          const autoH = Math.max(0, Math.round(((toMin(v.end) - toMin(v.start)) / 60) * 10) / 10); // shown as the default when no hours are typed
+          return (
+            <div key={id} className="grid gap-2 rounded-lg border border-[var(--crm-line)] px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <b className="min-w-[90px] flex-1 text-[13.5px]">{nameOf(data, id)}</b>
+                <label className="flex items-center gap-1 text-[12.5px] text-[var(--crm-ink-3)]">من
+                  <input type="time" className="!w-auto" value={v.start} onChange={(e) => change(id, { start: e.target.value })} />
+                </label>
+                <label className="flex items-center gap-1 text-[12.5px] text-[var(--crm-ink-3)]">إلى
+                  <input type="time" className="!w-auto" value={v.end} onChange={(e) => change(id, { end: e.target.value })} />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {WEEK.map(([n, l]) => {
+                  const on = v.days.includes(n);
+                  return (
+                    <button key={n} type="button" className={"crm-qchip !px-2 !py-0.5 !text-[12px]" + (on ? " on" : "")}
+                      onClick={() => change(id, { days: on ? v.days.filter((x) => x !== n) : [...v.days, n] })}>{l}</button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[var(--crm-ink-3)]">
+                <label className="flex items-center gap-1">ساعات العمل يومياً
+                  <input className="!w-16 num" inputMode="decimal" placeholder={String(autoH)} value={v.hours} onChange={(e) => change(id, { hours: e.target.value.replace(/[^\d.]/g, "") })} />
+                </label>
+                <span>· {v.days.length} أيام أسبوعياً</span>
+                <label className="flex items-center gap-1">
+                  <input type="checkbox" className="h-3.5 w-3.5 accent-[var(--crm-gold)]" checked={!!data.staff.find((x) => x.id === id)?.anyLocation}
+                    onChange={async (e) => { try { await write("staff", id, { anyLocation: e.target.checked }, "update"); toast(e.target.checked ? nameOf(data, id) + ": يسجّل من أي مكان" : nameOf(data, id) + ": من موقع العمل فقط"); } catch { toast("تعذّر الحفظ"); } }} />
+                  من أي مكان
+                </label>
+                {dirty && <button type="button" className="crm-btn primary sm ms-auto" disabled={busy === id} onClick={() => save(id)}>حفظ</button>}
+              </div>
+            </div>
+          );
+        })}
+        {!ids.length && <span className="crm-hint">لا يوجد موظفون.</span>}
+      </div>
+    </div>
   );
 }
 
@@ -293,7 +468,7 @@ function Payroll() {
     const body = { ...cur, [field]: field === "note" || field === "paid" ? value : num(value), month, member: id, updatedAt: nowStamp() } as Record<string, unknown>;
     delete body.id;
     await write("payroll", k, body);
-    toast("انحفظ");
+    toast("تم الحفظ");
   };
   const exportPay = () =>
     exportCsv("رواتب " + month, ids.map((id) => {
@@ -335,41 +510,7 @@ function Payroll() {
           </tbody>
         </table>
       </div>
-      <p className="crm-hint mt-2.5">العمولة = مجموع سعي طلبات الموظف اللي صارت &quot;تم البيع&quot; في هذا الشهر × نسبة عمولته في ملفه. المكافأة والخصم والملاحظة تنحفظ لما تطلع من الخانة.</p>
+      <p className="crm-hint mt-2.5">العمولة = مجموع سعي طلبات الموظف التي أصبحت &quot;تم البيع&quot; هذا الشهر × نسبة عمولته في ملفه. تُحفظ المكافأة والخصم والملاحظة عند الخروج من الحقل.</p>
     </>
-  );
-}
-
-function Settings() {
-  const { data, settings, toast } = useCrm();
-  const ids = members(data);
-  const [sm, setSm] = useState(settings.salesManager || data.staff.find((s) => s.role === "admin")?.id || "");
-  const [days, setDays] = useState(String(settings.escalateDays || 2));
-  const [off, setOff] = useState(!!settings.escalateOff);
-  return (
-    <div className="grid max-w-2xl gap-3">
-      <div className="crm-card grid gap-3.5 p-4">
-        <h2 className="text-base">رجوع العميل لمدير المبيعات</h2>
-        <p className="crm-hint m-0">إذا الموظف ما تواصل مع العميل وعدّى موعد الاتصال بعدد الأيام المحدد، العميل وطلبه يرجعون تلقائي لمدير المبيعات، وينسجل في سجل العميل.</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="crm-field"><label htmlFor="set-sm">مدير المبيعات</label>
-            <select id="set-sm" value={sm} onChange={(e) => setSm(e.target.value)}>{ids.map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}</select></div>
-          <div className="crm-field"><label htmlFor="set-days">يرجع بعد كم يوم تأخير؟</label>
-            <select id="set-days" value={days} onChange={(e) => setDays(e.target.value)}>{[1, 2, 3, 5, 7].map((n) => <option key={n} value={n}>{n}{n === 1 ? " يوم" : n === 2 ? " يومين" : " أيام"}</option>)}</select></div>
-          <label className="crm-check sm:col-span-2"><input type="checkbox" checked={off} onChange={(e) => setOff(e.target.checked)} /><span>أوقف الرجوع التلقائي</span></label>
-        </div>
-        <div><button type="button" className="crm-btn primary" onClick={async () => {
-          await setDoc(doc(db, "crm", "settings"), { salesManager: sm || null, escalateDays: Number(days) || 2, escalateOff: off });
-          toast("انحفظت الإعدادات");
-        }}>حفظ</button></div>
-        <p className="crm-hint m-0">الرجوع يصير لما يكون المدير أو المالك فاتح النظام.</p>
-      </div>
-      <div className="crm-card flex flex-wrap items-center gap-2 p-4">
-        <span className="flex-1 text-sm">حسابات الموظفين وإعدادات الموقع (رقم الواتساب والتواصل):</span>
-        <Link href="/admin/staff" className="crm-btn">حسابات الموظفين</Link>
-        <Link href="/admin/settings" className="crm-btn">إعدادات الموقع</Link>
-      </div>
-      <ImportOld />
-    </div>
   );
 }

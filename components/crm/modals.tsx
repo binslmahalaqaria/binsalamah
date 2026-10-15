@@ -3,16 +3,16 @@
 /** Action modals for the sales CRM, plus the host that renders whichever one is open. */
 import { useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { CONTRACT, GOALK, REQ_TONE, UPD } from "@/lib/crm/constants";
+import { useRouter } from "@/i18n/navigation";
+import { CONTRACT, GOALK, REQ_TONE, SOLD_ST, UPD, lbl } from "@/lib/crm/constants";
 import {
-  clientById, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
-  unitsOf, visibleRequests,
-} from "@/lib/crm/logic";
+  clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
+  unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
   applyUpdate, cancelSale, deleteAttendance, reqSent, saveAttendance, saveClose, saveVisit, write,
 } from "@/lib/crm/actions";
 import type { HrFile } from "@/lib/crm/types";
-import { addDays, fmtVisit, monthName, money, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
+import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
 import { ConfirmButton, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
@@ -49,7 +49,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string;
   if (!c) return null;
   const u = UPD.find((x) => x.k === type);
   async function save() {
-    if (!type) return toast("اختر وش صار أول");
+    if (!type) return toast("يرجى اختيار نتيجة التواصل أولاً");
     let nx: string | null = null;
     if (next === "date") {
       if (!date) return toast("اختر التاريخ");
@@ -62,16 +62,16 @@ function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string;
   return (
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={save}>حفظ التحديث</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
-      <div className="crm-sec !mt-0 mb-2">وش صار؟</div>
-      <RadioChips options={UPD.map((x) => x.k)} value={type} onChange={(v) => { setType(v); setNext(String(UPD.find((x) => x.k === v)?.n ?? 3)); }} />
+      <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
+      <RadioChips options={UPD.map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(String(UPD.find((x) => x.k === v)?.n ?? 3)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
-        <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: عجبته الفيلا بس يبي يشوفها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
+        <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في معاينتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
       <div className="crm-sec mb-2">الاتصال القادم</div>
-      <RadioChips options={[["1", "بكرة"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
+      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
       {next === "date" && <input type="date" className="mt-2" min={today()} value={date} onChange={(e) => setDate(e.target.value)} />}
-      {u?.status && <p className="crm-hint mt-2">حالة العميل بتتغير إلى: {u.status}</p>}
+      {u?.status && <p className="crm-hint mt-2">ستتغير حالة العميل إلى: {u.status}</p>}
     </ModalFrame>
   );
 }
@@ -101,7 +101,7 @@ function VisitModal({ reqId }: { reqId: string }) {
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
           {c.visitAt && (
-            <button type="button" className="crm-btn danger" onClick={async () => { await saveVisit(data, r.id, null, null, ""); toast("انلغى الموعد"); closeModal(); }}>إلغاء الموعد</button>
+            <button type="button" className="crm-btn danger" onClick={async () => { await saveVisit(data, r.id, null, null, ""); toast("تم إلغاء الموعد"); closeModal(); }}>إلغاء الموعد</button>
           )}
         </>
       }>
@@ -110,9 +110,9 @@ function VisitModal({ reqId }: { reqId: string }) {
         <Field label="العقار">
           <Select value={pid} onChange={setPid} options={data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string])} blank="—" />
         </Field>
-        <Field label="ملاحظة (اختياري)"><input value={note} placeholder="مثال: بيجي مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
+        <Field label="ملاحظة (اختياري)"><input value={note} placeholder="مثال: سيحضر مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      <p className="crm-hint mt-2">قبل الموعد بيوم يطلع لك في شاشة &quot;اليوم&quot; عشان تأكد معه، والطلب ينتقل لمرحلة &quot;معاينة&quot;.</p>
+      <p className="crm-hint mt-2">قبل الموعد بيوم يظهر في شاشة &quot;اليوم&quot; لتأكيده مع العميل، وينتقل الطلب إلى مرحلة &quot;معاينة&quot;.</p>
     </ModalFrame>
   );
 }
@@ -120,6 +120,9 @@ function VisitModal({ reqId }: { reqId: string }) {
 /* ---------- deposit / sale ---------- */
 function CloseModal({ reqId, to }: { reqId: string; to: string }) {
   const { data, closeModal, toast } = useCrm();
+  const router = useRouter();
+  // A new deposit goes straight to its receipt (سند قبض) unless unticked.
+  const [withReceipt, setWithReceipt] = useState(true);
   const r = data.requests.find((x) => x.id === reqId);
   const c = r && clientById(data, r.clientId);
   const order = useMemo(() => {
@@ -132,40 +135,68 @@ function CloseModal({ reqId, to }: { reqId: string; to: string }) {
   const [unit, setUnit] = useState(r?.unit || "");
   const [price, setPrice] = useState(String(r?.price ?? (r?.propertyId ? "" : order[0]?.price ?? "")));
   const [pct, setPct] = useState(String(r?.commissionPct ?? 2.5));
-  const [extra, setExtra] = useState(to === "تم البيع" ? today() : String(r?.deposit ?? ""));
+  const sale = to === "تم البيع";
+  const [extra, setExtra] = useState(sale ? (r?.closedAt ? localDay(r.closedAt) : today()) : String(r?.deposit ?? ""));
+  const [depDay, setDepDay] = useState(r?.depositAt ? localDay(r.depositAt) : today());
   if (!r) return null;
   const p = propById(data, pid);
   const us = p ? unitsOf(p) : [];
+  const commPreview = comm({ price: num(price), commissionPct: num(pct) ?? 2.5 });
   return (
     <ModalFrame title={(to === "تم البيع" ? "تم البيع" : "عربون") + ": " + (c?.name || "")} onClose={closeModal} width={520}
       footer={<div className="flex gap-2">
         <button type="button" className="crm-btn primary" onClick={async () => {
           const pr = num(price);
-          if (!pid || !pr) return toast("اختر العقار واكتب قيمة البيع");
-          await saveClose(data, r.id, to, { propertyId: pid, unit: unit || null, price: pr, pct: num(pct) ?? 2.5, extra });
-          toast(to === "تم البيع" ? "مبروك! تسجّل البيع" : "تسجّل العربون");
+          if (!pid || !pr) return toast("يرجى اختيار العقار وإدخال قيمة البيع");
+          if (!can(data, "recordDeals")) return toast("لا تملك صلاحية تسجيل العربون أو البيع");
+          if (us.length && !unit) return toast("يرجى اختيار الوحدة");
+          // Never let two open deals hold the same property/unit.
+          const taken = data.requests.find((x) => x.id !== r.id && SOLD_ST.includes(x.status) && x.propertyId === pid && (x.unit || "") === (unit || ""));
+          if (taken) return toast("هذا العقار " + (taken.status === "تم البيع" ? "مباع" : "محجوز") + " للعميل " + (clientById(data, taken.clientId)?.name || "") + " — يرجى إلغاء عربونه أولاً أو اختيار عقار آخر");
+          if (!sale && !num(extra)) return toast("يرجى إدخال مبلغ العربون");
+          await saveClose(data, r.id, to, { propertyId: pid, unit: unit || null, price: pr, pct: num(pct) ?? 2.5, extra, depositDay: sale ? null : depDay });
+          toast(to === "تم البيع" ? "مبروك! تم تسجيل البيع" : "تم تسجيل العربون");
           closeModal();
+          if (!sale && withReceipt) router.push("/admin/receipt/" + r.id);
         }}>حفظ</button>
+        {to !== "تم البيع" && (
+          <label className="flex items-center gap-1.5 text-[13px]">
+            <input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={withReceipt} onChange={(e) => setWithReceipt(e.target.checked)} />
+            إصدار سند قبض بعد الحفظ
+          </label>
+        )}
         <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
       </div>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="العقار" full>
           <Select value={pid} onChange={(v) => { setPid(v); setUnit(""); const np = propById(data, v); if (np && !unitsOf(np).length && np.price && !price) setPrice(String(np.price)); }}
-            options={order.map((x) => [x.id, x.title] as [string, string])} />
+            options={order.map((x) => [x.id, x.title + (!unitsOf(x).length && x.status && x.status !== "متاح" && x.id !== r.propertyId ? " — " + x.status : "")] as [string, string])} />
         </Field>
         <Field label="الوحدة (للمشاريع)">
           <select value={unit} onChange={(e) => { setUnit(e.target.value); const u = us.find((x) => x.name === e.target.value); if (u?.price) setPrice(String(u.price)); }}>
-            <option value="">{us.length ? "اختر الوحدة" : "ما فيه وحدات"}</option>
+            <option value="">{us.length ? "يرجى اختيار الوحدة" : "لا توجد وحدات"}</option>
             {us.map((u) => <option key={u.name} value={u.name}>{u.name} — {u.status || "متاح"}</option>)}
           </select>
         </Field>
         <Field label="قيمة البيع (ريال)"><input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} /></Field>
         <Field label="السعي %"><input inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} /></Field>
-        <Field label={to === "تم البيع" ? "تاريخ الإفراغ" : "مبلغ العربون (اختياري)"}>
-          {to === "تم البيع" ? <input type="date" value={extra} onChange={(e) => setExtra(e.target.value)} /> : <input inputMode="decimal" value={extra} onChange={(e) => setExtra(e.target.value)} />}
-        </Field>
+        {sale ? (
+          <Field label="تاريخ الإفراغ"><input type="date" value={extra} onChange={(e) => setExtra(e.target.value)} /></Field>
+        ) : (
+          <>
+            <Field label="مبلغ العربون (ريال)"><input inputMode="decimal" value={extra} placeholder="مثال: 50000" onChange={(e) => setExtra(e.target.value)} /></Field>
+            <Field label="تاريخ العربون"><input type="date" max={today()} value={depDay} onChange={(e) => setDepDay(e.target.value || today())} /></Field>
+          </>
+        )}
       </div>
-      <p className="crm-hint mt-2">{to === "تم البيع" ? 'الوحدة أو العقار يتحوّل "مباع"، والسعي يدخل في المبيعات وعمولة الموظف.' : 'الوحدة أو العقار يتحوّل "محجوز".'}</p>
+      {num(price) ? (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-[var(--crm-surface-2)] px-3 py-2 text-[13px]">
+          <span>قيمة البيع <b className="num">{moneyFull(num(price))}</b></span>
+          <span>السعي <b className="num text-[var(--crm-gold-ink)]">{moneyFull(commPreview)}</b></span>
+          {!sale && num(extra) ? <span>العربون <b className="num">{moneyFull(num(extra))}</b></span> : null}
+        </div>
+      ) : null}
+      <p className="crm-hint mt-2">{sale ? 'تتحول حالة الوحدة أو العقار إلى "مباع"، ويُحتسب السعي في المبيعات وعمولة الموظف.' : 'تتحول حالة الوحدة أو العقار إلى "محجوز"، ويظهر العربون في ملف العميل والمبيعات وملخص اليوم.'}</p>
     </ModalFrame>
   );
 }
@@ -182,14 +213,14 @@ function CancelModal({ reqId, to }: { reqId: string; to?: string }) {
   return (
     <ModalFrame title={"إلغاء " + what + ": " + (c?.name || "")} onClose={closeModal} width={460}
       footer={<div className="flex gap-2">
-        <button type="button" className="crm-btn danger" onClick={async () => { await cancelSale(data, r.id, dest, note.trim()); toast("تم الإلغاء، والعقار رجع متاح"); closeModal(); }}>إلغاء {what}</button>
+        <button type="button" className="crm-btn danger" onClick={async () => { await cancelSale(data, r.id, dest, note.trim()); toast("تم الإلغاء، وعاد العقار متاحاً"); closeModal(); }}>إلغاء {what}</button>
         <button type="button" className="crm-btn" onClick={closeModal}>رجوع</button>
       </div>}>
       <p>
-        {p && <>العقار <b>{p.title}{r.unit ? " — " + r.unit : ""}</b> يرجع <b>متاح</b>، و</>}
-        الطلب يرجع لمرحلة <b>{dest}</b>، ويطلع من المبيعات والعمولات.
+        {p && <>يعود العقار <b>{p.title}{r.unit ? " — " + r.unit : ""}</b> إلى حالة <b>متاح</b>، و</>}
+        يعود الطلب إلى مرحلة <b>{dest}</b>، ويُستبعد من المبيعات والعمولات.
       </p>
-      <Field label="السبب (اختياري)"><input value={note} placeholder="مثال: العميل تراجع" onChange={(e) => setNote(e.target.value)} /></Field>
+      <Field label="السبب (اختياري)"><input value={note} placeholder="مثال: تراجع العميل" onChange={(e) => setNote(e.target.value)} /></Field>
     </ModalFrame>
   );
 }
@@ -218,15 +249,15 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
                   <span className="muted text-[12.5px]">{m.why.join(" · ")}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("سجّلت: أرسلت " + p.title + " — اتصال بعد 3 أيام"))}>أرسل له</a>}
-                  <button type="button" className="crm-btn sm" onClick={() => navigator.clipboard?.writeText(propMsg(p)).then(() => toast("تم نسخ الرسالة، الصقها للعميل في الواتساب"))}>نسخ الرسالة</button>
+                  {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("تم التسجيل: إرسال " + p.title + " — اتصال بعد 3 أيام"))}>أرسل إليه</a>}
+                  <button type="button" className="crm-btn sm" onClick={() => navigator.clipboard?.writeText(propMsg(p)).then(() => toast("تم نسخ الرسالة، يرجى لصقها للعميل في واتساب"))}>نسخ الرسالة</button>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="crm-empty">ما فيه عقار متاح يطابق هذا الطلب حالياً.</div>
+        <div className="crm-empty">لا يوجد عقار متاح يطابق هذا الطلب حالياً.</div>
       )}
     </ModalFrame>
   );
@@ -255,13 +286,13 @@ function PropReqsModal({ propId }: { propId: string }) {
                   <span><b className="link" onClick={() => openModal({ kind: "request", id: r.id })}>{c?.name || ""}</b> <Pill tone={REQ_TONE[r.status || "جديد"]}>{r.status || "جديد"}</Pill></span>
                   <span className="muted text-[12.5px]">{m!.why.join(" · ")}</span>
                 </div>
-                {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("سجّلت: أرسلت " + p.title))}>أرسل له</a>}
+                {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("تم التسجيل: إرسال " + p.title))}>أرسل إليه</a>}
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="crm-empty">ما فيه طلبات مفتوحة تناسب هذا العقار.</div>
+        <div className="crm-empty">لا توجد طلبات مفتوحة تناسب هذا العقار.</div>
       )}
     </ModalFrame>
   );
@@ -279,15 +310,15 @@ function GoalModal({ uid, month }: { uid: string; month: string }) {
     const body = Object.fromEntries(GOALK.map(([k]) => [k, num(v[k])]));
     const ids = all ? members(data) : [uid];
     for (const id of ids) await write("goals", month + "_" + id, { uid: id, month, ...body, note: note.trim(), updatedAt: nowStamp(), by: data.uid });
-    toast(all ? "تحددت الأهداف لكل الفريق" : "تم حفظ أهداف " + nameOf(data, uid));
+    toast(all ? "تم تحديد الأهداف لجميع أعضاء الفريق" : "تم حفظ أهداف " + nameOf(data, uid));
     closeModal();
   }
   return (
     <ModalFrame title={"أهداف " + monthName(month)} onClose={closeModal} width={620}
       footer={<div className="flex flex-wrap gap-2">
         <button type="button" className="crm-btn primary" onClick={() => save(false)}>حفظ</button>
-        <button type="button" className="crm-btn" onClick={() => save(true)}>طبّق نفس الأهداف على الكل</button>
-        {pg && <button type="button" className="crm-btn ghost" onClick={() => { setV(Object.fromEntries(GOALK.map(([k]) => [k, pg[k] != null ? String(pg[k]) : ""]))); setNote(pg.note || ""); toast("نسخت أهداف الشهر الماضي، راجعها واحفظ"); }}>نسخ أهداف الشهر الماضي</button>}
+        <button type="button" className="crm-btn" onClick={() => save(true)}>تطبيق الأهداف نفسها على الجميع</button>
+        {pg && <button type="button" className="crm-btn ghost" onClick={() => { setV(Object.fromEntries(GOALK.map(([k]) => [k, pg[k] != null ? String(pg[k]) : ""]))); setNote(pg.note || ""); toast("تم نسخ أهداف الشهر الماضي، يرجى مراجعتها وحفظها"); }}>نسخ أهداف الشهر الماضي</button>}
       </div>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="الموظف" full>
@@ -296,9 +327,9 @@ function GoalModal({ uid, month }: { uid: string; month: string }) {
         {GOALK.map(([k, l]) => (
           <Field key={k} label={l}><input inputMode="numeric" placeholder="—" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>
         ))}
-        <Field label="ملاحظة للموظف (تطلع له فوق أهدافه)" full><input value={note} placeholder="مثال: ركّز على النرجس والملقا" onChange={(e) => setNote(e.target.value)} /></Field>
+        <Field label="ملاحظة للموظف (تظهر أعلى أهدافه)" full><input value={note} placeholder="مثال: التركيز على النرجس والملقا" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      <p className="crm-hint mt-2">اترك الخانة فاضية إذا ما تبي هدف لها.</p>
+      <p className="crm-hint mt-2">اترك الحقل فارغاً إذا لم ترغب في تحديد هدف له.</p>
     </ModalFrame>
   );
 }
@@ -341,7 +372,7 @@ function HrModal({ uid }: { uid: string }) {
         <Field label="بدل السكن"><input inputMode="decimal" value={f.housing} onChange={(e) => set("housing", e.target.value)} /></Field>
         <Field label="بدل النقل"><input inputMode="decimal" value={f.transport} onChange={(e) => set("transport", e.target.value)} /></Field>
         <Field label="بدلات أخرى"><input inputMode="decimal" value={f.otherAllow} onChange={(e) => set("otherAllow", e.target.value)} /></Field>
-        <Field label="نسبته من السعي %" hint="مثال: 20 يعني ياخذ 20% من السعي اللي يحصّله"><input inputMode="decimal" value={f.commissionPct} onChange={(e) => set("commissionPct", e.target.value)} /></Field>
+        <Field label="نسبته من السعي %" hint="مثال: 20 تعني أنه يحصل على 20% من السعي الذي يحققه"><input inputMode="decimal" value={f.commissionPct} onChange={(e) => set("commissionPct", e.target.value)} /></Field>
         <Field label="الآيبان"><input dir="ltr" value={f.iban} placeholder="SA…" onChange={(e) => set("iban", e.target.value)} /></Field>
         <div className="crm-sec sm:col-span-2">المستندات</div>
         <div className="grid gap-1.5 sm:col-span-2">
@@ -350,11 +381,11 @@ function HrModal({ uid }: { uid: string }) {
               <a href={d.url} target="_blank" rel="noopener" className="text-[var(--crm-gold-ink)] underline">{d.name || "مستند " + (i + 1)}</a>
               <button type="button" className="crm-btn ghost sm" onClick={() => setDocs(docs.filter((_, j) => j !== i))}>حذف</button>
             </div>
-          )) : <span className="crm-hint">ما فيه مستندات.</span>}
+          )) : <span className="crm-hint">لا توجد مستندات.</span>}
           <div className="flex flex-wrap gap-2">
             <input className="crm-input flex-1" value={dn.name} placeholder="اسم المستند (عقد، هوية…)" onChange={(e) => setDn({ ...dn, name: e.target.value })} />
             <input className="crm-input flex-[2]" dir="ltr" value={dn.url} placeholder="https://… رابط الملف (Google Drive مثلاً)" onChange={(e) => setDn({ ...dn, url: e.target.value })} />
-            <button type="button" className="crm-btn" onClick={() => { if (dn.url.trim()) { setDocs([...docs, { name: dn.name.trim(), url: dn.url.trim() }]); setDn({ name: "", url: "" }); } }}>+ أضف</button>
+            <button type="button" className="crm-btn" onClick={() => { if (dn.url.trim()) { setDocs([...docs, { name: dn.name.trim(), url: dn.url.trim() }]); setDn({ name: "", url: "" }); } }}>+ إضافة</button>
           </div>
         </div>
         <Field label="ملاحظات" full><textarea rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
@@ -377,14 +408,14 @@ function AttEditModal({ uid, date }: { uid: string; date: string }) {
         <>
           <div className="flex gap-2">
             <button type="button" className="crm-btn primary" onClick={async () => {
-              if (!d || !i) return toast("التاريخ ووقت الحضور مطلوبين");
+              if (!d || !i) return toast("التاريخ ووقت الحضور مطلوبان");
               await saveAttendance(uid, d, i, o, data.uid);
-              toast("انحفظ");
+              toast("تم الحفظ");
               closeModal();
             }}>حفظ</button>
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
-          {date && <ConfirmButton onConfirm={async () => { await deleteAttendance(uid, date); toast("انحذف"); closeModal(); }}>حذف اليوم</ConfirmButton>}
+          {date && <ConfirmButton onConfirm={async () => { await deleteAttendance(uid, date); toast("تم الحذف"); closeModal(); }}>حذف اليوم</ConfirmButton>}
         </>
       }>
       <div className="grid gap-3 sm:grid-cols-2">

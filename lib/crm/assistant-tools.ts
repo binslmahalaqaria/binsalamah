@@ -6,7 +6,7 @@
  * Visibility matches the UI: employees only see/act on their own clients.
  */
 import type Anthropic from "@anthropic-ai/sdk";
-import { CSTATUS, FLOORS, OWNERK, PAY, PRIO, PSTATUS, PTYPES, REQ, SOURCES, TEMPS, UPD } from "./constants";
+import { CSTATUS, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, TEMPS, UPD } from "./constants";
 import {
   clientById, demandOf, isMgrId, match, matchesFor, members, nameOf, OPEN_REQ, propById, propMsg, propSummary, reqsOf,
   statsFor, typesOf, unitsOf, unitView, visibleClients, visibleRequests, visibleTasks, type CrmData,
@@ -115,7 +115,7 @@ export function buildTools(): Tool[] {
       name: "clients_for_offer",
       description: "يطلع العملاء اللي يناسبهم عرض عقاري. استخدمه لما المستخدم يعطيك عرض (نص من واتساب أو وصف) أو يسأل مين يناسبه عقار. استخرج من العرض: النوع، الحي، السعر، المساحة، الغرف، الدور، بيع أو إيجار. إذا العقار موجود في النظام أرسل property_id بدل التفاصيل. message: نص الرسالة اللي تنرسل للعملاء بالواتساب (صياغة مرتبة للعرض بدون أرقام المالك أو العمولة). يطلع للمستخدم قائمة بالعملاء مع زر واتساب لكل واحد.",
       input_schema: S({
-        property_id: { type: "string" }, title: { type: "string", description: "وصف قصير للعرض مثل: فيلا 300م الملقا" }, type: enumS(PTYPES),
+        property_id: { type: "string" }, title: { type: "string", description: "وصف قصير للعرض مثل: فيلا 300م الملقا" }, type: { type: "string", description: "أحد أنواع العقار المذكورة في التعليمات" },
         purpose: enumS(["بيع", "إيجار"]), district: { type: "string" }, price: { type: "number" }, area: { type: "number" }, bedrooms: { type: "number" },
         floor: enumS(FLOORS), message: { type: "string" }, include_other_districts: { type: "boolean", description: "true يضم عملاء طالبين أحياء ثانية" },
       }),
@@ -164,7 +164,7 @@ export function buildTools(): Tool[] {
     {
       name: "find_properties",
       description: "يبحث في مخزون العقارات ويرجع قائمة مختصرة مع الوحدات إن وجدت. استخدم for_client_id ليرجع العقارات المطابقة لعميل مرتبة بالنسبة.",
-      input_schema: S({ query: { type: "string" }, type: enumS(PTYPES), district: { type: "string" }, max_price: { type: "number" }, min_area: { type: "number" }, status: enumS(PSTATUS), for_client_id: { type: "string" } }),
+      input_schema: S({ query: { type: "string" }, type: { type: "string", description: "أحد أنواع العقار المذكورة في التعليمات" }, district: { type: "string" }, max_price: { type: "number" }, min_area: { type: "number" }, status: enumS(PSTATUS), for_client_id: { type: "string" } }),
       run(d, i) {
         if (i.for_client_id) {
           const c = needClient(d, i.for_client_id);
@@ -188,7 +188,7 @@ export function buildTools(): Tool[] {
       description: "يعدّل بيانات عميل موجود ومتابعته (الاسم، الجوال، الاهتمام، الحالة، موعد الاتصال والزيارة). ما يضيف عميل جديد: العميل الجديد يتسجّل مع طلبه بـ save_request. وش يبي العميل (النوع، الحي، الميزانية…) يتعدّل بـ save_request. next_call: تاريخ YYYY-MM-DD أو عدد أيام. assignee: اسم الموظف (للمدير فقط).",
       input_schema: S({
         client_id: { type: "string" }, name: { type: "string" }, phone: { type: "string" }, visit_at: { type: "string", description: "YYYY-MM-DDTHH:MM أو none" },
-        visit_property_id: { type: "string" }, temp: enumS(TEMPS), status: enumS(CSTATUS), source: enumS(SOURCES), notes: { type: "string" },
+        visit_property_id: { type: "string" }, temp: enumS(TEMPS), status: enumS(CSTATUS), source: { type: "string", description: "مصدر العميل" }, notes: { type: "string" },
         next_call: { type: "string" }, assignee: { type: "string" },
       }, ["client_id"]),
       async run(d, i, ctx) {
@@ -231,7 +231,7 @@ export function buildTools(): Tool[] {
       name: "save_property",
       description: "يضيف عقار (بدون property_id) أو يعدّل عقار موجود. للمشاريع أرسل units كقائمة وحدات بمساحتها وسعرها. owner_kind: مالك فرد/مطور/مسوق. يرجع id.",
       input_schema: S({
-        property_id: { type: "string" }, title: { type: "string" }, type: enumS(PTYPES), purpose: enumS(["بيع", "إيجار"]), status: enumS(PSTATUS),
+        property_id: { type: "string" }, title: { type: "string" }, type: { type: "string", description: "أحد أنواع العقار المذكورة في التعليمات" }, purpose: enumS(["بيع", "إيجار"]), status: enumS(PSTATUS),
         price: { type: "number" }, price_note: enumS(["قابل للتفاوض", "نهائي"]), city: { type: "string" }, district: { type: "string" },
         area: { type: "number" }, bedrooms: { type: "number" }, bathrooms: { type: "number" }, floor: enumS(FLOORS), facing: { type: "string" },
         street_width: { type: "number" }, age: { type: "string" }, features: { type: "string" }, link: { type: "string" }, owner_kind: enumS(OWNERK),
@@ -258,12 +258,12 @@ export function buildTools(): Tool[] {
         if (i.property_id) {
           const x = propById(d, str(i.property_id));
           if (!x) throw new Error("ما لقيت العقار");
-          await write("properties", x.id, p, "update");
+          await write("properties", x.id, { ...p, updatedBy: d.uid }, "update");
           ctx.act("عدّل العقار: " + (str(p.title) || x.title), "property", x.id);
           return { ok: true, property_id: x.id };
         }
         if (!p.title) throw new Error("اسم العقار مطلوب");
-        const id = await write("properties", null, { purpose: "بيع", status: "متاح", city: "الرياض", images: [], units: [], createdAt: nowStamp(), ...p });
+        const id = await write("properties", null, { purpose: "بيع", status: "متاح", city: "الرياض", images: [], units: [], createdAt: nowStamp(), createdBy: d.uid, updatedBy: d.uid, ...p });
         ctx.act("أضاف عقار: " + p.title, "property", id);
         return { ok: true, property_id: id };
       },
@@ -348,12 +348,12 @@ export function buildTools(): Tool[] {
       description: "يسجّل طلب عميل جديد في قسم الطلبات أو يعدّل طلب/مرحلته. هذي الطريقة الوحيدة لإضافة عميل جديد: أرسل new_client_name وجواله بدل client_id (إذا الجوال مسجّل يرفض). للعربون والبيع أرسل status مع property_id و price (و unit للمشاريع). المراحل: " + REQ.join("، ") + ".",
       input_schema: S({
         request_id: { type: "string" }, client_id: { type: "string" }, new_client_name: { type: "string" }, new_client_phone: { type: "string" },
-        purpose: enumS(["شراء", "إيجار"]), prop_types: { type: "array", items: enumS(PTYPES) }, districts: { type: "array", items: { type: "string" } },
+        purpose: enumS(["شراء", "إيجار"]), prop_types: { type: "array", items: { type: "string", description: "أحد أنواع العقار المذكورة في التعليمات" } }, districts: { type: "array", items: { type: "string" } },
         budget: { type: "number" }, payment: enumS(PAY), area_min: { type: "number" }, bedrooms_min: { type: "number" },
         floors: { type: "array", items: enumS(FLOORS) }, requirements: { type: "string" }, status: enumS(REQ), priority: enumS(PRIO),
         assignee: { type: "string" }, property_id: { type: "string", description: "العقار عند العربون أو البيع" }, unit: { type: "string" },
         price: { type: "number", description: "قيمة البيع" }, commission_pct: { type: "number" }, deposit: { type: "number", description: "مبلغ العربون" },
-        source: enumS(SOURCES),
+        source: { type: "string", description: "مصدر العميل" },
       }),
       async run(d, i, ctx) {
         const p: Record<string, unknown> = {};
@@ -446,11 +446,11 @@ export function buildTools(): Tool[] {
 export function assistantRules(d: CrmData) {
   const dt = new Date();
   return (
-    'أنت مساعد داخل نظام CRM لشركة "بن سلمه العقارية" في الرياض. تكلم بلهجة سعودية بسيطة وباختصار.\n' +
+    'أنت مساعد داخل نظام CRM لشركة "بن سلمه العقارية" في الرياض. اكتب ردودك بالعربية الفصحى الرسمية الواضحة وباختصار، دون لهجة عامية.\n' +
     "اليوم: " + today() + " (" + dt.toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { weekday: "long" }) + "). المستخدم: " + nameOf(d, d.uid) + " — " +
     (d.isMgr ? "مدير يشوف كل العملاء" : "موظف يشوف عملاءه بس") + ".\n" +
     "الفريق: " + members(d).map((id) => nameOf(d, id) + (isMgrId(d, id) ? " (مدير)" : "")).join("، ") + ".\n" +
-    "أنواع التحديث: " + UPD.map((u) => u.k).join("، ") + ". أنواع العقار: " + PTYPES.join("، ") + ".\n" +
+    "أنواع التحديث: " + UPD.map((u) => u.k).join("، ") + ". أنواع العقار: " + d.propTypes.join("، ") + ".\n" +
     "القواعد:\n- العميل الجديد يتسجّل فقط مع طلبه: save_request مع new_client_name و new_client_phone. save_client لتعديل عميل موجود بس.\n" +
     "- إذا قال لك النظام إن العميل مسجّل من قبل، بلّغ المستخدم باسمه والموظف المسؤول ولا تحاول تضيفه بطريقة ثانية.\n" +
     "- الطلب = وش يبي ومراحله حتى العربون والبيع (save_request مع status و property_id و price).\n" +

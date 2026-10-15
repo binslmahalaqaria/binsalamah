@@ -7,7 +7,9 @@
  */
 
 export const TEMPS = ["ساخن", "دافئ", "بارد"] as const;
-export const CSTATUS = ["نشط", "مغلق", "غير مهتم"] as const;
+/** Client status for the re-contact list ("للتواصل"): the team still has to call them and record a request or archive them. */
+export const TO_CONTACT = "للتواصل";
+export const CSTATUS = ["نشط", TO_CONTACT, "مغلق", "غير مهتم"] as const;
 export const PTYPES = ["فيلا", "تاون هاوس", "دور", "شقة", "أرض", "عمارة", "استراحة", "تجاري"] as const;
 export const SOURCES = ["واتساب", "سناب", "تيك توك", "إعلان عقار", "إحالة", "اتصال", "الموقع", "أخرى"] as const;
 export const PAY = ["كاش", "بنك", "بنك + كاش"] as const;
@@ -54,13 +56,13 @@ export const UPD: { k: string; n: number | "none"; status?: string }[] = [
 
 /** Quick call-log outcomes on the Today screen: [type, label, default next-call days]. */
 export const QL_OUT: [string, string, number | "none"][] = [
-  ["اتصلت عليه", "رد وتكلمنا", 3],
-  ["ما رد", "ما رد", 1],
-  ["استفسر", "استفسر", 3],
-  ["تم إرسال الموقع", "أرسلت الموقع", 3],
-  ["تم إرسال التفاصيل", "أرسلت التفاصيل", 3],
-  ["سجّل اهتمام", "سجّل اهتمام", 3],
-  ["صرف النظر", "صرف النظر", "none"],
+  ["اتصلت عليه", "تم الاتصال", 3],
+  ["ما رد", "لم يرد", 1],
+  ["استفسر", "استفسار", 3],
+  ["تم إرسال الموقع", "تم إرسال الموقع", 3],
+  ["تم إرسال التفاصيل", "تم إرسال التفاصيل", 3],
+  ["سجّل اهتمام", "أبدى اهتمامه", 3],
+  ["صرف النظر", "عدل عن الطلب", "none"],
 ];
 
 /** Which request stage a client update pushes the client's latest open request to. */
@@ -75,9 +77,32 @@ export const UPD_STAGE: Record<string, string> = {
   "تم الإغلاق": "تم البيع",
 };
 
+/**
+ * Formal display labels for stored values whose saved wording is colloquial.
+ * The stored strings never change (old data and comparisons rely on them); render through lbl().
+ */
+export const LBL: Record<string, string> = {
+  "اتصلت عليه": "تم الاتصال",
+  "ما رد": "لم يرد",
+  "استفسر": "استفسار",
+  "سجّل اهتمام": "أبدى اهتمامه",
+  "صرف النظر": "عدل عن الطلب",
+  "للتواصل": "بانتظار التواصل",
+  "زار العقار": "تمت المعاينة",
+  "دفع عربون": "دفع العربون",
+  "تم الإغلاق": "تمت الصفقة",
+  "حدد موعد زيارة": "تحديد موعد زيارة",
+  "تأكيد زيارة": "تأكيد موعد الزيارة",
+  "ما حضر": "لم يحضر",
+  "إلغاء موعد": "إلغاء الموعد",
+  "أرسلنا خيارات": "تم إرسال خيارات",
+  "رجع لمدير المبيعات": "أُعيد إلى مدير المبيعات",
+};
+export const lbl = (v: string | null | undefined) => (v ? LBL[v] || v : "");
+
 export const SENT_T = ["تم إرسال الموقع", "تم إرسال التفاصيل"];
 /** Log types that don't count as a call. */
-export const NOCALL = ["تأجيل", "إلغاء موعد"];
+export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل"];
 
 /** Monthly goal keys: [key, form label, column label]. */
 export const GOALK: [GoalKey, string, string][] = [

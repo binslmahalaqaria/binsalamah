@@ -103,6 +103,10 @@ export interface Staff {
   phone?: string | null;
   lastSeen?: string | null;
   chatSeen?: string | null;
+  /** Per-employee permissions set by the owner (sales role only; see PERMS in lib/crm/logic.ts). */
+  perms?: Partial<Record<string, boolean>> | null;
+  /** May check in/out from anywhere (field work) even when the attendance location rule is on. */
+  anyLocation?: boolean;
 }
 
 export interface CompanySettings {

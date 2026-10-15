@@ -12,13 +12,15 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
-import { dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
+import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
+import { TO_CONTACT } from "@/lib/crm/constants";
 import { runEscalation } from "@/lib/crm/actions";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
 import { ModalHost } from "./modals";
 import { Assistant } from "./Assistant";
+import { WaAlert } from "./WaAlert";
 
 interface NavItem {
   href: string;
@@ -27,10 +29,19 @@ interface NavItem {
   badge?: number;
 }
 
+/** Screens whose content follows the manager's "عرض بيانات" choice. */
+const VIEW_PAGES = ["/admin", "/admin/requests", "/admin/clients", "/admin/sales"];
+
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف مبيعات" };
 
 export function CrmShell({ children }: { children: ReactNode }) {
-  const { data, chat, me, settings, setViewAs, toastMsg, loaded } = useCrm();
+  const { data, chat, dms, me, realMe, previewAs, stopPreview, settings, setViewAs, toast, toastMsg, loaded } = useCrm();
+  // Writes are blocked while previewing as an employee (lib/crm/preview.ts); say so instead of failing silently.
+  useEffect(() => {
+    const onBlocked = () => toast("وضع المعاينة للاطلاع فقط — ارجع إلى حسابك لتنفيذ أي تعديل");
+    window.addEventListener("crm-preview-blocked", onBlocked);
+    return () => window.removeEventListener("crm-preview-blocked", onBlocked);
+  }, [toast]);
   const pathname = usePathname();
   const locale = useLocale();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -39,24 +50,33 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const newTasks = myTasksOpen(data).filter((t) => t.seen === false).length;
   const newReq = visibleRequests(data).filter((r) => (r.status || "جديد") === "جديد").length;
   const myStaff = data.staff.find((s) => s.id === data.uid);
-  const unread = chat.filter((m) => m.by !== data.uid && (!myStaff?.chatSeen || m.at > myStaff.chatSeen)).length;
+  const unread = chat.filter((m) => m.by !== data.uid && (!myStaff?.chatSeen || m.at > myStaff.chatSeen)).length
+    + dms.filter((m) => m.to === data.uid && !m.read).length;
 
+  // Re-contact list ("للتواصل"): each person's own remaining clients (managers see the totals on the page).
+  const toContact = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "اليوم", badge: due + newTasks }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
-      { href: "/admin/sales", k: "sales", label: "المبيعات" },
+      ...(data.isMgr || toContact ? [{ href: "/admin/contact", k: "phone", label: "للتواصل", badge: toContact }] : []),
+      ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),
+      ...(data.isMgr || can(data, "recordDeals") ? [{ href: "/admin/invoices", k: "leads", label: "الفواتير" }] : []),
     ]],
     ["المخزون", [{ href: "/admin/properties", k: "props", label: "العقارات" }]],
-    ["الموقع", [
+    // The website screens write through their own helpers, so they are left out of the read-only preview.
+    ...(previewAs ? [] : [["الموقع", [
       { href: "/admin/leads", k: "leads", label: "استفسارات الموقع" },
       { href: "/admin/offers", k: "web", label: "عروض الموقع" },
-    ]],
+    ]] as [string, NavItem[]]]),
     ["الفريق", [
-      ...(data.isMgr ? [{ href: "/admin/manager", k: "sales", label: "لوحة المدير" }] : []),
+      ...(data.isMgr ? [{ href: "/admin/manager", k: "sales", label: "لوحة المدير" }, { href: "/admin/report", k: "leads", label: "تقرير الأداء" }] : []),
+      ...(can(data, "whatsapp") ? [{ href: "/admin/whatsapp", k: "wa", label: "واتساب" }] : []),
+      { href: "/admin/tasks", k: "tasks", label: "المهام", badge: newTasks },
       { href: "/admin/chat", k: "chat", label: "الدردشة", badge: pathname === "/admin/chat" ? 0 : unread },
       { href: "/admin/team", k: "team", label: "الفريق" },
+      ...(data.isMgr ? [{ href: "/admin/setup", k: "settings", label: "الإعدادات" }] : []),
     ]],
   ];
   const all = groups.flatMap(([, xs]) => xs);
@@ -89,17 +109,6 @@ export function CrmShell({ children }: { children: ReactNode }) {
             <span className={"block text-xs " + (dark ? "text-white/50" : "text-[var(--crm-ink-3)]")}>{ROLE_AR[me.role]}</span>
           </div>
         </div>
-        {data.isMgr && (
-          <>
-            <label className={"text-[11.5px] " + (dark ? "text-white/50" : "text-[var(--crm-ink-3)]")} htmlFor={"viewAs" + (dark ? "" : "M")}>عرض شغل</label>
-            <select id={"viewAs" + (dark ? "" : "M")} value={data.viewAs} onChange={(e) => setViewAs(e.target.value)}
-              className={dark ? "!border-white/15 !bg-white/5 !text-white [&>option]:text-black" : ""}>
-              <option value="">كل الفريق</option>
-              {members(data).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
-              <option value="none">غير مسندين ({data.clients.filter((c) => !c.assignee).length})</option>
-            </select>
-          </>
-        )}
         <button type="button" onClick={() => signOut(auth)}
           className={"flex items-center gap-2 rounded-lg px-1 py-1.5 text-sm " + (dark ? "text-white/60 hover:text-red-300" : "text-[var(--crm-ink-3)] hover:text-[var(--crm-danger)]")}>
           <Icon k="logout" size={18} /> تسجيل الخروج
@@ -136,7 +145,31 @@ export function CrmShell({ children }: { children: ReactNode }) {
           <div className="border-t border-[var(--crm-gold)]/20 px-1.5 pt-3">{meBox(true)}</div>
         </aside>
 
-        <div className="mx-auto w-full min-w-0 max-w-[1280px] px-3.5 pt-3 pb-28 md:px-7 md:pt-6 md:pb-16">{children}</div>
+        <div className="mx-auto w-full min-w-0 max-w-[1280px] px-3.5 pt-3 pb-28 md:px-7 md:pt-6 md:pb-16">
+          {previewAs && me && (
+            <div className="sticky top-2 z-10 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--crm-gold)] bg-[var(--crm-ink)] px-3.5 py-2.5 text-sm text-white shadow-lg">
+              <span className="flex-1">
+                تتصفح النظام كما يراه <b>{me.name}</b> ({ROLE_AR[me.role]}) — <span className="text-white/70">للاطلاع فقط، ولا يُحفظ أي تعديل.</span>
+              </span>
+              <button type="button" className="crm-btn sm gold" onClick={stopPreview}>العودة إلى حسابي{realMe ? " (" + realMe.name + ")" : ""}</button>
+            </div>
+          )}
+          {data.isMgr && VIEW_PAGES.includes(pathname) && (
+            // Managers pick whose work these screens show; highlighted while narrowed to one person.
+            <div className={"mb-4 flex flex-wrap items-center gap-2 rounded-xl border px-3.5 py-2 text-sm " +
+              (data.viewAs ? "border-[var(--crm-gold)]/50 bg-[var(--crm-gold-soft)]" : "border-[var(--crm-line)] bg-[var(--crm-surface)]")}>
+              <label htmlFor="viewAs" className="text-[var(--crm-ink-2)]">عرض بيانات:</label>
+              <select id="viewAs" className="crm-quiet !font-semibold" value={data.viewAs} onChange={(e) => setViewAs(e.target.value)}>
+                <option value="">كل الفريق</option>
+                {members(data).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
+                <option value="none">العملاء غير المسندين ({data.clients.filter((c) => !c.assignee).length})</option>
+              </select>
+              {data.viewAs && <button type="button" className="crm-btn ghost sm ms-auto" onClick={() => setViewAs("")}>عرض كل الفريق</button>}
+            </div>
+          )}
+          {pathname !== "/admin/whatsapp" && <WaAlert />}
+          {children}
+        </div>
       </div>
 
       {/* phones: bottom nav */}
@@ -174,7 +207,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       )}
 
       <ClientDrawer />
-      <Assistant />
+      {can(data, "assistant") && <Assistant />}
       <ModalHost />
       {toastMsg && <div className="crm-toast" role="status">{toastMsg}</div>}
     </div>

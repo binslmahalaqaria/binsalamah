@@ -9,91 +9,13 @@
  * Everything is computed from the same live data as the rest of the CRM.
  */
 import { useState } from "react";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
-import { NOCALL, OPEN_STAGES, REQ_TONE, SENT_T } from "@/lib/crm/constants";
-import {
-  actualsFor, attToday, comm, goalOf, goalVals, isActive, lateMin, members, nameOf, pace, planFor, type CrmData, type Pace,
-} from "@/lib/crm/logic";
-import { addDays, fmtStamp, hm, localDay, money, today, ym } from "@/lib/crm/util";
+import { OPEN_STAGES, REQ_TONE, lbl } from "@/lib/crm/constants";
+import { attToday, fmtDur, hrOf, isActive, members, nameOf } from "@/lib/crm/logic";
+import { PERIOD_AR, scoreboard, type Period, type Row } from "@/lib/crm/report";
+import { fmtStamp, money, today, ym } from "@/lib/crm/util";
 import { Empty, PageHeader, Pill } from "@/components/crm/ui";
-
-type Period = "today" | "week" | "month";
-const PERIOD_AR: Record<Period, string> = { today: "اليوم", week: "آخر 7 أيام", month: "هذا الشهر" };
-
-function range(p: Period): [string, string] {
-  const t = today();
-  if (p === "today") return [t, t];
-  if (p === "week") return [addDays(-6), t];
-  return [ym() + "-01", t];
-}
-
-interface Row {
-  id: string;
-  calls: number;
-  visits: number;
-  sent: number;
-  reqs: number;
-  deposits: number;
-  sales: number;
-  commission: number;
-  active: number;
-  late: number;
-  tasksLate: number;
-  plan: [number, number];
-  att: string;
-  attLate: number;
-  pace: Pace | null;
-}
-
-function scoreboard(d: CrmData, ids: string[], p: Period): Row[] {
-  const [from, to] = range(p);
-  const inR = (s: string | null | undefined) => {
-    const x = localDay(s);
-    return !!x && x >= from && x <= to;
-  };
-  const t = today();
-  return ids.map((id) => {
-    let calls = 0, visits = 0, sent = 0;
-    for (const c of d.clients)
-      for (const l of c.log || []) {
-        if (l.byId !== id || !inR(l.at)) continue;
-        if (!NOCALL.includes(l.type)) calls++;
-        if (l.type === "زار العقار") visits++;
-        if (SENT_T.includes(l.type)) sent++;
-      }
-    const mine = d.requests.filter((r) => r.assignee === id);
-    const soldR = mine.filter((r) => r.status === "تم البيع" && inR(r.closedAt));
-    const cs = d.clients.filter((c) => c.assignee === id && isActive(c));
-    const plan = planFor(d, id, hm);
-    const a = attToday(d, id);
-    // Worst goal pace this month across the goals that are set.
-    const g = goalOf(d, id, ym());
-    let worst: Pace | null = null;
-    if (g) {
-      const v = goalVals(actualsFor(d, id, ym()));
-      const rank: Record<Pace, number> = { ok: 0, warn: 1, bad: 2 };
-      (["reqs", "visits", "deals", "commission"] as const).forEach((k) => {
-        const st = pace(v[k], g[k], ym());
-        if (st && (worst == null || rank[st] > rank[worst])) worst = st;
-      });
-    }
-    return {
-      id, calls, visits, sent,
-      reqs: mine.filter((r) => inR(r.createdAt)).length,
-      deposits: mine.filter((r) => inR(r.depositAt) && ["عربون", "تم البيع"].includes(r.status)).length,
-      sales: soldR.length,
-      commission: soldR.reduce((s, r) => s + comm(r), 0),
-      active: cs.length,
-      late: cs.filter((c) => c.nextCall && c.nextCall < t).length,
-      tasksLate: d.tasks.filter((x) => !x.done && x.assignee === id && x.due && x.due < t).length,
-      plan: [plan.filter((x) => x.done).length, plan.length],
-      att: a ? hm(a.in) + (a.out ? " – " + hm(a.out) : "") : "",
-      attLate: lateMin(d, a, id),
-      pace: worst,
-    };
-  });
-}
 
 function Tile({ v, l, gold }: { v: string | number; l: string; gold?: boolean }) {
   return (
@@ -117,12 +39,13 @@ export default function ManagerPage() {
   const router = useRouter();
   const [period, setPeriod] = useState<Period>("today");
   const [sortK, setSortK] = useState<keyof Row>("calls");
+  const [custom, setCustom] = useState<[string, string]>(() => [ym() + "-01", today()]);
 
-  if (!loaded) return <Empty>جاري تحميل البيانات…</Empty>;
-  if (!data.isMgr) return <Empty>هذي الصفحة للمدير والمالك بس.</Empty>;
+  if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
+  if (!data.isMgr) return <Empty>هذه الصفحة مخصصة للمدير والمالك فقط.</Empty>;
 
   const ids = members(data);
-  const rows = scoreboard(data, ids, period).sort((a, b) => Number(b[sortK]) - Number(a[sortK]));
+  const rows = scoreboard(data, ids, period, custom).sort((a, b) => Number(b[sortK]) - Number(a[sortK]));
   const sum = (k: keyof Row) => rows.reduce((s, r) => s + Number(r[k]), 0);
   const maxCalls = Math.max(1, ...rows.map((r) => r.calls));
   const t = today();
@@ -148,33 +71,46 @@ export default function ManagerPage() {
 
   return (
     <>
-      <PageHeader eyebrow="الفريق" title="لوحة المدير" sub="أداء الفريق وش يحتاج متابعة"
+      <PageHeader eyebrow="الفريق" title="لوحة المدير" sub="أداء الفريق وما يحتاج إلى متابعة"
         action={
-          <div className="crm-seg">
-            {(Object.keys(PERIOD_AR) as Period[]).map((p) => (
-              <button key={p} type="button" className={period === p ? "on" : ""} onClick={() => setPeriod(p)}>{PERIOD_AR[p]}</button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="crm-seg">
+              {(Object.keys(PERIOD_AR) as Period[]).map((p) => (
+                <button key={p} type="button" className={period === p ? "on" : ""} onClick={() => setPeriod(p)}>{PERIOD_AR[p]}</button>
+              ))}
+            </div>
+            {period === "custom" && (
+              <span className="flex items-center gap-1.5 text-[13px]">
+                من <input type="date" className="!w-auto" value={custom[0]} max={custom[1]} onChange={(e) => e.target.value && setCustom([e.target.value, custom[1]])} />
+                إلى <input type="date" className="!w-auto" value={custom[1]} min={custom[0]} onChange={(e) => e.target.value && setCustom([custom[0], e.target.value])} />
+              </span>
+            )}
+            <Link className="crm-btn primary" href={"/admin/report?p=" + period + (period === "custom" ? "&from=" + custom[0] + "&to=" + custom[1] : "")}>📄 التقرير الاحترافي</Link>
           </div>
         } />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
         <Tile v={sum("calls")} l="مكالمات" />
+        <Tile v={sum("answered") + (sum("calls") ? " (" + Math.round((sum("answered") / sum("calls")) * 100) + "%)" : "")} l="مكالمات ناجحة" />
+        <Tile v={sum("noAnswer")} l="مكالمات غير ناجحة" />
         <Tile v={sum("visits")} l="زيارات" />
-        <Tile v={sum("sent")} l="عروض انرسلت" />
+        <Tile v={sum("sent")} l="عروض مُرسلة" />
         <Tile v={sum("reqs")} l="طلبات جديدة" />
         <Tile v={sum("deposits") + " / " + sum("sales")} l="عربون / بيع" />
         <Tile gold v={money(sum("commission"))} l="سعي محصّل" />
       </div>
 
-      <div className="mb-2 flex items-baseline gap-2.5"><h2 className="text-[15.5px]">أداء الموظفين — {PERIOD_AR[period]}</h2><span className="muted text-xs">اضغط عنوان العمود للترتيب، واسم الموظف تشوف شغله</span></div>
+      <div className="mb-2 flex items-baseline gap-2.5"><h2 className="text-[15.5px]">أداء الموظفين — {PERIOD_AR[period]}</h2><span className="muted text-xs">اضغط على عنوان العمود للترتيب، وعلى اسم الموظف لعرض أعماله</span></div>
       <div className="crm-card mb-5 overflow-x-auto p-1.5">
         <table className="crm-table min-w-[980px]">
           <thead>
             <tr>
               <th>الموظف</th>
-              <TH k="calls" {...sortProps}>مكالمات</TH><TH k="visits" {...sortProps}>زيارات</TH><TH k="sent" {...sortProps}>إرسال</TH><TH k="reqs" {...sortProps}>طلبات</TH>
+              <TH k="calls" {...sortProps}>مكالمات</TH><TH k="answered" {...sortProps}>ناجحة</TH><TH k="noAnswer" {...sortProps}>غير ناجحة</TH><TH k="visits" {...sortProps}>زيارات</TH><TH k="sent" {...sortProps}>إرسال</TH><TH k="reqs" {...sortProps}>طلبات</TH>
               <TH k="deposits" {...sortProps}>عربون</TH><TH k="sales" {...sortProps}>بيع</TH><TH k="commission" {...sortProps}>السعي</TH>
-              <TH k="active" {...sortProps}>عملاء نشطين</TH><TH k="late" {...sortProps}>متأخرين</TH><th>روتين اليوم</th><th>الحضور</th><th>الأهداف</th>
+              <TH k="active" {...sortProps}>عملاء نشطون</TH><TH k="late" {...sortProps}>المتأخرون</TH>
+              {period === "today" ? <><th>روتين اليوم</th><th>الحضور</th></> : <><TH k="attDays" {...sortProps}>أيام الحضور</TH><TH k="attLateDays" {...sortProps}>أيام التأخير</TH><TH k="hours" {...sortProps}>ساعات العمل</TH></>}
+              <th>الأهداف</th>
             </tr>
           </thead>
           <tbody>
@@ -185,6 +121,7 @@ export default function ManagerPage() {
                   <td>
                     <b className="link" onClick={() => view(r.id)}>{nameOf(data, r.id)}</b>
                     {s?.lastSeen && <div className="muted text-[11.5px]">آخر دخول {fmtStamp(s.lastSeen)}</div>}
+                    {period !== "today" && <div className="num muted text-[11.5px]">{r.from} ← {r.to}{period === "hire" && !hrOf(data, r.id).hireDate ? " (أول ظهور)" : ""}</div>}
                   </td>
                   <td>
                     <div className="flex min-w-[90px] items-center gap-2">
@@ -192,6 +129,8 @@ export default function ManagerPage() {
                       <span className="crm-bar h-1.5 flex-1"><i style={{ width: Math.round((r.calls / maxCalls) * 100) + "%" }} /></span>
                     </div>
                   </td>
+                  <td className="num">{r.answered}{r.calls ? <span className="muted text-[11px]"> ({Math.round((r.answered / r.calls) * 100)}%)</span> : null}</td>
+                  <td className={"num " + (r.noAnswer ? "text-[var(--crm-danger)]" : "")}>{r.noAnswer}</td>
                   <td className="num">{r.visits}</td>
                   <td className="num">{r.sent}</td>
                   <td className="num">{r.reqs}</td>
@@ -200,6 +139,7 @@ export default function ManagerPage() {
                   <td className="num text-[var(--crm-gold-ink)]">{money(r.commission)}</td>
                   <td className="num">{r.active}</td>
                   <td className={"num " + (r.late ? "font-semibold text-[var(--crm-danger)]" : "")}>{r.late}{r.tasksLate > 0 && <span className="muted text-[11.5px]"> · {r.tasksLate} مهام</span>}</td>
+                  {period === "today" ? (<>
                   <td>
                     {r.plan[1] ? (
                       <div className="flex min-w-[90px] items-center gap-2">
@@ -208,8 +148,13 @@ export default function ManagerPage() {
                       </div>
                     ) : "—"}
                   </td>
-                  <td>{r.att ? <span className="text-[12.5px]">{r.att}{r.attLate > 0 && <> <Pill tone="warm">متأخر {r.attLate}د</Pill></>}</span> : <Pill tone="hot">ما حضر</Pill>}</td>
-                  <td>{r.pace === "bad" ? <Pill tone="hot">متأخر</Pill> : r.pace === "warn" ? <Pill tone="warm">يحتاج متابعة</Pill> : r.pace === "ok" ? <Pill tone="ok">ماشي صح</Pill> : <Pill tone="muted">بدون أهداف</Pill>}</td>
+                  <td>{r.att ? <span className="text-[12.5px]">{r.att}{r.attLate > 0 && <> <Pill tone="warm">متأخر {fmtDur(r.attLate)}</Pill></>}</span> : <Pill tone="hot">لم يحضر</Pill>}</td>
+                  </>) : (<>
+                    <td className="num">{r.attDays}</td>
+                    <td className={"num " + (r.attLateDays ? "text-[var(--crm-warn)]" : "")}>{r.attLateDays}</td>
+                    <td className="num">{r.hours}</td>
+                  </>)}
+                  <td>{r.pace === "bad" ? <Pill tone="hot">متأخر</Pill> : r.pace === "warn" ? <Pill tone="warm">يحتاج إلى متابعة</Pill> : r.pace === "ok" ? <Pill tone="ok">على المسار الصحيح</Pill> : <Pill tone="muted">بدون أهداف</Pill>}</td>
                 </tr>
               );
             })}
@@ -222,19 +167,19 @@ export default function ManagerPage() {
           <h2 className="text-[15.5px]">الطلبات المفتوحة حسب المرحلة <span className="num muted text-sm">({openReqs.length})</span></h2>
           {stageCount.map(([st, n]) => (
             <div key={st} className="grid grid-cols-[110px_1fr_32px] items-center gap-2.5 text-[13.5px]">
-              <Pill tone={REQ_TONE[st]}>{st}</Pill>
+              <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>
               <span className="crm-bar"><i style={{ width: Math.round((n / maxStage) * 100) + "%" }} /></span>
               <b className="num text-end">{n}</b>
             </div>
           ))}
-          <button type="button" className="crm-btn sm justify-self-start" onClick={() => router.push("/admin/requests")}>افتح الطلبات</button>
+          <button type="button" className="crm-btn sm justify-self-start" onClick={() => router.push("/admin/requests")}>فتح الطلبات</button>
         </section>
 
         <section className="crm-card grid content-start gap-2.5 p-4">
-          <h2 className="text-[15.5px]">يحتاج متابعة الحين</h2>
+          <h2 className="text-[15.5px]">يحتاج إلى متابعة الآن</h2>
           {[
-            [absent.length, "موظف ما سجّل حضور اليوم", absent.map((id) => nameOf(data, id)).join("، ")],
-            [lateClients.length, "عميل متأخر الاتصال عليه", ""],
+            [absent.length, "موظف لم يسجّل حضوره اليوم", absent.map((id) => nameOf(data, id)).join("، ")],
+            [lateClients.length, "عميل تأخر الاتصال به", ""],
             [missedVisits.length, "زيارة فاتت بدون نتيجة", ""],
             [lateTasks.length, "مهمة متأخرة", ""],
             [unassigned.length, "عميل غير مسند", ""],
@@ -245,7 +190,7 @@ export default function ManagerPage() {
           ))}
           {lateClients.length > 0 && (
             <div className="grid gap-1 border-t border-[var(--crm-line)] pt-2">
-              <span className="muted text-xs">أكثر العملاء تأخير:</span>
+              <span className="muted text-xs">أكثر العملاء تأخراً:</span>
               {lateClients.slice(0, 6).map((c) => (
                 <div key={c.id} className="flex cursor-pointer justify-between gap-2 rounded-md px-1.5 py-1 text-[13px] hover:bg-[var(--crm-surface-2)]" onClick={() => openClient(c.id)}>
                   <span>{c.name} <span className="muted">· {nameOf(data, c.assignee)}</span></span>
@@ -255,7 +200,7 @@ export default function ManagerPage() {
             </div>
           )}
           {unassigned.length > 0 && (
-            <button type="button" className="crm-btn sm justify-self-start" onClick={() => { setViewAs("none"); router.push("/admin/clients"); }}>وزّع غير المسندين</button>
+            <button type="button" className="crm-btn sm justify-self-start" onClick={() => { setViewAs("none"); router.push("/admin/clients"); }}>توزيع غير المسندين</button>
           )}
         </section>
       </div>

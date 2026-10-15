@@ -96,6 +96,9 @@ export interface Property {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Staff uid who added / last edited the property (missing on records from before 2026-10-13). */
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
 /** What a client wants. Requests carry their own stage through to deposit/sale. */
@@ -127,6 +130,18 @@ export interface Request extends Demand {
   deposit?: number | null;
   depositAt?: string | null;
   closedAt?: string | null;
+  /** Staff uid who recorded the deposit / the sale (may differ from the assignee). */
+  depositBy?: string | null;
+  closedBy?: string | null;
+  /** Deposit receipt (سند قبض): number, when and by whom it was first issued, and how the deposit was paid. */
+  receiptNo?: string | null;
+  receiptAt?: string | null;
+  receiptBy?: string | null;
+  payMethod?: string | null;
+  payRef?: string | null;
+  payerIdNo?: string | null;
+  /** Notes printed on the receipt (e.g. terms agreed for this deposit). */
+  receiptNote?: string | null;
   sent?: string[];
   createdAt: string;
   updatedAt: string;
@@ -148,6 +163,18 @@ export interface Task {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Private message between two staff members (collection "dm"); only the two members can read it. */
+export interface DirectMsg {
+  id: string;
+  members: [string, string];
+  by: string;
+  to: string;
+  text: string;
+  at: string;
+  clientId: string | null;
+  read: boolean;
 }
 
 export interface ChatMsg {
@@ -185,6 +212,10 @@ export interface HrFile {
   contractEnd: string | null;
   workStart: string | null;
   workEnd: string | null;
+  /** Working weekdays, 0 = Sunday … 6 = Saturday (default Sunday–Thursday). */
+  workDays?: number[] | null;
+  /** Required hours per working day (default: shift end − start). */
+  dailyHours?: number | null;
   salary: number | null;
   housing: number | null;
   transport: number | null;
@@ -211,10 +242,102 @@ export interface AttendanceDay {
   in: string | null;
   out: string | null;
   editedBy?: string;
+  /** Where the check-in / check-out happened ({lat, lng, acc, dist from the office in m}). */
+  inLoc?: { lat: number; lng: number; acc: number; dist: number | null } | null;
+  outLoc?: { lat: number; lng: number; acc: number; dist: number | null } | null;
 }
 
 export interface CrmSettings {
   salesManager: string | null;
   escalateDays: number;
   escalateOff: boolean;
+  /** Printed on receipts (سند قبض): commercial registration, bank account, and the owner's signature (PNG data URL). */
+  crNo?: string | null;
+  bankName?: string | null;
+  iban?: string | null;
+  accountNo?: string | null;
+  accountName?: string | null;
+  signerName?: string | null;
+  signature?: string | null;
+  /** Seller details for tax invoices: VAT number and national address. */
+  vatNo?: string | null;
+  addrBuilding?: string | null;
+  addrStreet?: string | null;
+  addrDistrict?: string | null;
+  addrCity?: string | null;
+  addrPostal?: string | null;
+  addrExtra?: string | null;
+  /** Attendance location rule: office point, allowed radius (m), and whether it is enforced. */
+  geoOn?: boolean;
+  /** Set by the server once linked to ZATCA (Phase 2): issued invoices are then signed and sent automatically. */
+  zatcaOn?: boolean;
+  zatcaEnv?: "sandbox" | "simulation" | "production";
+  officeLat?: number | null;
+  officeLng?: number | null;
+  officeRadius?: number | null;
+}
+
+/** One line of an invoice; the price is before VAT. */
+export interface ZatcaResult {
+  status: "معتمدة" | "مُبلّغ عنها" | "مرفوضة";
+  env?: string;
+  uuid?: string;
+  icv?: number;
+  hash?: string;
+  qr?: string | null;
+  errors?: string[];
+  warnings?: string[];
+  submittedAt?: string;
+}
+export interface InvoiceLine { desc: string; qty: number; price: number }
+
+/**
+ * Tax invoice (فاتورة ضريبية). Drafts can be edited or deleted; once issued the
+ * invoice gets its sequential number, issue time and ZATCA QR and is frozen —
+ * a manager can only cancel it (with a reason).
+ */
+export interface Invoice {
+  id: string;
+  no: string | null;
+  seq: number | null;
+  /** "standard" = to a business (buyer VAT number), "simplified" = to an individual. */
+  kind: "standard" | "simplified";
+  status: "مسودة" | "صادرة" | "ملغاة";
+  issueAt: string | null;
+  supplyDate: string | null;
+  buyerName: string;
+  buyerPhone: string | null;
+  buyerVat: string | null;
+  buyerCr: string | null;
+  buyerAddress: string | null;
+  /** Structured national address — required by ZATCA for standard (B2B) invoices. */
+  buyerStreet?: string | null;
+  buyerBuilding?: string | null;
+  buyerDistrict?: string | null;
+  buyerCity?: string | null;
+  buyerPostal?: string | null;
+  clientId: string | null;
+  requestId: string | null;
+  lines: InvoiceLine[];
+  vatRate: number;
+  subtotal: number;
+  vat: number;
+  total: number;
+  notes: string | null;
+  qr: string | null;
+  /** "credit" = إشعار دائن (cancels `billingRef`), "debit" = إشعار مدين. Missing = a normal invoice. */
+  docType?: "invoice" | "credit" | "debit";
+  billingRef?: string | null;
+  reason?: string | null;
+  /** The credit note that cancelled this invoice. */
+  creditNoteId?: string | null;
+  /** ZATCA Phase 2 result, written by the server (app/api/zatca/submit). */
+  zatca?: ZatcaResult | null;
+  cancelReason?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  issuedBy?: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
 }

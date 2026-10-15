@@ -12,6 +12,7 @@ const IC: Record<string, string> = {
   props: "M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6",
   sales: "M4 19V5M4 19h16M7 15l4-4 3 3 5-6",
   chat: "M4 5h16v11H9l-5 4z",
+  settings: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z",
   team: "M12 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM5 20c.9-3.5 3.6-5.3 7-5.3s6.1 1.8 7 5.3",
   web: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3Z",
   leads: "M4 4h16v16H4zM4 9h16M9 13h6",
@@ -23,6 +24,7 @@ const IC: Record<string, string> = {
   chevR: "M9.5 6l6 6-6 6",
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
   plus: "M12 5v14M5 12h14",
+  tasks: "M10 6h10M10 12h10M10 18h10M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5",
 };
 
 export function Icon({ k, size = 20, className }: { k: string; size?: number; className?: string }) {
@@ -246,7 +248,7 @@ export function DistrictPicker({ all, value, onChange }: { all: string[]; value:
             </span>
           ))
         ) : (
-          <span className="crm-hint">ما اخترت أحياء</span>
+          <span className="crm-hint">لم يتم اختيار أحياء</span>
         )}
       </div>
       <input className="crm-input" placeholder="ابحث عن حي واضغط عليه…" value={q} autoComplete="off" onChange={(e) => setQ(e.target.value)}
@@ -279,16 +281,16 @@ export function ConfirmButton({ onConfirm, children, className }: { onConfirm: (
   return (
     <button type="button" className={"crm-btn danger " + (armed ? "armed " : "") + (className || "")}
       onClick={() => (armed ? onConfirm() : setArmed(true))}>
-      {armed ? "اضغط مرة ثانية للتأكيد" : children}
+      {armed ? "اضغط مرة أخرى للتأكيد" : children}
     </button>
   );
 }
 
-export function PageHeader({ eyebrow, title, sub, action }: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
+/** Page title row. `eyebrow` (the sidebar section name) is accepted but no longer shown — the sidebar already says where you are. */
+export function PageHeader({ title, sub, action }: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
   return (
     <header className="mb-5 flex flex-wrap items-end gap-3 border-b border-[var(--crm-line)] pb-4">
       <div className="min-w-0 flex-1">
-        {eyebrow && <span className="mb-1 block text-[11.5px] font-semibold tracking-wide text-[var(--crm-gold-ink)]">{eyebrow}</span>}
         <h1 className="text-2xl md:text-[28px]">{title}</h1>
         {sub && <p className="mt-1 hidden text-[13.5px] text-[var(--crm-ink-3)] md:block">{sub}</p>}
       </div>

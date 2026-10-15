@@ -11,7 +11,7 @@ import {
 import type {
   AttendanceDay, Client, Demand, Goal, HrFile, PayrollRow, Property, Request, Task, Unit,
 } from "./types";
-import { addDays, dayDiff, localDay, moneyFull, num, splitList, today, ym } from "./util";
+import { addDays, dayDiff, iso, localDay, moneyFull, num, splitList, today, ym } from "./util";
 import type { Staff } from "@/lib/types";
 
 export interface CrmData {
@@ -29,6 +29,41 @@ export interface CrmData {
   isAdmin: boolean;
   /** Manager filter: "" = whole team, "none" = unassigned, otherwise a staff uid. */
   viewAs: string;
+  /** Property types offered in forms and filters — editable by managers (crm/lists), defaults to PTYPES. */
+  propTypes: string[];
+  /** Client sources offered in forms (crm/lists.sources), defaults to SOURCES. */
+  sources: string[];
+  /** Round-robin assignment of requests added by managers (crm/lists.rr). */
+  rr: RoundRobin;
+}
+
+export interface RoundRobin {
+  on: boolean;
+  /** Staff uids in turn order. */
+  order: string[];
+  /** Who received the last auto-assigned request. */
+  last: string | null;
+}
+
+/* ---------- permissions (sales staff only; owner and managers can do everything) ---------- */
+export const PERMS = [
+  ["viewAll", "الاطلاع على جميع العملاء والطلبات", "وليس عملاءه فقط"],
+  ["recordDeals", "تسجيل العربون والبيع", "وإلغاؤهما"],
+  ["manageProps", "إضافة العقارات وتعديلها", ""],
+  ["viewSales", "صفحة المبيعات", "عرض مبيعاته وعربوناته وسعيه"],
+  ["export", "تصدير البيانات إلى Excel", ""],
+  ["assistant", "استخدام المساعد الذكي", ""],
+  ["whatsapp", "واتساب الشركة", "محادثات عملائه فقط"],
+] as const;
+export type PermKey = (typeof PERMS)[number][0];
+export const PERM_DEFAULT: Record<PermKey, boolean> = {
+  viewAll: false, recordDeals: true, manageProps: true, viewSales: true, export: true, assistant: true, whatsapp: true,
+};
+export function can(d: CrmData, k: PermKey, uid: string = d.uid) {
+  const s = d.staff.find((x) => x.id === uid);
+  if (!s) return false;
+  if (s.role === "admin" || s.role === "manager") return true;
+  return s.perms?.[k] ?? PERM_DEFAULT[k];
 }
 
 /* ---------- people ---------- */
@@ -62,7 +97,7 @@ export function visibleClients(d: CrmData) {
       : d.viewAs
         ? d.clients.filter((c) => c.assignee === d.viewAs)
         : d.clients;
-  return d.clients.filter((c) => c.assignee === d.uid);
+  return can(d, "viewAll") ? d.clients : d.clients.filter((c) => c.assignee === d.uid);
 }
 export function visibleRequests(d: CrmData) {
   if (d.isMgr)
@@ -71,7 +106,7 @@ export function visibleRequests(d: CrmData) {
       : d.viewAs
         ? d.requests.filter((r) => r.assignee === d.viewAs)
         : d.requests;
-  return d.requests.filter((r) => r.assignee === d.uid);
+  return can(d, "viewAll") ? d.requests : d.requests.filter((r) => r.assignee === d.uid);
 }
 export function visibleTasks(d: CrmData) {
   if (d.isMgr && !d.viewAs) return d.tasks;
@@ -351,7 +386,7 @@ export { OPEN_STAGES };
 /* ---------- today ---------- */
 export function calledToday(c: Client) {
   const t = today();
-  return (c.log || []).find((l) => localDay(l.at) === t && l.type !== "تأجيل");
+  return (c.log || []).find((l) => localDay(l.at) === t && !NOCALL.includes(l.type));
 }
 export function allDistricts(d: CrmData, base: readonly string[]) {
   const s = new Set(base);
@@ -367,14 +402,62 @@ const mins = (t: string | null | undefined) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(t || "");
   return m ? +m[1] * 60 + +m[2] : null;
 };
-/** Minutes late (counted only past a 15-minute grace period after the shift start). */
+/** Working weekdays (0 = Sunday); Sunday–Thursday unless set on the HR file. */
+export const workDaysOf = (d: CrmData, id: string) => {
+  const w = hrOf(d, id).workDays;
+  return Array.isArray(w) && w.length ? w : [0, 1, 2, 3, 4];
+};
+export const isWorkDay = (d: CrmData, id: string, day: string) => workDaysOf(d, id).includes(new Date(day + "T12:00:00").getDay());
+/** Required hours per working day: set on the HR file, otherwise the shift length. */
+export function dailyHoursOf(d: CrmData, id: string) {
+  const h = hrOf(d, id);
+  if (h.dailyHours && h.dailyHours > 0) return h.dailyHours;
+  const len = ((mins(h.workEnd || "17:00") ?? 1020) - (mins(h.workStart || "09:00") ?? 540)) / 60;
+  return len > 0 ? len : 8;
+}
+/** Overtime minutes for a day: time worked beyond the required hours, or all of it on a day off. */
+export function overtimeMin(d: CrmData, rec: AttendanceDay | undefined, id: string) {
+  if (!rec || !rec.in || !rec.out) return 0;
+  const worked = Math.round(hoursOf(rec) * 60);
+  const need = isWorkDay(d, id, rec.id) ? Math.round(dailyHoursOf(d, id) * 60) : 0;
+  return Math.max(0, worked - need);
+}
+/** Working days in [from, to] (to capped at today) with no check-in. */
+export function absentDays(d: CrmData, id: string, from: string, to: string) {
+  const t = today(), end = to < t ? to : t;
+  // Nobody is absent before they started.
+  const hired = hrOf(d, id).hireDate;
+  if (hired && hired > from) from = hired;
+  const have = new Set((d.att[id] || []).filter((x) => x.in).map((x) => x.id));
+  let n = 0;
+  for (let x = new Date(from + "T12:00:00"); iso(x) <= end; x.setDate(x.getDate() + 1)) {
+    const k = iso(x);
+    if (workDaysOf(d, id).includes(x.getDay()) && !have.has(k)) n++;
+  }
+  return n;
+}
+/** Minutes late (counted only past a 15-minute grace period after the shift start; never on a day off). */
 export function lateMin(d: CrmData, rec: AttendanceDay | undefined, id: string) {
-  if (!rec || !rec.in) return 0;
+  if (!rec || !rec.in || !isWorkDay(d, id, rec.id)) return 0;
   const st = mins(hrOf(d, id).workStart || "09:00") ?? 540;
   const t = new Date(rec.in);
   const v = t.getHours() * 60 + t.getMinutes() - st - 15;
   return v > 0 ? v + 15 : 0;
 }
+/** Minutes left before the shift end (no grace); 0 when there is no check-out or it is on time. */
+export function earlyMin(d: CrmData, rec: AttendanceDay | undefined, id: string) {
+  if (!rec || !rec.out || !isWorkDay(d, id, rec.id)) return 0;
+  const end = mins(hrOf(d, id).workEnd || "17:00") ?? 1020;
+  const t = new Date(rec.out);
+  const v = end - (t.getHours() * 60 + t.getMinutes());
+  return v > 0 ? v : 0;
+}
+/** Minutes as "2 س 15 د" / "40 د" / "3 س" — how lateness and early leave are shown. */
+export function fmtDur(m: number) {
+  const h = Math.floor(m / 60), r = Math.round(m % 60);
+  return h ? h + " س" + (r ? " " + r + " د" : "") : r + " د";
+}
+export const shiftOf = (d: CrmData, id: string) => ({ start: hrOf(d, id).workStart || "09:00", end: hrOf(d, id).workEnd || "17:00" });
 export const hoursOf = (rec: AttendanceDay | undefined) =>
   !rec || !rec.in || !rec.out ? 0 : Math.max(0, (new Date(rec.out).getTime() - new Date(rec.in).getTime()) / 36e5);
 export const attToday = (d: CrmData, uid: string) => (d.att[uid] || []).find((x) => x.id === today());
@@ -413,6 +496,37 @@ export function statsFor(d: CrmData, id: string) {
     tlate: d.tasks.filter((x) => !x.done && x.assignee === id && x.due && x.due < t).length,
     deals: mine.filter((r) => ["تفاوض", "عربون"].includes(r.status)).length,
     closed: mine.filter((r) => r.status === "تم البيع").reduce((s, r) => s + comm(r), 0),
+  };
+}
+
+/** What one staff member did between two local days (inclusive): used by the Today summary and the manager dashboard. */
+export function activityFor(d: CrmData, id: string, from: string, to: string) {
+  const inR = (s: string | null | undefined) => {
+    const x = localDay(s);
+    return !!x && x >= from && x <= to;
+  };
+  let calls = 0, answered = 0, visits = 0, sent = 0;
+  for (const c of d.clients)
+    for (const l of c.log || []) {
+      if (l.byId !== id || !inR(l.at)) continue;
+      if (!NOCALL.includes(l.type)) {
+        calls++;
+        // A successful call is any logged contact except "no answer".
+        if (l.type !== "ما رد") answered++;
+      }
+      if (l.type === "زار العقار") visits++;
+      if (SENT_T.includes(l.type)) sent++;
+    }
+  const mine = d.requests.filter((r) => r.assignee === id);
+  const deposits = mine.filter((r) => inR(r.depositAt) && SOLD_ST.includes(r.status));
+  const sales = mine.filter((r) => r.status === "تم البيع" && inR(r.closedAt));
+  return {
+    calls, answered, visits, sent,
+    reqs: mine.filter((r) => inR(r.createdAt)).length,
+    deposits,
+    depositSum: deposits.reduce((s, r) => s + (num(r.deposit) || 0), 0),
+    sales,
+    commission: sales.reduce((s, r) => s + comm(r), 0),
   };
 }
 
@@ -462,7 +576,7 @@ export function pace(actual: number, target: number | null, month: string): Pace
   const r = actual / expect;
   return r >= 0.9 ? "ok" : r >= 0.6 ? "warn" : "bad";
 }
-export const PACE_TXT: Record<Pace, string> = { ok: "ماشي صح", warn: "تحتاج تسرّع", bad: "متأخر" };
+export const PACE_TXT: Record<Pace, string> = { ok: "على المسار الصحيح", warn: "يحتاج إلى تسريع", bad: "متأخر" };
 export const fmtK = (k: string, v: number) =>
   k === "commission" ? (v >= 1000 ? Math.round(v / 1000) + " ألف" : String(Math.round(v))) : String(v);
 export const goalVals = (a: ReturnType<typeof actualsFor>) => ({
@@ -513,15 +627,15 @@ export function planFor(d: CrmData, uid: string, hmFmt: (s: string | null) => st
   const add = (sec: PlanItem["sec"], k: string, label: string, left: number, total: number, hint: string) => {
     if (total > 0) I.push({ sec, k, label, left, total, done: left === 0, hint });
   };
-  add("الصباح", "checkin", "سجّل حضورك", att ? 0 : 1, 1, att ? "حضرت " + hmFmt(att.in) : "");
-  add("الصباح", "late", "اتصل على المتأخرين", lateN, lateN + (lateN ? 0 : calledN ? 1 : 0), lateN ? lateN + " عميل" : "خلصتهم");
-  add("الصباح", "confirm", "أكّد زيارات بكرة", tmLeft, tmV.length, tmV.length - tmLeft + " من " + tmV.length + " مؤكدة");
-  add("الصباح", "fresh", "تواصل مع الطلبات الجديدة", freshLeft, fresh.length && freshLeft ? freshLeft : 0, freshLeft + " طلب ما أحد كلمهم");
+  add("الصباح", "checkin", "تسجيل الحضور", att ? 0 : 1, 1, att ? "الحضور " + hmFmt(att.in) : "");
+  add("الصباح", "late", "الاتصال بالعملاء المتأخرين", lateN, lateN + (lateN ? 0 : calledN ? 1 : 0), lateN ? lateN + " عميل" : "تم إنجازها");
+  add("الصباح", "confirm", "تأكيد زيارات الغد", tmLeft, tmV.length, tmV.length - tmLeft + " من " + tmV.length + " مؤكدة");
+  add("الصباح", "fresh", "التواصل مع الطلبات الجديدة", freshLeft, fresh.length && freshLeft ? freshLeft : 0, freshLeft + " طلب لم يُتواصل معه");
   add("خلال اليوم", "calls", "مكالمات اليوم", dueNow.length, dueNow.length + calledN, calledN + " من " + (dueNow.length + calledN) + " تمت");
-  add("خلال اليوم", "send", "أرسل عقارات تناسب عملاء ما انرسل لهم شي", toSend, toSend + sentToday, toSend ? toSend + " طلب له عقار مناسب" : "أرسلت " + sentToday);
+  add("خلال اليوم", "send", "إرسال عقارات مناسبة لعملاء لم يُرسل إليهم أي عرض", toSend, toSend + sentToday, toSend ? toSend + " طلب له عقار مناسب" : "تم إرسال " + sentToday);
   add("خلال اليوم", "tasks", "المهام المطلوبة", tasksLeft, tasks.length, tasks.length - tasksLeft + " من " + tasks.length);
-  add("آخر اليوم", "outcome", "سجّل نتيجة الزيارات", pastV, pastV + visitedToday, pastV ? pastV + " زيارة بدون نتيجة" : "تمت");
-  add("آخر اليوم", "checkout", "سجّل انصرافك", att && att.out ? 0 : 1, att ? 1 : 0, att && att.out ? "انصرفت " + hmFmt(att.out) : "");
+  add("آخر اليوم", "outcome", "تسجيل نتائج الزيارات", pastV, pastV + visitedToday, pastV ? pastV + " زيارة بدون نتيجة" : "تمت");
+  add("آخر اليوم", "checkout", "تسجيل الانصراف", att && att.out ? 0 : 1, att ? 1 : 0, att && att.out ? "الانصراف " + hmFmt(att.out) : "");
   return I;
 }
 

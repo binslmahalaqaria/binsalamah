@@ -18,7 +18,7 @@ export function TaskRow({ t }: { t: Task }) {
       <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--crm-gold)]" checked={t.done} aria-label="تم إنجاز المهمة"
         onChange={async (e) => {
           await toggleTask(data, t.id, e.target.checked);
-          if (e.target.checked) toast("أحسنت، انجزت المهمة");
+          if (e.target.checked) toast("أحسنت، تم إنجاز المهمة");
         }} />
       <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openModal({ kind: "task", id: t.id })}>
         <div className={"font-medium " + (t.done ? "text-[var(--crm-ink-3)] line-through" : "")}>

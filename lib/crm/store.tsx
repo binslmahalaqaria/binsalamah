@@ -12,20 +12,22 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
 import {
-  collection, doc, limit, onSnapshot, orderBy, query, Timestamp, updateDoc,
+  collection, doc, limit, onSnapshot, orderBy, query, Timestamp, updateDoc, where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import type { Staff } from "@/lib/types";
 import type {
-  AttendanceDay, ChatMsg, Client, CrmSettings, Goal, HrFile, PayrollRow, Property, Request, Task,
+  AttendanceDay, ChatMsg, Client, DirectMsg, Invoice, CrmSettings, Goal, HrFile, PayrollRow, Property, Request, Task,
 } from "./types";
-import type { CrmData } from "./logic";
+import type { CrmData, RoundRobin } from "./logic";
 import { nowStamp } from "./util";
+import { PTYPES, SOURCES } from "./constants";
+import { setPreviewMode } from "./preview";
 
 export type Modal =
   | { kind: "client"; id?: string }
-  | { kind: "request"; id?: string; preset?: Partial<Request> & { _clientName?: string } }
+  | { kind: "request"; id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string } }
   | { kind: "property"; id?: string }
   | { kind: "task"; id?: string; preset?: Partial<Task> }
   | { kind: "update"; clientId: string; type?: string; propertyId?: string }
@@ -41,9 +43,21 @@ export type Modal =
 interface CrmContextValue {
   data: CrmData;
   chat: ChatMsg[];
+  /** My private conversations (empty while previewing as an employee). */
+  dms: DirectMsg[];
+  /** True when Firestore refused the "dm" query (rules not published yet). */
+  dmBlocked: boolean;
+  /** Tax invoices, newest first. */
+  invoices: Invoice[];
   settings: CrmSettings;
   loaded: boolean;
   me: Staff | null;
+  /** The signed-in manager while previewing as an employee (otherwise the same as me). */
+  realMe: Staff | null;
+  /** uid of the employee being previewed ("الدخول كموظف"), or null. */
+  previewAs: string | null;
+  startPreview: (uid: string) => void;
+  stopPreview: () => void;
   setViewAs: (v: string) => void;
   toast: (msg: string) => void;
   toastMsg: string | null;
@@ -74,10 +88,10 @@ const store = {
 };
 
 export function CrmProvider({ children }: { children: ReactNode }) {
-  const { user, staff: me } = useAuth();
-  const uid = user?.uid || "";
-  const isAdmin = me?.role === "admin";
-  const isMgr = isAdmin || me?.role === "manager";
+  const { user, staff: realMe } = useAuth();
+  const realUid = user?.uid || "";
+  const realAdmin = realMe?.role === "admin";
+  const realMgr = realAdmin || realMe?.role === "manager";
 
   const [clients, setClients] = useState<Client[]>([]);
   const [props, setProps] = useState<Property[]>([]);
@@ -86,12 +100,21 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [dms, setDms] = useState<DirectMsg[]>([]);
+  const [dmBlocked, setDmBlocked] = useState(false);
+  const [dmRetry, setDmRetry] = useState(0);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invRetry, setInvRetry] = useState(0);
   const [hr, setHr] = useState<HrFile[]>([]);
   const [payroll, setPayroll] = useState<PayrollRow[]>([]);
   const [att, setAtt] = useState<Record<string, AttendanceDay[]>>({});
   const [settings, setSettings] = useState<CrmSettings>({ salesManager: null, escalateDays: 2, escalateOff: false });
   const [loadedKeys, setLoadedKeys] = useState<Set<string>>(new Set());
   const [viewAs, setViewAsState] = useState("");
+  const [propTypes, setPropTypes] = useState<string[]>([...PTYPES]);
+  const [sources, setSources] = useState<string[]>([...SOURCES]);
+  const [rr, setRr] = useState<RoundRobin>({ on: false, order: [], last: null });
+  const [previewAs, setPreviewAs] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal | null>(null);
   const [drawer, setDrawer] = useState<{ id: string; req?: string } | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -107,7 +130,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
 
   // Shared collections every active staff member can read.
   useEffect(() => {
-    if (!uid || !me?.active) return;
+    if (!realUid || !realMe?.active) return;
     const subs = [
       onSnapshot(collection(db, "clients"), (s) => {
         setClients(s.docs.map((d) => withId<Client>(d)));
@@ -139,27 +162,57 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       onSnapshot(query(collection(db, "chat"), orderBy("at", "desc"), limit(200)), (s) =>
         setChat(s.docs.map((d) => withId<ChatMsg>(d)).reverse())
       ),
+      onSnapshot(doc(db, "crm", "lists"), (s) => {
+        const xs = s.exists() ? (s.data().propTypes as unknown) : null;
+        setPropTypes(Array.isArray(xs) && xs.length ? xs.map(String) : [...PTYPES]);
+        const ss = s.exists() ? (s.data().sources as unknown) : null;
+        setSources(Array.isArray(ss) && ss.length ? ss.map(String) : [...SOURCES]);
+        const r = (s.exists() ? s.data().rr : null) as Partial<RoundRobin> | null;
+        setRr({ on: !!r?.on, order: Array.isArray(r?.order) ? r!.order.map(String) : [], last: r?.last ?? null });
+      }),
       onSnapshot(doc(db, "crm", "settings"), (s) => {
         if (s.exists()) setSettings({ salesManager: null, escalateDays: 2, escalateOff: false, ...(s.data() as Partial<CrmSettings>) });
       }),
     ];
     return () => subs.forEach((u) => u());
-  }, [uid, me?.active, markLoaded]);
+  }, [realUid, realMe?.active, markLoaded]);
+
+  // Private messages: only conversations I am a member of (the rules require the array-contains filter).
+  useEffect(() => {
+    if (!realUid || !realMe?.active) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const un = onSnapshot(
+      query(collection(db, "dm"), where("members", "array-contains", realUid), limit(1000)),
+      (s) => { setDmBlocked(false); setDms(s.docs.map((d) => withId<DirectMsg>(d)).sort((a, b) => a.at.localeCompare(b.at))); },
+      () => { setDmBlocked(true); t = setTimeout(() => setDmRetry((n) => n + 1), 15000); },
+    );
+    return () => { un(); if (t) clearTimeout(t); };
+  }, [realUid, realMe?.active, dmRetry]);
+
+  useEffect(() => {
+    if (!realUid || !realMe?.active) return;
+    // A refused listener stops for good, so retry (e.g. right after new security rules are published).
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const un = onSnapshot(collection(db, "invoices"),
+      (s) => setInvoices(s.docs.map((d) => withId<Invoice>(d)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))),
+      () => { t = setTimeout(() => setInvRetry((n) => n + 1), 15000); });
+    return () => { un(); if (t) clearTimeout(t); };
+  }, [realUid, realMe?.active, invRetry]);
 
   // Admin-only collections.
   useEffect(() => {
-    if (!uid || !isAdmin) return;
+    if (!realUid || !realAdmin) return;
     const subs = [
       onSnapshot(collection(db, "hr"), (s) => setHr(s.docs.map((d) => withId<HrFile>(d)))),
       onSnapshot(collection(db, "payroll"), (s) => setPayroll(s.docs.map((d) => withId<PayrollRow>(d)))),
     ];
     return () => subs.forEach((u) => u());
-  }, [uid, isAdmin]);
+  }, [realUid, realAdmin]);
 
   // Attendance: own days for everyone; every member's days for admins.
   const attIds = useMemo(
-    () => (isAdmin ? staff.filter((s) => s.active).map((s) => s.id) : uid ? [uid] : []).join(","),
-    [isAdmin, staff, uid]
+    () => (realAdmin ? staff.filter((s) => s.active).map((s) => s.id) : realUid ? [realUid] : []).join(","),
+    [realAdmin, staff, realUid]
   );
   useEffect(() => {
     if (!attIds) return;
@@ -176,14 +229,22 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   // Record last-seen once per session (shown on the Team screen).
   const seenOnce = useRef(false);
   useEffect(() => {
-    if (!uid || !me?.active || seenOnce.current) return;
+    if (!realUid || !realMe?.active || seenOnce.current) return;
     seenOnce.current = true;
-    updateDoc(doc(db, "staff", uid), { lastSeen: nowStamp() }).catch(() => {});
-  }, [uid, me?.active]);
+    updateDoc(doc(db, "staff", realUid), { lastSeen: nowStamp() }).catch(() => {});
+  }, [realUid, realMe?.active]);
+
+  // Preview ("الدخول كموظف"): everything below renders as that employee; writes are blocked (lib/crm/preview.ts).
+  const target = previewAs ? staff.find((s) => s.id === previewAs) || null : null;
+  const me = target || realMe;
+  const uid = target ? target.id : realUid;
+  const isAdmin = target ? target.role === "admin" : realAdmin;
+  const isMgr = target ? target.role === "admin" || target.role === "manager" : realMgr;
+  useEffect(() => setPreviewMode(!!target), [target]);
 
   const data: CrmData = useMemo(
-    () => ({ clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "" }),
-    [clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs]
+    () => ({ clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "", propTypes, sources, rr }),
+    [clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs, propTypes, sources, rr]
   );
 
   const toast = useCallback((msg: string) => {
@@ -195,9 +256,28 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const value: CrmContextValue = {
     data,
     chat,
+    dms: previewAs ? [] : dms,
+    dmBlocked,
+    invoices,
     settings,
     loaded: ["clients", "props", "requests", "staff"].every((k) => loadedKeys.has(k)),
     me,
+    realMe,
+    previewAs: target ? previewAs : null,
+    startPreview: (id) => {
+      const t = staff.find((s) => s.id === id);
+      // Managers may preview sales staff; only the owner may preview a manager.
+      if (!realMgr || !t || id === realUid || t.role === "admin" || (t.role === "manager" && !realAdmin)) return;
+      setViewAsState("");
+      setDrawer(null);
+      setModal(null);
+      setPreviewAs(id);
+    },
+    stopPreview: () => {
+      setPreviewAs(null);
+      setDrawer(null);
+      setModal(null);
+    },
     setViewAs: (v) => {
       setViewAsState(v);
       store.set("crm.viewAs", v);
