@@ -36,5 +36,19 @@ export function organizationJsonLd(phone?: string) {
   };
 }
 
-/** Full public link of a property, for WhatsApp messages and leads. */
+/** Full public link of a property. */
 export const offerUrl = (slug: string, locale = "ar") => `${SITE_URL}/${locale}/offers/${encodeURIComponent(slug)}`;
+
+/** Short link for messages: binslmahre.com/p/<slug tail> (served by app/[locale]/(public)/p/[code]). */
+export const shortOfferUrl = (slug: string) => "binslmahre.com/p/" + (slug.split("-").pop() || slug);
+
+/**
+ * The WhatsApp enquiry a visitor sends: three short lines — greeting, what
+ * (property, or unit + price), and the short link.
+ */
+export function enquiryMessage(o: { title: string; district?: string; slug: string }, unit?: { name: string; price: number }, ar = true) {
+  const what = unit
+    ? `${unit.name} — ${o.title} (${unit.price.toLocaleString("en-US")} ${ar ? "ريال" : "SAR"})`
+    : o.title + (o.district ? " — " + o.district : "");
+  return [ar ? "السلام عليكم، أستفسر عن:" : "Hello, I'm interested in:", what, shortOfferUrl(o.slug)].join("\n");
+}
