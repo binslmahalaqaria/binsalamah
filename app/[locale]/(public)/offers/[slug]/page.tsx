@@ -14,6 +14,7 @@ import { IconArea, IconBath, IconBed, IconCheck, IconPin, IconSofa, IconShield }
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
 
 const num = (n: number) => n.toLocaleString("en-US");
+const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
 
 /**
  * One property: breadcrumb, photo gallery, title and location, key facts,
@@ -23,7 +24,8 @@ const num = (n: number) => n.toLocaleString("en-US");
  * WhatsApp and the "register interest" form (which creates a CRM lead).
  */
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; locale: string }> }): Promise<Metadata> {
-  const { slug, locale } = await params;
+  const { slug: raw, locale } = await params;
+  const slug = safeDecode(raw);
   const o = (await getPublishedOfferBySlug(slug).catch(() => null)) ?? demoOffer(slug);
   if (!o) return {};
   const ar = locale === "ar";
@@ -39,7 +41,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function OfferDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const { slug: raw } = await params;
+  const slug = safeDecode(raw); // Arabic slugs arrive percent-encoded
   const [live, locale, t, s, { whatsappNumber }] = await Promise.all([
     getPublishedOfferBySlug(slug),
     getLocale(),
