@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -21,6 +22,22 @@ const num = (n: number) => n.toLocaleString("en-US");
  * the map location, brochure and video when given; a sticky side card with the price range,
  * WhatsApp and the "register interest" form (which creates a CRM lead).
  */
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; locale: string }> }): Promise<Metadata> {
+  const { slug, locale } = await params;
+  const o = (await getPublishedOfferBySlug(slug).catch(() => null)) ?? demoOffer(slug);
+  if (!o) return {};
+  const ar = locale === "ar";
+  const title = ar ? o.title_ar : o.title_en || o.title_ar;
+  const where = ar ? `${o.district_ar}، ${o.city_ar}` : `${o.district_en || o.district_ar}, ${o.city_en || o.city_ar}`;
+  const description = (ar ? o.description_ar : o.description_en || o.description_ar).slice(0, 160) || where;
+  return {
+    title: `${title} — ${where}`,
+    description,
+    alternates: { canonical: `/${locale}/offers/${o.slug}`, languages: { ar: `/ar/offers/${o.slug}`, en: `/en/offers/${o.slug}` } },
+    openGraph: { title, description, images: o.cover_image ? [{ url: o.cover_image }] : ["/og.jpg"] },
+  };
+}
+
 export default async function OfferDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [live, locale, t, s, { whatsappNumber }] = await Promise.all([

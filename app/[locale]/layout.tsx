@@ -4,6 +4,7 @@ import { Alexandria, IBM_Plex_Sans_Arabic, Rubik } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { DESC_AR, DESC_EN, KEYWORDS, NAME_AR, NAME_EN, SITE_URL } from "@/lib/seo";
 import "../globals.css";
 
 // Real brand font (2026-09-14 identity refresh) — not on Google Fonts, so
@@ -46,12 +47,30 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const isArabic = locale === "ar";
+  const ar = locale === "ar";
+  const name = ar ? NAME_AR : NAME_EN;
+  const description = ar ? DESC_AR : DESC_EN;
   return {
-    title: isArabic ? "بن سلمه العقارية" : "Bin Slmah Real Estate",
-    description: isArabic
-      ? "بن سلمه العقارية — نعرض لك أفضل العروض العقارية المتاحة حاليًا."
-      : "Bin Slmah Real Estate — offers and services.",
+    metadataBase: new URL(SITE_URL),
+    // «بن سلمه العقارية» leads every title so a search for the name finds the site.
+    title: { default: ar ? `${NAME_AR} | عقارات للبيع في الرياض` : `${NAME_EN} | Property in Riyadh`, template: `%s | ${name}` },
+    description,
+    keywords: KEYWORDS,
+    applicationName: name,
+    alternates: { canonical: `/${locale}`, languages: { ar: "/ar", en: "/en", "x-default": "/ar" } },
+    openGraph: {
+      type: "website",
+      siteName: name,
+      title: name,
+      description,
+      url: `/${locale}`,
+      locale: ar ? "ar_SA" : "en_US",
+      images: [{ url: "/og.jpg", width: 1200, height: 630, alt: name }],
+    },
+    twitter: { card: "summary_large_image", title: name, description, images: ["/og.jpg"] },
+    robots: { index: true, follow: true },
+    // Google Search Console ownership token goes here once the owner verifies the domain.
+    verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
   };
 }
 

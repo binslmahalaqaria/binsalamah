@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 const MAP_URL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("طريق عثمان بن عفان، حي النرجس، الرياض");
 
 /** About: the company summary, the office address with a map link, . */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const ar = locale === "ar";
+  return {
+    title: ar ? "من نحن" : "About us",
+    description: ar ? "بن سلمه العقارية شركة سعودية للتسويق والوساطة العقارية في الرياض — مقرنا حي النرجس، طريق عثمان بن عفان." : "Bin Slmah Real Estate — a Saudi real estate marketing and brokerage company in Riyadh.",
+    alternates: { canonical: `/${locale}/about`, languages: { ar: "/ar/about", en: "/en/about" } },
+  };
+}
+
 export default async function AboutPage() {
   const t = await getTranslations("Site");
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { CareerForm } from "@/components/site/CareerForm";
 
@@ -6,6 +7,16 @@ import { CareerForm } from "@/components/site/CareerForm";
  * photo banner and the application form (saved as a CRM website enquiry).
  * Just the form — no positions, qualifications or benefits sections (owner's call).
  */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const ar = locale === "ar";
+  return {
+    title: ar ? "التوظيف" : "Careers",
+    description: ar ? "انضم إلى فريق بن سلمه العقارية — قدّم طلبك للعمل في التسويق والمبيعات العقارية في الرياض." : "Join the Bin Slmah Real Estate team in Riyadh.",
+    alternates: { canonical: `/${locale}/careers`, languages: { ar: "/ar/careers", en: "/en/careers" } },
+  };
+}
+
 export default async function CareersPage() {
   const t = await getTranslations("Site");
   return (

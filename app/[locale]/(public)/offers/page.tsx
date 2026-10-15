@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { OffersGrid } from "@/components/OffersGrid";
 import { listPublishedOffers } from "@/lib/offers";
 import { getPublicContactInfo } from "@/lib/settings";
 import { withDemo } from "@/lib/demo-offers";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const ar = locale === "ar";
+  return {
+    title: ar ? "عقارات للبيع في الرياض" : "Properties for sale in Riyadh",
+    description: ar ? "فلل وشقق وأدوار وتاون هاوس وبنتهاوس للبيع في الرياض من بن سلمه العقارية — ابحث حسب الحي والجهة والميزانية." : "Villas, apartments, floors, townhouses and penthouses for sale in Riyadh from Bin Slmah Real Estate.",
+    alternates: { canonical: `/${locale}/offers`, languages: { ar: "/ar/offers", en: "/en/offers" } },
+  };
+}
 
 export default async function OffersPage({ searchParams }: { searchParams: Promise<{ demo?: string; type?: string; zone?: string; district?: string; districts?: string; price?: string }> }) {
   const [t, s, live, { whatsappNumber }, sp] = await Promise.all([
