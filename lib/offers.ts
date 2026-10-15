@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Offer, OfferStatus } from "./types";
+import { DISTRICTS, districtKey } from "./districts";
 import type { OfferFormInput } from "./validators";
 
 const COLLECTION = "offers";
@@ -87,8 +88,11 @@ export async function createOffer(
   status: OfferStatus,
   staffUid: string
 ): Promise<string> {
-  const base = input.title_en || input.title_ar;
-  const slug = `${slugify(base)}-${Date.now().toString(36)}`;
+  // Short Latin links (Arabic ones turn into long %D9… codes when shared): type + district (English name when
+  // known, e.g. villa-al-malqa) + a unique suffix. The English title is used when the owner gives one.
+  const en = DISTRICTS[districtKey(input.district_ar)]?.en;
+  const base = input.title_en?.trim() ? slugify(input.title_en) : [input.type, en ? slugify(en) : ""].filter(Boolean).join("-");
+  const slug = `${base.replace(/[^a-z0-9-]/g, "") || "offer"}-${Date.now().toString(36)}`;
   const ref = await addDoc(collection(db, COLLECTION), {
     ...input,
     slug,
