@@ -93,7 +93,11 @@ export function OfferForm({ offer }: { offer?: Offer | null }) {
 
   const units = form.units ?? [];
   const setUnit = (i: number, p: Partial<OfferUnit>) => field("units", units.map((u, j) => (j === i ? { ...u, ...p } : u)));
-  const num = (v: string) => (v === "" ? 0 : Number(v.replace(/[^d.]/g, "")));
+  // Digits only (Arabic-Indic ٠-٩ accepted); empty means 0.
+  const num = (v: string) => {
+    const d = v.replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[^\d.]/g, "");
+    return d === "" ? 0 : Number(d);
+  };
   const derived = deriveFromUnits(form);
   const features = form.features ?? [];
   const [newFeature, setNewFeature] = useState("");
