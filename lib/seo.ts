@@ -35,3 +35,6 @@ export function organizationJsonLd(phone?: string) {
     knowsLanguage: ["ar", "en"],
   };
 }
+
+/** Full public link of a property, for WhatsApp messages and leads. */
+export const offerUrl = (slug: string, locale = "ar") => `${SITE_URL}/${locale}/offers/${encodeURIComponent(slug)}`;

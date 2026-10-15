@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { WhatsAppLink } from "@/components/WhatsAppButton";
 import type { Offer } from "@/lib/types";
+import { offerUrl } from "@/lib/seo";
 import { IconArea, IconBath, IconBed } from "@/components/site/icons";
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -27,7 +28,8 @@ export function OfferCard({ offer, whatsappNumber }: { offer: Offer; whatsappNum
   const typeLabel = t(`types.${offer.type}`);
   const sold = typeof offer.sold_percentage === "number" ? Math.min(100, offer.sold_percentage) : null;
   const soldOut = sold === 100;
-  const waMessage = ar ? `مرحبًا، أرغب بالاستفسار عن "${offer.title_ar}".` : `Hello, I'd like to ask about "${offer.title_en || offer.title_ar}".`;
+  // The property's link goes with the message so the team knows exactly which one.
+  const waMessage = (ar ? `مرحبًا، أرغب بالاستفسار عن "${offer.title_ar}".` : `Hello, I'd like to ask about "${offer.title_en || offer.title_ar}".`) + "\n" + offerUrl(offer.slug, ar ? "ar" : "en");
   const href = `/offers/${offer.slug}`;
 
   return (

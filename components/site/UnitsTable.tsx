@@ -17,7 +17,7 @@ const STATUS = {
   sold: { ar: "مباع", en: "Sold", cls: "bg-navy/5 text-navy/45 ring-navy/10" },
 };
 
-export function UnitsTable({ units, offerTitle, whatsappNumber }: { units: OfferUnit[]; offerTitle: string; whatsappNumber: string }) {
+export function UnitsTable({ units, offerTitle, offerLink, whatsappNumber }: { units: OfferUnit[]; offerTitle: string; offerLink?: string; whatsappNumber: string }) {
   const ar = useLocale() === "ar";
   const [onlyFree, setOnlyFree] = useState(false);
   const free = units.filter((u) => u.status === "available").length;
@@ -25,7 +25,7 @@ export function UnitsTable({ units, offerTitle, whatsappNumber }: { units: Offer
   const L = ar
     ? { title: "الوحدات", unit: "الوحدة", area: "المساحة", rooms: "الغرف", living: "الصالات", baths: "دورات المياه", price: "السعر", status: "الحالة", ask: "استفسار", all: "الكل", free: "المتاحة فقط", of: "متاحة من", sar: "ريال", m: "م²" }
     : { title: "Units", unit: "Unit", area: "Area", rooms: "Beds", living: "Living", baths: "Baths", price: "Price", status: "Status", ask: "Enquire", all: "All", free: "Available only", of: "available of", sar: "SAR", m: "m²" };
-  const msg = (u: OfferUnit) => (ar ? `مرحبًا، أرغب بالاستفسار عن «${u.name}» في «${offerTitle}» — السعر ${num(u.price)} ريال.` : `Hello, I'd like to ask about "${u.name}" in "${offerTitle}" — ${num(u.price)} SAR.`);
+  const msg = (u: OfferUnit) => (ar ? `مرحبًا، أرغب بالاستفسار عن «${u.name}» في «${offerTitle}» — السعر ${num(u.price)} ريال.` : `Hello, I'd like to ask about "${u.name}" in "${offerTitle}" — ${num(u.price)} SAR.`) + (offerLink ? "\n" + offerLink : "");
   const chip = (on: boolean) => "rounded-full px-4 py-1.5 text-sm transition-colors " + (on ? "bg-navy text-cream" : "bg-navy/5 text-navy hover:bg-navy/10");
   const badge = (u: OfferUnit) => <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 " + STATUS[u.status].cls}>{ar ? STATUS[u.status].ar : STATUS[u.status].en}</span>;
   const ask = (u: OfferUnit) => u.status === "sold" ? null : (

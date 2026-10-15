@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { getPublishedOfferBySlug } from "@/lib/offers";
 import { getPublicContactInfo } from "@/lib/settings";
 import { demoOffer } from "@/lib/demo-offers";
+import { offerUrl } from "@/lib/seo";
 import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
@@ -61,7 +62,8 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
   const images = [...offer.images].sort((a, b) => a.order - b.order).map((i) => i.url).filter(Boolean);
   if (!images.length && offer.cover_image) images.push(offer.cover_image);
   const sold = typeof offer.sold_percentage === "number" ? Math.min(100, offer.sold_percentage) : null;
-  const waMessage = ar ? `مرحبًا، أرغب بالاستفسار عن "${offer.title_ar}".` : `Hello, I'd like to ask about "${offer.title_en || offer.title_ar}".`;
+  const link = offerUrl(offer.slug, locale);
+  const waMessage = (ar ? `مرحبًا، أرغب بالاستفسار عن "${offer.title_ar}".` : `Hello, I'd like to ask about "${offer.title_en || offer.title_ar}".`) + "\n" + link;
   const range = (a: number, b: number | null) => (b && b !== a ? <><bdi>{num(a)}</bdi> <span className="text-[0.75em] font-normal text-navy/50">{s("to")}</span> <bdi>{num(b)}</bdi></> : <bdi>{num(a)}</bdi>);
 
   // Warranties are free text (one per line); older offers may still carry the structured list.
@@ -106,7 +108,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             ))}
           </div>
 
-          {!!offer.units?.length && <UnitsTable units={offer.units} offerTitle={offer.title_ar} whatsappNumber={whatsappNumber} />}
+          {!!offer.units?.length && <UnitsTable units={offer.units} offerTitle={offer.title_ar} offerLink={link} whatsappNumber={whatsappNumber} />}
 
           {description && (
             <div className="grid gap-3">
@@ -176,7 +178,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               </div>
             )}
           </div>
-          <RegisterInterestForm offerId={offer.id} />
+          <RegisterInterestForm offerId={offer.id} offerTitle={offer.title_ar} offerLink={link} />
         </aside>
       </div>
     </section>

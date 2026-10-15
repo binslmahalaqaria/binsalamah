@@ -6,7 +6,7 @@ import { createPublicLead } from "@/lib/leads";
 import { leadFormSchema } from "@/lib/validators";
 import { PhoneInput } from "@/components/site/PhoneInput";
 
-export function RegisterInterestForm({ offerId }: { offerId: string }) {
+export function RegisterInterestForm({ offerId, offerTitle, offerLink }: { offerId: string; offerTitle?: string; offerLink?: string }) {
   const t = useTranslations("RegisterInterest");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -36,7 +36,7 @@ export function RegisterInterestForm({ offerId }: { offerId: string }) {
       await createPublicLead({
         customer_name: parsed.data.customer_name,
         phone: parsed.data.phone,
-        message: parsed.data.message,
+        message: [offerTitle && "تسجيل اهتمام: " + offerTitle, parsed.data.message, offerLink].filter(Boolean).join(" | "),
         related_offer_id: offerId,
       });
       setStatus("success");
