@@ -409,6 +409,7 @@
     "waShort": "WhatsApp",
     "reqNeedArea": "Please choose an area or district (e.g. North Riyadh)",
     "reqBudgetHint": "Type your budget, e.g. 1.5 million",
-    "reqPhoneLabel": "Mobile number"
+    "reqPhoneLabel": "Mobile number",
+    "partnersTitle": "Our partners"
   }
 }

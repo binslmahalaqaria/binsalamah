@@ -219,3 +219,9 @@ body {
 .site .text-gold {
   color: #7d7d7d;
 }
+
+/* Partners strip: slide the doubled logo row by half its width, forever. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}

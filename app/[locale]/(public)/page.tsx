@@ -5,6 +5,7 @@ import { Hero } from "@/components/site/Hero";
 import { SearchBar } from "@/components/site/SearchBar";
 import { ProjectsMap } from "@/components/site/ProjectsMap";
 import { RequestForm } from "@/components/site/RequestForm";
+import { Partners } from "@/components/site/Partners";
 import { listPublishedOffers } from "@/lib/offers";
 import { getPublicContactInfo } from "@/lib/settings";
 import { withDemo } from "@/lib/demo-offers";
@@ -68,6 +69,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         {head(t("mapTitle"), t("mapSub"))}
         <ProjectsMap points={Array.from(counts, ([district, count]) => ({ district, count }))} emptyText={t("mapEmpty")} />
       </section>
+
+      <Partners title={t("partnersTitle")} />
 
       <RequestForm districts={districts} />
 
