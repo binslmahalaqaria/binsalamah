@@ -33,7 +33,7 @@ const alexandria = Alexandria({
 const plexArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic", "latin"],
   variable: "--font-crm-body",
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export function generateStaticParams() {

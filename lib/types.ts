@@ -8,6 +8,7 @@ export type OfferType =
   | "villa"
   | "floor"
   | "townhouse"
+  | "penthouse"
   | "land"
   | "other";
 
@@ -22,6 +23,24 @@ export interface OfferImage {
   storage_path?: string;
   order: number;
 }
+
+export type UnitStatus = "available" | "reserved" | "sold";
+
+/** One sellable unit inside an offer (e.g. «دور أرضي», «شقة 3»), with its own price and area. */
+export interface OfferUnit {
+  name: string;
+  area: number;
+  price: number;
+  rooms?: number | null;
+  living_rooms?: number | null;
+  bathrooms?: number | null;
+  status: UnitStatus;
+}
+
+/** A warranty on the project, e.g. «الهيكل الإنشائي» for 10 years. */
+export interface OfferWarranty { item: string; years: number }
+
+export type ProjectStage = "ready" | "under_construction" | "off_plan";
 
 export interface Offer {
   id: string;
@@ -44,6 +63,21 @@ export interface Offer {
   description_ar: string;
   description_en: string;
   sold_percentage: number | null;
+  /** Units for sale in this offer. When present, the price/area ranges and sold % are derived from them. */
+  units?: OfferUnit[];
+  living_rooms?: number | null;
+  /** Project details shown on the property page. */
+  developer?: string | null;
+  stage?: ProjectStage | null;
+  handover?: string | null;
+  /** Warranties written freely by the owner, one per line. */
+  warranties_text?: string | null;
+  /** Older structured warranties (still shown if present). */
+  warranties?: OfferWarranty[];
+  features?: string[];
+  map_url?: string | null;
+  brochure_url?: string | null;
+  video_url?: string | null;
   status: OfferStatus;
   featured: boolean;
   created_at: number; // epoch millis (server timestamp resolved on read)

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { createPublicLead } from "@/lib/leads";
 import { leadFormSchema } from "@/lib/validators";
+import { PhoneInput } from "@/components/site/PhoneInput";
 
 export function RegisterInterestForm({ offerId }: { offerId: string }) {
   const t = useTranslations("RegisterInterest");
@@ -68,12 +69,10 @@ export function RegisterInterestForm({ offerId }: { offerId: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <input
-        className="rounded-lg border border-navy/20 bg-white px-4 py-2 text-sm"
-        placeholder={t("phone")}
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
+      <label className="grid gap-1 text-xs text-navy/60">
+        {t("phone")}
+        <PhoneInput className="rounded-lg border border-navy/20 bg-white px-4 py-2 text-sm" value={phone} onChange={setPhone} />
+      </label>
       <textarea
         className="rounded-lg border border-navy/20 bg-white px-4 py-2 text-sm"
         placeholder={t("message")}
@@ -85,7 +84,7 @@ export function RegisterInterestForm({ offerId }: { offerId: string }) {
       <button
         type="submit"
         disabled={status === "submitting"}
-        className="rounded-full bg-gold px-5 py-2.5 font-medium text-navy transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="min-h-12 rounded-full bg-navy px-5 py-2.5 font-medium text-cream transition-colors hover:bg-navy/90 disabled:opacity-50"
       >
         {status === "submitting" ? t("submitting") : t("submit")}
       </button>

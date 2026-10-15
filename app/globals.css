@@ -180,3 +180,42 @@ body {
   html, body, .crm { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/**
+ * Public site typography (2026-10-15): one typeface for everything — IBM Plex
+ * Sans Arabic, as on riva.sa (the client's pick; rakez.sa's RB is a paid
+ * licence). Headings use its bold weights. The logo stays the brand artwork
+ * (images cut from the identity file), so the identity itself is unchanged.
+ */
+.site,
+.site .font-sans,
+.site .font-heading,
+.site h1,
+.site h2,
+.site h3 {
+  font-family: var(--font-crm-body), system-ui, sans-serif;
+}
+.site h1,
+.site h2,
+.site h3,
+.site .font-heading {
+  font-weight: 700;
+}
+
+@keyframes fadeDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/**
+ * Public site accent (2026-10-15): no gold on the website — the client asked for
+ * a light grey instead. Every gold utility (bg-gold, border-gold, …) on the site
+ * now resolves to light grey; gold *text* uses a darker grey so it stays readable.
+ * The CRM keeps its own palette.
+ */
+.site {
+  --color-gold: #b8b8b8;
+}
+.site .text-gold {
+  color: #7d7d7d;
+}

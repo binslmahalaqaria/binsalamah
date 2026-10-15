@@ -1,3 +1,4 @@
+import { RIYADH_DISTRICTS } from "@/lib/districts";
 /**
  * Option lists and stage names for the sales CRM (clients, requests,
  * properties, tasks, team). Ported 1:1 from the original artifact CRM so
@@ -27,7 +28,7 @@ export const SOLD_ST = ["عربون", "تم البيع"];
 export const CONTRACT = ["دوام كامل", "دوام جزئي", "عمولة فقط", "تدريب"] as const;
 export const PRIO = ["عادية", "مهمة", "عاجلة"] as const;
 
-export const DISTRICTS = [
+const CRM_DISTRICTS = [
   "النرجس", "الملقا", "الياسمين", "القيروان", "العارض", "حطين", "الصحافة", "الربيع", "الندى", "النفل",
   "العقيق", "الغدير", "الوادي", "المروج", "المرسلات", "الازدهار", "التعاون", "المصيف", "الواحة", "الفلاح",
   "الملك فهد", "الملك عبدالله", "الورود", "السليمانية", "العليا", "المحمدية", "الرحمانية", "الرائد", "النخيل",
@@ -38,6 +39,9 @@ export const DISTRICTS = [
   "الخالدية", "المهدية", "الخير", "الوزارات", "المصانع", "عليشة", "الفاخرية", "أم الحمام", "المعيزلية",
   "ظهرة البديعة", "ديراب", "العمارية",
 ];
+/** The CRM list plus every Riyadh district the public site knows (lib/districts.ts), without duplicates. */
+const norm = (d: string) => d.replace(/[إأآ]/g, "ا").replace(/s+/g, " ").trim();
+export const DISTRICTS = [...CRM_DISTRICTS, ...RIYADH_DISTRICTS.filter((d) => !CRM_DISTRICTS.some((c) => norm(c) === norm(d)))];
 
 /** Client update types: default days until the next call, and an optional status change. */
 export const UPD: { k: string; n: number | "none"; status?: string }[] = [
