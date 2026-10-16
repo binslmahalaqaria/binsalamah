@@ -38,6 +38,26 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLoginPage) return <>{children}</>;
   if (loading || !user) return null; // avoid flashing protected content
 
+  // Signed in, but this account has no staff record (often a browser-autofilled
+  // personal email): say so instead of sitting on «جارٍ تحميل البيانات» forever.
+  if (!staff) {
+    return (
+      <div dir="rtl" className="mx-auto max-w-md px-6 py-24 text-center text-sm leading-7 text-gray-600">
+        <p className="mb-2 text-base font-bold text-gray-900">هذا الحساب غير مسجّل كموظف في النظام</p>
+        <p className="mb-6">
+          دخلت بالبريد <b dir="ltr">{user.email}</b> — سجّل الخروج وادخل ببريد حسابك في النظام.
+        </p>
+        <button
+          type="button"
+          onClick={() => signOut(auth).then(() => router.replace("/admin/login"))}
+          className="rounded-full bg-gray-900 px-6 py-2.5 text-white"
+        >
+          تسجيل الخروج
+        </button>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
