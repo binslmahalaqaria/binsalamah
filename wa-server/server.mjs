@@ -45,7 +45,7 @@ function envFromDotLocal(key) {
 }
 const PORT = Number(process.env.PORT || 4100);
 const PROJECT = process.env.FIREBASE_PROJECT_ID || envFromDotLocal("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
-const ORIGINS = (process.env.CRM_ORIGIN || "http://localhost:3000").split(",").map((s) => s.trim());
+const ORIGINS = (process.env.CRM_ORIGIN || "http://localhost:3000,https://www.binslmahre.com,https://binslmahre.com").split(",").map((s) => s.trim());
 if (!PROJECT) throw new Error("FIREBASE_PROJECT_ID is not set");
 const log = pino({ level: "warn" });
 const MAX_MSGS = 3000; // per chat; high enough to keep older messages pulled on demand
@@ -394,6 +394,8 @@ http.createServer(async (req, res) => {
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    // The live CRM (https) calling this server on the same PC: Chrome's private/local network check.
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
   }
   if (req.method === "OPTIONS") return res.writeHead(204).end();
   const url = new URL(req.url, "http://x");
