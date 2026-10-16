@@ -132,18 +132,20 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!realUid || !realMe?.active) return;
     const subs = [
+      // Each core listener marks itself loaded even on error, so the CRM never sits on
+      // «جارٍ تحميل البيانات» because one collection failed (it shows what it has).
       onSnapshot(collection(db, "clients"), (s) => {
         setClients(s.docs.map((d) => withId<Client>(d)));
         markLoaded("clients");
-      }),
+      }, (e) => { console.error("clients", e); markLoaded("clients"); }),
       onSnapshot(collection(db, "properties"), (s) => {
         setProps(s.docs.map((d) => withId<Property>(d)));
         markLoaded("props");
-      }),
+      }, (e) => { console.error("properties", e); markLoaded("props"); }),
       onSnapshot(collection(db, "requests"), (s) => {
         setRequests(s.docs.map((d) => withId<Request>(d)));
         markLoaded("requests");
-      }),
+      }, (e) => { console.error("requests", e); markLoaded("requests"); }),
       onSnapshot(collection(db, "tasks"), (s) => setTasks(s.docs.map((d) => withId<Task>(d)))),
       onSnapshot(collection(db, "goals"), (s) => setGoals(s.docs.map((d) => withId<Goal>(d)))),
       onSnapshot(collection(db, "staff"), (s) => {
@@ -158,7 +160,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           })
         );
         markLoaded("staff");
-      }),
+      }, (e) => { console.error("staff", e); markLoaded("staff"); }),
       onSnapshot(query(collection(db, "chat"), orderBy("at", "desc"), limit(200)), (s) =>
         setChat(s.docs.map((d) => withId<ChatMsg>(d)).reverse())
       ),

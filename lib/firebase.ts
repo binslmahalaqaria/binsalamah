@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -23,7 +23,22 @@ export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey);
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+/**
+ * In the browser Firestore keeps a local copy (IndexedDB) shared across tabs:
+ * the CRM opens instantly from the cache and then syncs, and keeps working on
+ * a weak connection. The server (public pages) uses the plain client. If the
+ * cache can't be set up (private mode, or already initialised during hot
+ * reload) it falls back to the normal client — nothing is ever deleted.
+ */
+function makeDb(): Firestore {
+  if (typeof window === "undefined") return getFirestore(app);
+  try {
+    return initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  } catch {
+    return getFirestore(app);
+  }
+}
+export const db = makeDb();
 // getAuth() validates the API key format synchronously and throws if it's
 // missing/malformed — guard it so the app doesn't hard-crash before
 // .env.local is filled in (see isFirebaseConfigured above).
