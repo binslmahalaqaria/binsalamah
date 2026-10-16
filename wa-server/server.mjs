@@ -29,7 +29,8 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
-const DATA = path.join(DIR, "data");
+// DATA_DIR points at a persistent disk when hosted (e.g. a Railway volume); locally ./data.
+const DATA = process.env.DATA_DIR || path.join(DIR, "data");
 const SESS = path.join(DATA, "sessions");
 const SOURCES_FILE = path.join(DATA, "sources.json");
 fs.mkdirSync(SESS, { recursive: true });
