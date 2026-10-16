@@ -93,6 +93,14 @@ service cloud.firestore {
     match /tasks/{id} {
       allow read, write: if isActiveStaff();
     }
+    // Private reminders («مهامي الخاصة»): only their owner may read or change them —
+    // no other staff member, not even managers.
+    match /todos/{id} {
+      allow read, delete: if isActiveStaff() && resource.data.owner == request.auth.uid;
+      allow update: if isActiveStaff() && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid;
+      allow create: if isActiveStaff() && request.resource.data.owner == request.auth.uid;
+    }
     // Team chat: post as yourself; only the owner can edit/remove messages.
     match /chat/{id} {
       allow read: if isActiveStaff();

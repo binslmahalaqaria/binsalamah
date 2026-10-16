@@ -5,6 +5,7 @@
  * others (to follow up), and for managers the whole team with per-employee
  * counts. Grouped as overdue / today / upcoming / no date, with done ones
  * folded at the end. "+ مهمة جديدة" opens the task form with an assignee picker.
+ * «خاصة 🔒» holds the employee's private reminders (components/crm/PrivateTodos).
  */
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
@@ -13,8 +14,9 @@ import type { Task } from "@/lib/crm/types";
 import { today } from "@/lib/crm/util";
 import { Empty, PageHeader } from "@/components/crm/ui";
 import { TaskRow } from "@/components/crm/TaskRow";
+import { PrivateTodos } from "@/components/crm/PrivateTodos";
 
-type Tab = "mine" | "given" | "team";
+type Tab = "mine" | "given" | "team" | "private";
 
 export default function TasksPage() {
   const { data, loaded, openModal } = useCrm();
@@ -47,6 +49,7 @@ export default function TasksPage() {
     ["mine", "مهامي", mine.filter((x) => !x.done).length],
     ["given", "أسندتها لغيري", given.filter((x) => !x.done).length],
     ...(data.isMgr ? [["team", "كل الفريق", team.filter((x) => !x.done).length] as [Tab, string, number]] : []),
+    ["private", "خاصة 🔒", 0],
   ];
 
   return (
@@ -57,14 +60,15 @@ export default function TasksPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="crm-seg">
           {tabs.map(([k, l, n]) => (
-            <button key={k} type="button" className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l} <span className="num opacity-70">{n}</span></button>
+            <button key={k} type="button" className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l} {k !== "private" && <span className="num opacity-70">{n}</span>}</button>
           ))}
         </div>
-        <label className="ms-auto flex items-center gap-1.5 text-[13px] text-[var(--crm-ink-2)]">
+        {tab !== "private" && <label className="ms-auto flex items-center gap-1.5 text-[13px] text-[var(--crm-ink-2)]">
           <input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> عرض المنجزة ({done.length})
-        </label>
+        </label>}
       </div>
 
+      {tab === "private" ? <PrivateTodos /> : <>
       {tab === "team" && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           <button type="button" className={"crm-qchip" + (!who ? " on" : "")} onClick={() => setWho("")}>الكل</button>
@@ -96,6 +100,7 @@ export default function TasksPage() {
       ) : (
         <Empty>{tab === "given" ? "لم تُسند مهام لأحد بعد." : "لا توجد مهام مفتوحة."}</Empty>
       )}
+      </>}
     </>
   );
 }
