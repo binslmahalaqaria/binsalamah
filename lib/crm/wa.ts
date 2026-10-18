@@ -48,7 +48,9 @@ export const WA_LABEL_COLORS = [
   "#ff9485", "#64c4ff", "#ffd429", "#dfaef0", "#99b6c1", "#55ccb3", "#ff9dff", "#d3a91d", "#6d7cce", "#d7e752",
   "#00d0e2", "#ffc5c7", "#93ceac", "#f74848", "#00a0f2", "#83e422", "#ffaf04", "#b5ebff", "#9ba6ff", "#9368cf",
 ];
-export interface WaMsg { id: string; fromMe: boolean; text: string; ts: number }
+/** Media on a message; the file itself comes from wa-server's /api/media. */
+export interface WaMedia { kind: "audio" | "image" | "video" | "document" | "sticker"; mime: string; secs?: number; ptt?: boolean; caption?: string | null; name?: string; size?: number }
+export interface WaMsg { id: string; fromMe: boolean; text: string; ts: number; media?: WaMedia; pending?: boolean }
 
 export async function waApi<T>(p: string, body?: object): Promise<T> {
   if (body) assertWritable(); // no sending, tagging or linking while previewing as an employee

@@ -20,11 +20,13 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import os from "node:os";
 import pino from "pino";
 import QRCode from "qrcode";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import makeWASocket, {
-  Browsers, DisconnectReason, fetchLatestBaileysVersion, isJidBroadcast, isJidGroup, isJidNewsletter,
+  Browsers, BufferJSON, DisconnectReason, downloadMediaMessage, fetchLatestBaileysVersion, isJidBroadcast, isJidGroup, isJidNewsletter,
   jidNormalizedUser, useMultiFileAuthState,
 } from "@whiskeysockets/baileys";
 
@@ -87,12 +89,64 @@ function textOf(m) {
   return null;
 }
 
+/** Media on a message (voice note, image, video, file, sticker), or null — what the inbox needs to show and fetch it. */
+function mediaOf(m) {
+  const x = m?.message || {};
+  const inner = x.ephemeralMessage?.message || x.viewOnceMessage?.message || x.viewOnceMessageV2?.message || x;
+  const a = inner.audioMessage, i = inner.imageMessage, v = inner.videoMessage, d = inner.documentMessage, st = inner.stickerMessage;
+  if (a) return { kind: "audio", mime: a.mimetype || "audio/ogg", secs: Number(a.seconds || 0), ptt: !!a.ptt };
+  if (i) return { kind: "image", mime: i.mimetype || "image/jpeg", caption: i.caption || null };
+  if (v) return { kind: "video", mime: v.mimetype || "video/mp4", secs: Number(v.seconds || 0), caption: v.caption || null };
+  if (d) return { kind: "document", mime: d.mimetype || "application/octet-stream", name: d.fileName || d.title || "ملف", size: Number(d.fileLength || 0) };
+  if (st) return { kind: "sticker", mime: st.mimetype || "image/webp" };
+  return null;
+}
+
+/** ffmpeg turns browser recordings (webm/opus) into WhatsApp voice notes (ogg/opus). */
+let FFMPEG = process.env.FFMPEG_PATH || null;
+if (!FFMPEG) {
+  try {
+    const p = (await import("ffmpeg-static")).default;
+    if (p && fs.existsSync(p)) FFMPEG = p;
+  } catch { /* not installed */ }
+}
+FFMPEG ||= "ffmpeg";
+function toOggOpus(buf) {
+  return new Promise((ok, fail) => {
+    const tmp = path.join(os.tmpdir(), "wa-" + crypto.randomUUID());
+    fs.writeFileSync(tmp + ".in", buf);
+    execFile(FFMPEG, ["-y", "-i", tmp + ".in", "-vn", "-ac", "1", "-ar", "48000", "-c:a", "libopus", "-b:a", "32k", "-f", "ogg", tmp + ".ogg"], { timeout: 60_000 }, (err) => {
+      try {
+        if (err) return fail(err);
+        ok(fs.readFileSync(tmp + ".ogg"));
+      } finally {
+        fs.rmSync(tmp + ".in", { force: true });
+        fs.rmSync(tmp + ".ogg", { force: true });
+      }
+    });
+  });
+}
+const durationOf = (buf) => new Promise((ok) => {
+  const tmp = path.join(os.tmpdir(), "wa-" + crypto.randomUUID() + ".ogg");
+  fs.writeFileSync(tmp, buf);
+  execFile(FFMPEG, ["-i", tmp, "-f", "null", "-"], { timeout: 30_000 }, (_e, _o, err) => {
+    fs.rmSync(tmp, { force: true });
+    const re = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/g;
+    let last = null, x;
+    while ((x = re.exec(String(err || "")))) last = x;
+    ok(last ? Math.max(1, Math.round(+last[1] * 3600 + +last[2] * 60 + +last[3])) : 0);
+  });
+});
+
 const sessions = new Map(); // id -> session
 
 function makeSession(src) {
   const dir = path.join(SESS, src.id);
   fs.mkdirSync(dir, { recursive: true });
   const storeFile = path.join(dir, "store.json");
+  // The raw message of each media message (keys needed to download it from WhatsApp), kept apart from store.json.
+  const mediaFile = path.join(dir, "media.json");
+  const mediaDir = path.join(dir, "media");
   const s = {
     id: src.id, sock: null, stopped: false, dirty: false,
     state: { status: "starting", qr: null, me: null, since: Date.now(), sync: { progress: null, done: false, at: null } },
@@ -103,15 +157,29 @@ function makeSession(src) {
   } catch {
     /* new */
   }
+  s.media = {}; // message id -> raw WAMessage
+  s.mediaDirty = false;
+  try {
+    s.media = JSON.parse(fs.readFileSync(mediaFile, "utf8"), BufferJSON.reviver);
+  } catch {
+    /* new */
+  }
+  s.mediaDir = mediaDir;
   for (const [id, l] of Object.entries(s.store.labels)) if (/^‎/.test(l.name || "")) delete s.store.labels[id]; // built-in lists, not labels
   s.flush = () => {
-    if (!s.dirty) return;
+    if (!s.dirty && !s.mediaDirty) return;
     s.dirty = false;
     // A removed number's folder is gone; never let a late save crash the whole server.
     if (s.stopped && !fs.existsSync(dir)) return;
     try {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(storeFile, JSON.stringify(s.store));
+      if (s.mediaDirty) {
+        s.mediaDirty = false;
+        const ids = Object.keys(s.media);
+        if (ids.length > 20000) for (const id of ids.slice(0, ids.length - 20000)) delete s.media[id];
+        fs.writeFileSync(mediaFile, JSON.stringify(s.media, BufferJSON.replacer));
+      }
     } catch (e) {
       console.warn("[" + s.id + "] save failed:", e?.message || e);
     }
@@ -121,6 +189,8 @@ function makeSession(src) {
   s.wipe = () => {
     s.store.chats = {}; s.store.msgs = {}; s.store.names = {}; s.store.lid = {};
     s.store.labels = {}; s.store.chatLabels = {}; s.store.labelsSynced = false; s.store.backfilled = {};
+    s.media = {}; s.mediaDirty = true;
+    fs.rmSync(mediaDir, { recursive: true, force: true });
     s.backfill.running = false;
     s.dirty = true;
     s.flush();
@@ -175,6 +245,7 @@ function makeSession(src) {
   };
 
   s.ingest = (m, notify) => {
+    if (!m?.key) return;
     learnLid(m.key);
     const jid = canon(m.key?.remoteJid);
     if (skip(jid)) return;
@@ -183,7 +254,12 @@ function makeSession(src) {
     const ts = Number(m.messageTimestamp || 0) * 1000 || Date.now();
     const list = (s.store.msgs[jid] ||= []);
     if (list.some((x) => x.id === m.key.id)) return;
-    list.push({ id: m.key.id, fromMe: !!m.key.fromMe, text, ts });
+    const media = mediaOf(m);
+    if (media) {
+      s.media[m.key.id] = { key: m.key, message: m.message, messageTimestamp: m.messageTimestamp };
+      s.mediaDirty = true;
+    }
+    list.push({ id: m.key.id, fromMe: !!m.key.fromMe, text, ts, ...(media ? { media } : {}) });
     list.sort((a, b) => a.ts - b.ts);
     if (list.length > MAX_MSGS) list.splice(0, list.length - MAX_MSGS);
     const c = (s.store.chats[jid] ||= { jid, unread: 0, ts: 0, tags: [] });
@@ -551,16 +627,47 @@ http.createServer(async (req, res) => {
       s.dirty = true;
       return send(res, 200, { ok: true, labels: s.store.chatLabels[body.jid] });
     }
+    if (url.pathname === "/api/media") {
+      // The file of a media message (voice note, image, video, document), downloaded from WhatsApp once and cached on disk.
+      const id = String(url.searchParams.get("id") || "");
+      const raw = s.media[id];
+      if (!raw || !/^[\w-]+$/.test(id)) return send(res, 404, { error: "no_media" });
+      const meta = mediaOf(raw) || { mime: "application/octet-stream" };
+      const file = path.join(s.mediaDir, id);
+      let buf = fs.existsSync(file) ? fs.readFileSync(file) : null;
+      if (!buf) {
+        if (s.state.status !== "open") return send(res, 409, { error: "not_connected" });
+        buf = await downloadMediaMessage(raw, "buffer", {}, { logger: pino({ level: "silent" }), reuploadRequest: s.sock.updateMediaMessage });
+        fs.mkdirSync(s.mediaDir, { recursive: true });
+        fs.writeFileSync(file, buf);
+      }
+      res.writeHead(200, { "Content-Type": meta.mime.split(";")[0], "Content-Length": buf.length, "Cache-Control": "private, max-age=86400" });
+      return res.end(buf);
+    }
     if (url.pathname === "/api/send-media" && req.method === "POST") {
-      // An image (e.g. a receipt rendered in the browser) with an optional caption, as a data URL.
+      // A file from the CRM as a data URL: image/video (with caption), voice note (recorded in the browser), or any document.
       if (s.state.status !== "open") return send(res, 409, { error: "not_connected" });
-      const m = /^data:(image\/(?:png|jpeg));base64,(.+)$/.exec(String(body.dataUrl || ""));
+      const m = /^data:([\w.+-]+\/[\w.+-]+)(?:;[^,;]+)*;base64,(.+)$/.exec(String(body.dataUrl || ""));
       if (!body.jid || !m) return send(res, 400, { error: "missing" });
-      const buf = Buffer.from(m[2], "base64");
-      if (buf.length > 5 * 1024 * 1024) return send(res, 413, { error: "too_large" });
-      const caption = String(body.caption || "").slice(0, 1000);
-      const sent = await s.sock.sendMessage(body.jid, { image: buf, mimetype: m[1], caption: caption || undefined });
+      let buf = Buffer.from(m[2], "base64");
+      const mime = m[1];
+      if (buf.length > 16 * 1024 * 1024) return send(res, 413, { error: "too_large" });
+      const caption = String(body.caption || "").slice(0, 1000) || undefined;
+      let content;
+      if (body.voice) {
+        if (!/ogg/.test(mime)) buf = await toOggOpus(buf);
+        content = { audio: buf, mimetype: "audio/ogg; codecs=opus", ptt: true, seconds: await durationOf(buf) };
+      } else if (/^image\/(png|jpeg|webp)$/.test(mime)) content = { image: buf, mimetype: mime, caption };
+      else if (/^video\//.test(mime)) content = { video: buf, mimetype: mime, caption };
+      else if (/^audio\//.test(mime)) content = { audio: buf, mimetype: mime };
+      else content = { document: buf, mimetype: mime, fileName: String(body.fileName || "ملف").slice(0, 200), caption };
+      const sent = await s.sock.sendMessage(body.jid, content);
       s.ingest(sent, false);
+      // Keep our own copy so the sent file plays/opens at once without downloading it back.
+      if (sent?.key?.id) {
+        fs.mkdirSync(s.mediaDir, { recursive: true });
+        fs.writeFileSync(path.join(s.mediaDir, sent.key.id), buf);
+      }
       return send(res, 200, { ok: true });
     }
     if (url.pathname === "/api/send" && req.method === "POST") {

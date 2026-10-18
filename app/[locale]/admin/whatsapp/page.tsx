@@ -21,6 +21,7 @@ import {
 } from "@/lib/crm/wa";
 import { ConfirmButton, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { WaImport } from "@/components/crm/WaImport";
+import { AttachButton, MediaBody, VoiceRecorder, captionOf } from "@/components/crm/WaMedia";
 
 const dot = (st: string) => (st === "open" ? "bg-[var(--crm-ok)]" : st === "loggedOut" || st === "error" ? "bg-[var(--crm-danger)]" : "bg-[var(--crm-warn)]");
 const key = (c: { source: string; jid: string }) => c.source + "|" + c.jid;
@@ -82,6 +83,9 @@ function WhatsAppInbox() {
   const [extra, setExtra] = useState<Chat | null>(null);
   const handled = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollBox = useRef<HTMLDivElement>(null);
+  const stick = useRef(true); // keep the view at the newest message unless the user scrolled up to read
+  const [recording, setRecording] = useState(false);
   const allowed = loaded && can(data, "whatsapp");
 
   const byPhone = useMemo(() => {
@@ -150,14 +154,25 @@ function WhatsAppInbox() {
     const qs = "?source=" + encodeURIComponent(source) + "&jid=" + encodeURIComponent(jid);
     const load = () => api<{ messages: Msg[] }>("/api/messages" + qs).then((r) => live && setMsgs(r.messages)).catch(() => {});
     const first = setTimeout(load, 0);
-    const t = setInterval(load, 3000);
+    const t = setInterval(load, 2000);
+    stick.current = true;
     api("/api/read", { source, jid }).catch(() => {});
     return () => { live = false; clearTimeout(first); clearInterval(t); setMsgs([]); };
   }, [sel]);
   // Braces matter: newer browsers return a Promise from scrollIntoView, which React rejects as an effect cleanup.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    if (stick.current) endRef.current?.scrollIntoView({ block: "end" });
   }, [msgs.length, sel]);
+  // An employee has exactly one number — their own phone: create it on first visit so its QR shows straight away.
+  // (Kept above the early returns: hooks must run in the same order on every render.)
+  const autoAdded = useRef(false);
+  const ownPhone = (rawSources || []).some((s) => s.kind === "personal" && s.ownerUid === data.uid);
+  useEffect(() => {
+    if (!allowed || data.isMgr || previewAs || !rawSources || ownPhone || autoAdded.current) return;
+    autoAdded.current = true;
+    addSource("personal");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed, data.isMgr, previewAs, rawSources, ownPhone]);
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
   if (!allowed) return <Empty>لا تملك صلاحية الاطلاع على واتساب الشركة.</Empty>;
@@ -194,15 +209,6 @@ function WhatsAppInbox() {
   const pending = (sources || []).filter((s) => s.canManage && s.status !== "open");
   const hasMine = (sources || []).some((s) => s.kind === "personal" && s.ownerUid === data.uid);
 
-  // An employee has exactly one number — their own phone: create it on first visit so its QR shows straight away.
-  const autoAdded = useRef(false);
-  useEffect(() => {
-    if (!allowed || data.isMgr || previewAs || !rawSources || hasMine || autoAdded.current) return;
-    autoAdded.current = true;
-    addSource("personal");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowed, data.isMgr, previewAs, rawSources, hasMine]);
-
   async function addSource(kind: "company" | "personal") {
     try {
       await api("/api/sources", { kind, label: kind === "company" ? "رقم الشركة " + ((sources || []).filter((s) => s.kind === "company").length + 1) : "رقم " + nameOf(data, data.uid), visibility: "private" });
@@ -212,18 +218,40 @@ function WhatsAppInbox() {
       toast("تعذّرت الإضافة");
     }
   }
+  const reload = async (c: Chat) =>
+    setMsgs((await api<{ messages: Msg[] }>("/api/messages?source=" + encodeURIComponent(c.source) + "&jid=" + encodeURIComponent(c.jid))).messages);
   async function sendNow() {
     const t = text.trim();
     if (!t || !cur) return;
+    const c = cur;
+    // Show the message at once (with a clock) like WhatsApp, then replace it with the server's copy.
+    const tmp: Msg = { id: "tmp-" + Date.now(), fromMe: true, text: t, ts: Date.now(), pending: true };
+    setText("");
+    stick.current = true;
+    setMsgs((m) => [...m, tmp]);
     setSending(true);
     try {
-      await api("/api/send", { source: cur.source, jid: cur.jid, text: t });
-      setText("");
-      setMsgs((await api<{ messages: Msg[] }>("/api/messages?source=" + encodeURIComponent(cur.source) + "&jid=" + encodeURIComponent(cur.jid))).messages);
+      await api("/api/send", { source: c.source, jid: c.jid, text: t });
+      await reload(c);
     } catch {
+      setMsgs((m) => m.filter((x) => x.id !== tmp.id));
+      setText(t);
       toast("تعذّر الإرسال — تأكد أن الرقم متصل");
     } finally {
       setSending(false);
+    }
+  }
+  /** Voice note (recorded here) or a picked file. */
+  async function sendFile(dataUrl: string, fileName?: string, voice?: boolean) {
+    if (!cur) return;
+    const c = cur;
+    stick.current = true;
+    try {
+      await api("/api/send-media", { source: c.source, jid: c.jid, dataUrl, fileName, voice: !!voice, caption: voice ? undefined : text.trim() || undefined });
+      if (!voice && text.trim()) setText("");
+      await reload(c);
+    } catch (e) {
+      toast(String((e as Error)?.message) === "413" ? "الملف أكبر من المسموح (16 ميجابايت)" : "تعذّر الإرسال — تأكد أن الرقم متصل");
     }
   }
   /** Ask Claude for a reply draft; it goes into the box for the employee to edit or send. */
@@ -535,7 +563,8 @@ function WhatsAppInbox() {
                     onKeyDown={(e) => { if (e.key === "Enter" && tagInput.trim()) { setTags([...cur.tags, tagInput.trim()]); setTagInput(""); } }} />
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-[6%] py-3"
+              <div ref={scrollBox} className="min-h-0 flex-1 overflow-y-auto px-[6%] py-3"
+                onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}
                 style={{ background: WA.wall, backgroundImage: "radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px)", backgroundSize: "18px 18px" }}>
                 <div className="grid gap-1">
                   {msgs.length > 0 && curSrc?.status === "open" && (
@@ -550,9 +579,10 @@ function WhatsAppInbox() {
                     <div key={r.id} className={"max-w-[75%] rounded-lg px-2.5 pb-1 pt-1.5 text-[14.2px] leading-[1.45] whitespace-pre-wrap shadow-[0_1px_.5px_rgba(11,20,26,.13)] " +
                       (r.fromMe ? "justify-self-end rounded-se-none" : "justify-self-start rounded-ss-none bg-white")}
                       style={r.fromMe ? { background: WA.out } : undefined}>
-                      {r.text}
+                      {r.media && <MediaBody m={r} source={cur.source} />}
+                      {captionOf(r) && <span className={r.media ? "mt-1 block" : undefined}>{captionOf(r)}</span>}
                       <span className="num float-end ms-3 mt-1.5 text-[11px] leading-none" style={{ color: WA.ink2 }}>
-                        {clock(r.ts)}{r.fromMe && <span style={{ color: "#53bdeb" }}> ✓✓</span>}
+                        {clock(r.ts)}{r.fromMe && (r.pending ? <span title="جارٍ الإرسال"> 🕓</span> : <span style={{ color: "#53bdeb" }}> ✓✓</span>)}
                       </span>
                     </div>
                   ))}
@@ -565,19 +595,26 @@ function WhatsAppInbox() {
                 </div>
               </div>
               <div className="flex shrink-0 items-end gap-2 px-3 py-2" style={{ background: WA.panel }}>
-                <textarea rows={1} className="max-h-32 min-h-[42px] flex-1 resize-none !rounded-lg !border-0 !bg-white px-3 py-2.5 text-[15px]" placeholder="اكتب رسالة"
-                  value={text} onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendNow(); } }} />
-                {SUGGEST_ON && (
+                {!recording && <AttachButton disabled={curSrc?.status !== "open"} onSend={(d, name) => sendFile(d, name)} />}
+                {!recording && (
+                  <textarea rows={1} className="max-h-32 min-h-[42px] flex-1 resize-none !rounded-lg !border-0 !bg-white px-3 py-2.5 text-[15px]" placeholder="اكتب رسالة"
+                    value={text} onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendNow(); } }} />
+                )}
+                {SUGGEST_ON && !recording && (
                   <button type="button" className="crm-btn" disabled={suggesting || !msgs.length} onClick={suggest} title="يقرأ المحادثة ويكتب رداً تراجعه قبل الإرسال">
                     {suggesting ? "جارٍ الكتابة…" : "✨ اقترح رد"}
                   </button>
                 )}
-                <button type="button" aria-label="إرسال" title={curSrc?.status !== "open" ? "الرقم غير متصل" : "إرسال (Enter)"}
-                  className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full text-white disabled:opacity-40"
-                  style={{ background: WA.green }} disabled={sending || !text.trim() || curSrc?.status !== "open"} onClick={sendNow}>
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" className="-scale-x-100" aria-hidden><path d="M1.1 21.8 23 12 1.1 2.2 1 9.8l15.7 2.2L1 14.2z" /></svg>
-                </button>
+                {text.trim() && !recording ? (
+                  <button type="button" aria-label="إرسال" title={curSrc?.status !== "open" ? "الرقم غير متصل" : "إرسال (Enter)"}
+                    className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full text-white disabled:opacity-40"
+                    style={{ background: WA.green }} disabled={sending || curSrc?.status !== "open"} onClick={sendNow}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" className="-scale-x-100" aria-hidden><path d="M1.1 21.8 23 12 1.1 2.2 1 9.8l15.7 2.2L1 14.2z" /></svg>
+                  </button>
+                ) : (
+                  <VoiceRecorder disabled={curSrc?.status !== "open"} onRecording={setRecording} onSend={(d) => sendFile(d, undefined, true)} />
+                )}
               </div>
             </>
           ) : (
