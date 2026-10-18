@@ -21,6 +21,7 @@ import { ClientDrawer } from "./ClientDrawer";
 import { ModalHost } from "./modals";
 import { Assistant } from "./Assistant";
 import { WaAlert } from "./WaAlert";
+import { WebLeadDispatcher } from "./WebLeadDispatcher";
 
 interface NavItem {
   href: string;
@@ -168,6 +169,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
             </div>
           )}
           {pathname !== "/admin/whatsapp" && <WaAlert />}
+          <WebLeadDispatcher />
           {children}
         </div>
       </div>
