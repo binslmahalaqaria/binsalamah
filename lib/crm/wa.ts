@@ -7,7 +7,8 @@ import { assertWritable } from "./preview";
 import type { Client, Demand } from "./types";
 import { intl, splitList } from "./util";
 
-export const WA_SERVER = process.env.NEXT_PUBLIC_WA_SERVER_URL || "http://localhost:4100";
+// The WhatsApp server runs on Railway (always on, see wa-server/README.md); override with NEXT_PUBLIC_WA_SERVER_URL (e.g. http://localhost:4100).
+export const WA_SERVER = process.env.NEXT_PUBLIC_WA_SERVER_URL || "https://binsalamah-production.up.railway.app";
 
 /** A linked number ("source"): company numbers or an employee's own. */
 export interface WaSource {
