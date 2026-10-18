@@ -107,7 +107,14 @@ function makeSession(src) {
   s.flush = () => {
     if (!s.dirty) return;
     s.dirty = false;
-    fs.writeFileSync(storeFile, JSON.stringify(s.store));
+    // A removed number's folder is gone; never let a late save crash the whole server.
+    if (s.stopped && !fs.existsSync(dir)) return;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(storeFile, JSON.stringify(s.store));
+    } catch (e) {
+      console.warn("[" + s.id + "] save failed:", e?.message || e);
+    }
   };
   s.timer = setInterval(s.flush, 10_000);
   // Unlinking (from the CRM or from the phone) also clears this number's saved chats, so nothing stays visible.
