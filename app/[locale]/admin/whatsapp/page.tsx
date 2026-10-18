@@ -49,8 +49,8 @@ function dayLabel(ts: number) {
 }
 const clock = (ts: number) => new Date(ts).toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" });
 
-/** Suggested replies (app/api/wa-suggest) are built but hidden until the client adds ANTHROPIC_API_KEY — client postponed it 2026-10-12. */
-const SUGGEST_ON = false;
+/** Suggested replies (app/api/wa-suggest): on since ANTHROPIC_API_KEY was set on Vercel (2026-10-18). */
+const SUGGEST_ON = true;
 
 export default function WhatsAppPage() {
   return <Suspense fallback={<Empty>جارٍ التحميل…</Empty>}><WhatsAppInbox /></Suspense>;
