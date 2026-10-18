@@ -365,7 +365,8 @@ async function staffOf(req) {
   staffCache.set(uid, { at: Date.now(), staff });
   return staff.active ? staff : null;
 }
-const canSee = (src, who) => who.mgr || src.ownerUid === who.uid || src.defaultAssignee === who.uid || src.visibility === "team";
+// Employees see only their own linked phone; managers and the owner see every number.
+const canSee = (src, who) => who.mgr || src.ownerUid === who.uid;
 const canManage = (src, who) => who.mgr || (src.ownerUid && src.ownerUid === who.uid);
 
 /* ---------------- HTTP API ---------------- */

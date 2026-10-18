@@ -117,7 +117,7 @@ function WhatsAppInbox() {
     if (!rawSources || !previewAs) return rawSources;
     const who = { uid: data.uid, mgr: data.isMgr };
     return rawSources
-      .filter((s) => who.mgr || s.ownerUid === who.uid || s.defaultAssignee === who.uid || s.visibility === "team")
+      .filter((s) => who.mgr || s.ownerUid === who.uid)
       .map((s) => {
         const manage = who.mgr || (!!s.ownerUid && s.ownerUid === who.uid);
         return { ...s, canManage: manage, qr: manage ? s.qr : null };
@@ -193,6 +193,15 @@ function WhatsAppInbox() {
   const curLabels = cur ? (cur.labels || []).map((id) => labelOf(cur.source, id)).filter((l): l is WaLabel => !!l) : [];
   const pending = (sources || []).filter((s) => s.canManage && s.status !== "open");
   const hasMine = (sources || []).some((s) => s.kind === "personal" && s.ownerUid === data.uid);
+
+  // An employee has exactly one number — their own phone: create it on first visit so its QR shows straight away.
+  const autoAdded = useRef(false);
+  useEffect(() => {
+    if (!allowed || data.isMgr || previewAs || !rawSources || hasMine || autoAdded.current) return;
+    autoAdded.current = true;
+    addSource("personal");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed, data.isMgr, previewAs, rawSources, hasMine]);
 
   async function addSource(kind: "company" | "personal") {
     try {
@@ -290,7 +299,6 @@ function WhatsAppInbox() {
       action={sources && (
         <div className="flex flex-wrap gap-2">
           {data.isMgr && <button type="button" className="crm-btn" onClick={() => addSource("company")}>+ ربط رقم للشركة</button>}
-          {!data.isMgr && !hasMine && <button type="button" className="crm-btn primary" onClick={() => addSource("personal")}>+ ربط جوالي</button>}
           {data.isMgr && <button type="button" className={"crm-btn" + (showImport ? " primary" : "")} onClick={() => setShowImport((v) => !v)}>استيراد العملاء</button>}
           <button type="button" className={"crm-btn" + (showSettings ? " primary" : "")} onClick={() => setShowSettings((v) => !v)}>إعدادات الأرقام</button>
         </div>
@@ -470,7 +478,7 @@ function WhatsAppInbox() {
                   </span>
                 </button>
               );
-            }) : <Empty>{chats.length ? "لا توجد محادثات بهذا البحث." : sources.some((s) => s.status === "open") ? "جارٍ مزامنة المحادثات… قد يستغرق ذلك بضع دقائق بعد الربط." : data.isMgr || hasMine ? "اربط رقماً لتظهر المحادثات." : "اضغط «+ ربط جوالي» في الأعلى ليظهر لك رمز الربط، ثم امسحه من واتساب جوالك."}</Empty>}
+            }) : <Empty>{chats.length ? "لا توجد محادثات بهذا البحث." : sources.some((s) => s.status === "open") ? "جارٍ مزامنة المحادثات… قد يستغرق ذلك بضع دقائق بعد الربط." : data.isMgr || hasMine ? "اربط رقماً لتظهر المحادثات." : "جارٍ تجهيز رمز الربط لجوالك… امسحه من واتساب جوالك."}</Empty>}
           </div>
         </div>
 
