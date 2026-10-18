@@ -13,9 +13,30 @@ export const DESC_EN = "Bin Slmah Real Estate — real estate marketing and brok
 export const KEYWORDS = ["بن سلمه العقارية", "بن سلمة العقارية", "عقارات الرياض", "فلل للبيع الرياض", "شقق للبيع الرياض", "أدوار للبيع الرياض", "تاون هاوس الرياض", "شمال الرياض", "مكتب عقار النرجس", "Bin Slmah Real Estate", "Riyadh real estate"];
 export const ADDRESS = { street: "طريق عثمان بن عفان", district: "حي النرجس", city: "الرياض", country: "SA" };
 
+/**
+ * Google's search result shows the "site name" from WebSite structured data
+ * (name + alternateName), not the domain, and the favicon (app/icon.png) beside it.
+ */
 export function organizationJsonLd(phone?: string) {
   return {
     "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": SITE_URL + "/#website",
+        name: NAME_AR,
+        alternateName: [NAME_EN, "بن سلمه"],
+        url: SITE_URL + "/",
+        inLanguage: ["ar", "en"],
+        publisher: { "@id": SITE_URL + "/#organization" },
+      },
+      organization(phone),
+    ],
+  };
+}
+
+function organization(phone?: string) {
+  return {
     "@type": "RealEstateAgent",
     "@id": SITE_URL + "/#organization",
     name: NAME_AR,
