@@ -647,10 +647,21 @@ http.createServer(async (req, res) => {
     if (url.pathname === "/api/send-media" && req.method === "POST") {
       // A file from the CRM as a data URL: image/video (with caption), voice note (recorded in the browser), or any document.
       if (s.state.status !== "open") return send(res, 409, { error: "not_connected" });
-      const m = /^data:([\w.+-]+\/[\w.+-]+)(?:;[^,;]+)*;base64,(.+)$/.exec(String(body.dataUrl || ""));
-      if (!body.jid || !m) return send(res, 400, { error: "missing" });
-      let buf = Buffer.from(m[2], "base64");
-      const mime = m[1];
+      // Either a data URL from the browser, or an https link (e.g. a property photo) that the server fetches itself.
+      let buf, mime;
+      if (/^https:\/\//.test(String(body.url || ""))) {
+        const r = await fetch(body.url, { signal: AbortSignal.timeout(30_000) }).catch(() => null);
+        if (!r || !r.ok) return send(res, 400, { error: "fetch_failed" });
+        buf = Buffer.from(await r.arrayBuffer());
+        mime = (r.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
+        if (mime === "application/octet-stream" && /\.(jpe?g|png|webp)(\?|$)/i.test(body.url)) mime = "image/" + RegExp.$1.toLowerCase().replace("jpg", "jpeg");
+      } else {
+        const m = /^data:([\w.+-]+\/[\w.+-]+)(?:;[^,;]+)*;base64,(.+)$/.exec(String(body.dataUrl || ""));
+        if (!m) return send(res, 400, { error: "missing" });
+        buf = Buffer.from(m[2], "base64");
+        mime = m[1];
+      }
+      if (!body.jid) return send(res, 400, { error: "missing" });
       if (buf.length > 16 * 1024 * 1024) return send(res, 413, { error: "too_large" });
       const caption = String(body.caption || "").slice(0, 1000) || undefined;
       let content;

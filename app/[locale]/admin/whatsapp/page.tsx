@@ -22,6 +22,7 @@ import {
 import { ConfirmButton, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { WaImport } from "@/components/crm/WaImport";
 import { AttachButton, MediaBody, VoiceRecorder, captionOf } from "@/components/crm/WaMedia";
+import { WaSendProperty } from "@/components/crm/WaSendProperty";
 
 const dot = (st: string) => (st === "open" ? "bg-[var(--crm-ok)]" : st === "loggedOut" || st === "error" ? "bg-[var(--crm-danger)]" : "bg-[var(--crm-warn)]");
 const key = (c: { source: string; jid: string }) => c.source + "|" + c.jid;
@@ -86,6 +87,7 @@ function WhatsAppInbox() {
   const scrollBox = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // keep the view at the newest message unless the user scrolled up to read
   const [recording, setRecording] = useState(false);
+  const [showProp, setShowProp] = useState(false);
   const allowed = loaded && can(data, "whatsapp");
 
   const byPhone = useMemo(() => {
@@ -240,6 +242,14 @@ function WhatsAppInbox() {
     } finally {
       setSending(false);
     }
+  }
+  /** One item of a property sent from the inventory: a photo by link, or the details text. */
+  async function sendItem(item: { url: string } | { text: string }) {
+    if (!cur) return;
+    stick.current = true;
+    if ("url" in item) await api("/api/send-media", { source: cur.source, jid: cur.jid, url: item.url });
+    else await api("/api/send", { source: cur.source, jid: cur.jid, text: item.text });
+    await reload(cur);
   }
   /** Voice note (recorded here) or a picked file. */
   async function sendFile(dataUrl: string, fileName?: string, voice?: boolean) {
@@ -596,6 +606,11 @@ function WhatsAppInbox() {
               </div>
               <div className="flex shrink-0 items-end gap-2 px-3 py-2" style={{ background: WA.panel }}>
                 {!recording && <AttachButton disabled={curSrc?.status !== "open"} onSend={(d, name) => sendFile(d, name)} />}
+                {!recording && (
+                  <button type="button" disabled={curSrc?.status !== "open"} onClick={() => setShowProp(true)} title="إرسال عقار من المخزون" aria-label="إرسال عقار من المخزون"
+                    className="grid h-[42px] w-[38px] shrink-0 place-items-center text-[20px] disabled:opacity-40">🏠</button>
+                )}
+                {showProp && <WaSendProperty client={curClient || null} onClose={() => setShowProp(false)} send={sendItem} />}
                 {!recording && (
                   <textarea rows={1} className="max-h-32 min-h-[42px] flex-1 resize-none !rounded-lg !border-0 !bg-white px-3 py-2.5 text-[15px]" placeholder="اكتب رسالة"
                     value={text} onChange={(e) => setText(e.target.value)}

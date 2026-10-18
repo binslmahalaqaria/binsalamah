@@ -69,6 +69,8 @@ export async function generateMetadata({
     },
     twitter: { card: "summary_large_image", title: name, description, images: ["/og.jpg"] },
     robots: { index: true, follow: true },
+    // Installed on an iPhone's home screen, the CRM opens full-screen like an app (see app/manifest.ts).
+    appleWebApp: { capable: true, title: "بن سلمه", statusBarStyle: "default" },
     // Google Search Console ownership token goes here once the owner verifies the domain.
     verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
   };
