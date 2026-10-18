@@ -88,6 +88,7 @@ function WhatsAppInbox() {
   const stick = useRef(true); // keep the view at the newest message unless the user scrolled up to read
   const [recording, setRecording] = useState(false);
   const [showProp, setShowProp] = useState(false);
+  const [tools, setTools] = useState(false); // phone: CRM actions, labels and tags fold behind «⋮»
   const allowed = loaded && can(data, "whatsapp");
 
   const byPhone = useMemo(() => {
@@ -335,7 +336,7 @@ function WhatsAppInbox() {
   const header = (
     <PageHeader title="واتساب" sub="صندوق موحّد لمحادثات أرقام الشركة"
       action={sources && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-md:w-full max-md:[&>button]:!px-3 max-md:[&>button]:!py-1.5 max-md:[&>button]:!text-[13px]">
           {data.isMgr && <button type="button" className="crm-btn" onClick={() => addSource("company")}>+ ربط رقم للشركة</button>}
           {data.isMgr && <button type="button" className={"crm-btn" + (showImport ? " primary" : "")} onClick={() => setShowImport((v) => !v)}>استيراد العملاء</button>}
           <button type="button" className={"crm-btn" + (showSettings ? " primary" : "")} onClick={() => setShowSettings((v) => !v)}>إعدادات الأرقام</button>
@@ -397,7 +398,7 @@ function WhatsAppInbox() {
         const pct = b && b.total ? Math.round((b.done / b.total) * 100) : 0;
         const finished = b && !b.running && b.total > 0 && b.done >= b.total;
         return (
-          <div key={"bf" + s.id} className="mb-3 flex flex-wrap items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm" style={{ background: "#e7fce3", color: "#0b3d2e" }}>
+          <div key={"bf" + s.id} className="mb-3 flex flex-wrap items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm max-md:gap-2 max-md:text-[12.5px]" style={{ background: "#e7fce3", color: "#0b3d2e" }}>
             {b?.running ? (
               <>
                 <span className="min-w-0 flex-1">
@@ -429,10 +430,10 @@ function WhatsAppInbox() {
       )}
 
       {/* WhatsApp Web–style inbox */}
-      <div className="grid h-[calc(100vh-210px)] min-h-[520px] overflow-hidden rounded-xl border bg-white shadow-sm md:grid-cols-[400px_minmax(0,1fr)]"
+      <div className="grid h-[calc(100dvh-210px)] min-h-[440px] overflow-hidden rounded-xl border bg-white shadow-sm md:h-[calc(100dvh-170px)] md:min-h-[520px] md:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]"
         style={{ borderColor: WA.line, color: WA.ink }}>
         {/* chat list */}
-        <div className={"flex min-h-0 flex-col md:border-e " + (sel ? "max-md:hidden" : "")} style={{ borderColor: WA.line }}>
+        <div className={"flex min-h-0 min-w-0 flex-col md:border-e " + (sel ? "max-md:hidden" : "")} style={{ borderColor: WA.line }}>
           <div className="flex h-[59px] shrink-0 items-center gap-2 px-4" style={{ background: WA.panel }}>
             <b className="flex-1 text-[19px]">الدردشات</b>
             {sources.length > 1 ? (
@@ -521,20 +522,24 @@ function WhatsAppInbox() {
         </div>
 
         {/* conversation */}
-        <div className={"flex min-h-0 flex-col " + (sel ? "" : "max-md:hidden")}>
+        <div className={"flex min-h-0 min-w-0 flex-col " + (sel ? "max-md:fixed max-md:inset-0 max-md:z-[80] max-md:h-[100dvh] max-md:bg-white" : "max-md:hidden")}>
           {cur ? (
             <>
-              <div className="grid shrink-0 gap-1.5 px-4 py-2" style={{ background: WA.panel, borderBottom: "1px solid " + WA.line }}>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" className="crm-btn ghost sm md:hidden" onClick={() => setSel(null)}>رجوع</button>
+              <div className="grid shrink-0 gap-1.5 px-2 py-2 md:px-4" style={{ background: WA.panel, borderBottom: "1px solid " + WA.line }}>
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                  <button type="button" aria-label="رجوع" className="grid h-9 w-9 place-items-center rounded-full text-[22px] md:hidden" style={{ color: WA.ink2 }}
+                    onClick={() => { setSel(null); setTools(false); }}>→</button>
                   <Avatar name={label(cur)} size={40} />
                   <div className="min-w-0 flex-1">
                     <b className="block truncate text-[16px] font-normal"><bdi>{label(cur)}</bdi></b>
-                    <span className="text-[13px]" style={{ color: WA.ink2 }}>
+                    <span className="block truncate text-[13px]" style={{ color: WA.ink2 }}>
                       {cur.phone && <span className="num" dir="ltr">{localPhone(cur.phone)}</span>}
                       {curSrc && <> · عبر {curSrc.label}</>}
                     </span>
                   </div>
+                  <button type="button" aria-label="المزيد" className="grid h-9 w-9 place-items-center rounded-full text-[20px] md:hidden" style={{ color: WA.ink2, background: tools ? "#e9edef" : undefined }}
+                    onClick={() => setTools((v) => !v)}>⋮</button>
+                  <div className={"flex flex-wrap gap-2 " + (tools ? "max-md:w-full" : "max-md:hidden")}>
                   {curClient ? (
                     <>
                       <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: curClient.id })}>تسجيل الإجراء التالي</button>
@@ -549,8 +554,9 @@ function WhatsAppInbox() {
                       إضافة كعميل وطلب
                     </button>
                   )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className={"flex flex-wrap items-center gap-1.5 " + (tools ? "" : "max-md:hidden")}>
                   {curLabels.map((l) => (
                     <span key={l.id} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[12px]">
                       <i className="inline-block h-2 w-2 rounded-full" style={{ background: labelColor(l) }} />{l.name}
@@ -573,7 +579,7 @@ function WhatsAppInbox() {
                     onKeyDown={(e) => { if (e.key === "Enter" && tagInput.trim()) { setTags([...cur.tags, tagInput.trim()]); setTagInput(""); } }} />
                 </div>
               </div>
-              <div ref={scrollBox} className="min-h-0 flex-1 overflow-y-auto px-[6%] py-3"
+              <div ref={scrollBox} className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3 md:px-[6%]"
                 onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}
                 style={{ background: WA.wall, backgroundImage: "radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px)", backgroundSize: "18px 18px" }}>
                 <div className="grid gap-1">
@@ -586,7 +592,7 @@ function WhatsAppInbox() {
                   {rows.map((r) => "day" in r ? (
                     <span key={"d" + r.day} className="my-2 justify-self-center rounded-lg bg-white px-3 py-1 text-[12.5px] shadow-sm" style={{ color: WA.ink2 }}>{r.day}</span>
                   ) : (
-                    <div key={r.id} className={"max-w-[75%] rounded-lg px-2.5 pb-1 pt-1.5 text-[14.2px] leading-[1.45] whitespace-pre-wrap shadow-[0_1px_.5px_rgba(11,20,26,.13)] " +
+                    <div key={r.id} className={"min-w-0 max-w-[86%] rounded-lg px-2.5 pb-1 pt-1.5 text-[14.2px] leading-[1.45] whitespace-pre-wrap [overflow-wrap:anywhere] shadow-[0_1px_.5px_rgba(11,20,26,.13)] md:max-w-[70%] " +
                       (r.fromMe ? "justify-self-end rounded-se-none" : "justify-self-start rounded-ss-none bg-white")}
                       style={r.fromMe ? { background: WA.out } : undefined}>
                       {r.media && <MediaBody m={r} source={cur.source} />}
@@ -604,7 +610,7 @@ function WhatsAppInbox() {
                   <div ref={endRef} />
                 </div>
               </div>
-              <div className="flex shrink-0 items-end gap-2 px-3 py-2" style={{ background: WA.panel }}>
+              <div className="flex shrink-0 items-end gap-1 px-1.5 py-2 pb-[max(.5rem,env(safe-area-inset-bottom))] md:gap-2 md:px-3" style={{ background: WA.panel }}>
                 {!recording && <AttachButton disabled={curSrc?.status !== "open"} onSend={(d, name) => sendFile(d, name)} />}
                 {!recording && (
                   <button type="button" disabled={curSrc?.status !== "open"} onClick={() => setShowProp(true)} title="إرسال عقار من المخزون" aria-label="إرسال عقار من المخزون"
@@ -617,8 +623,8 @@ function WhatsAppInbox() {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendNow(); } }} />
                 )}
                 {SUGGEST_ON && !recording && (
-                  <button type="button" className="crm-btn" disabled={suggesting || !msgs.length} onClick={suggest} title="يقرأ المحادثة ويكتب رداً تراجعه قبل الإرسال">
-                    {suggesting ? "جارٍ الكتابة…" : "✨ اقترح رد"}
+                  <button type="button" className="crm-btn h-[42px] shrink-0 max-md:!px-2.5" disabled={suggesting || !msgs.length} onClick={suggest} title="يقرأ المحادثة ويكتب رداً تراجعه قبل الإرسال">
+                    {suggesting ? "…" : <>✨<span className="max-md:hidden"> اقترح رد</span></>}
                   </button>
                 )}
                 {text.trim() && !recording ? (
