@@ -20,8 +20,15 @@ const DEMO: Offer[] = [
   { ...base, id: "d9", slug: "demo-9", title_ar: "مكاتب تجارية في العقيق", title_en: "Aqiq Offices", type: "other", district_ar: "العقيق", district_en: "Al Aqiq", price_from: 950_000, price_to: 1_600_000, area_from: 120, area_to: 210, rooms: null, bathrooms: null, cover_image: img("photo-1486406146926-c627a92ad1ab"), description_ar: "مكاتب تجارية بمواقف خاصة قريبة من طريق الملك فهد.", sold_percentage: null, featured: false },
 ];
 
+/**
+ * One sample shown to everyone (client 2026-10-20, to check the site on a phone), clearly
+ * labelled. Set to null to remove it.
+ */
+const PUBLIC_DEMO: string | null = "demo-1";
+const labelled = (o: Offer): Offer => ({ ...o, title_ar: o.title_ar + " (عرض تجريبي)", title_en: o.title_en + " (sample)" });
+
 export const withDemo = (offers: Offer[], demo: unknown) =>
-  demo === "1" ? [...offers, ...DEMO] : offers;
+  demo === "1" ? [...offers, ...DEMO] : [...offers, ...DEMO.filter((o) => o.slug === PUBLIC_DEMO).map(labelled)];
 
 /** A sample offer by slug (its page is reachable only from a demo card). */
 export const demoOffer = (slug: string) => {
