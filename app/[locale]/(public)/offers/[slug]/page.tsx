@@ -64,7 +64,9 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
   const images = [...offer.images].sort((a, b) => a.order - b.order).map((i) => i.url).filter(Boolean);
   if (!images.length && offer.cover_image) images.push(offer.cover_image);
   const sold = typeof offer.sold_percentage === "number" ? Math.min(100, offer.sold_percentage) : null;
-  const waMessage = enquiryMessage({ title, district, slug: offer.slug }, undefined, ar);
+  const enquiry = { title, district, city, type: t(`types.${offer.type}`), slug: offer.slug, priceFrom: offer.price_from, priceTo: offer.price_to,
+    areaFrom: offer.area_from, areaTo: offer.area_to, rooms: offer.rooms };
+  const waMessage = enquiryMessage(enquiry, undefined, ar);
   const range = (a: number, b: number | null) => (b && b !== a ? <><bdi>{num(a)}</bdi> <span className="text-[0.75em] font-normal text-navy/50">{s("to")}</span> <bdi>{num(b)}</bdi></> : <bdi>{num(a)}</bdi>);
 
   // Warranties are free text (one per line); older offers may still carry the structured list.
@@ -109,7 +111,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             ))}
           </div>
 
-          {!!offer.units?.length && <UnitsTable units={offer.units} offerTitle={title} offerSlug={offer.slug} whatsappNumber={whatsappNumber} />}
+          {!!offer.units?.length && <UnitsTable units={offer.units} enquiry={enquiry} whatsappNumber={whatsappNumber} />}
 
           {description && (
             <div className="grid gap-3">

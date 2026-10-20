@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useLocale } from "next-intl";
 import { WhatsAppLink } from "@/components/WhatsAppButton";
 import type { OfferUnit } from "@/lib/types";
-import { enquiryMessage } from "@/lib/seo";
+import { enquiryMessage, type EnquiryOffer } from "@/lib/seo";
 
 const num = (n: number) => n.toLocaleString("en-US");
 const STATUS = {
@@ -18,7 +18,7 @@ const STATUS = {
   sold: { ar: "مباع", en: "Sold", cls: "bg-navy/5 text-navy/45 ring-navy/10" },
 };
 
-export function UnitsTable({ units, offerTitle, offerSlug, whatsappNumber }: { units: OfferUnit[]; offerTitle: string; offerSlug: string; whatsappNumber: string }) {
+export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUnit[]; enquiry: EnquiryOffer; whatsappNumber: string }) {
   const ar = useLocale() === "ar";
   const [onlyFree, setOnlyFree] = useState(false);
   const free = units.filter((u) => u.status === "available").length;
@@ -26,7 +26,7 @@ export function UnitsTable({ units, offerTitle, offerSlug, whatsappNumber }: { u
   const L = ar
     ? { title: "الوحدات", unit: "الوحدة", area: "المساحة", rooms: "الغرف", living: "الصالات", baths: "دورات المياه", price: "السعر", status: "الحالة", ask: "استفسار", all: "الكل", free: "المتاحة فقط", of: "متاحة من", sar: "ريال", m: "م²" }
     : { title: "Units", unit: "Unit", area: "Area", rooms: "Beds", living: "Living", baths: "Baths", price: "Price", status: "Status", ask: "Enquire", all: "All", free: "Available only", of: "available of", sar: "SAR", m: "m²" };
-  const msg = (u: OfferUnit) => enquiryMessage({ title: offerTitle, slug: offerSlug }, u, ar);
+  const msg = (u: OfferUnit) => enquiryMessage(enquiry, u, ar);
   const chip = (on: boolean) => "rounded-full px-4 py-1.5 text-sm transition-colors " + (on ? "bg-navy text-cream" : "bg-navy/5 text-navy hover:bg-navy/10");
   const badge = (u: OfferUnit) => <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 " + STATUS[u.status].cls}>{ar ? STATUS[u.status].ar : STATUS[u.status].en}</span>;
   const ask = (u: OfferUnit) => u.status === "sold" ? null : (

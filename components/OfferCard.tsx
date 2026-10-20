@@ -29,7 +29,8 @@ export function OfferCard({ offer, whatsappNumber }: { offer: Offer; whatsappNum
   const sold = typeof offer.sold_percentage === "number" ? Math.min(100, offer.sold_percentage) : null;
   const soldOut = sold === 100;
   // Short, tidy message with the property's short link so the team knows exactly which one.
-  const waMessage = enquiryMessage({ title, district, slug: offer.slug }, undefined, ar);
+  const waMessage = enquiryMessage({ title, district, city, type: typeLabel, slug: offer.slug, priceFrom: offer.price_from, priceTo: offer.price_to,
+    areaFrom: offer.area_from, areaTo: offer.area_to, rooms: offer.rooms }, undefined, ar);
   const href = `/offers/${offer.slug}`;
 
   return (
