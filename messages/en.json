@@ -246,7 +246,7 @@
   },
   "Site": {
     "heroKicker": "Bin Slmah Real Estate",
-    "heroTitle": "The shortest way to your ideal property",
+    "heroTitle": "The shortest way to your property",
     "heroSubtitle": "We search, analyse with you, and pick the best properties in Riyadh — from the first call to the keys.",
     "browse": "Browse properties",
     "request": "Tell us what you need",
@@ -339,7 +339,7 @@
     },
     "reqOtherType": "Specify the property type (e.g. building, office)",
     "heroTitleA": "The shortest way",
-    "heroTitleB": "to your ideal property",
+    "heroTitleB": "to your property",
     "featuredKicker": "Selection",
     "mapKicker": "Locations",
     "whyKicker": "Our values",
