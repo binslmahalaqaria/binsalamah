@@ -1,8 +1,9 @@
 import type { Offer } from "./types";
 
 /**
- * Sample offers for reviewing the public design locally (`/?demo=1`,
- * `/offers?demo=1`). Never used in production builds — see `withDemo`.
+ * Sample offers for reviewing the public design (`/?demo=1`, `/offers?demo=1`), one per
+ * property type. Only shown when the URL carries `demo=1` (also on the live site, at the
+ * client's request 2026-10-20); visitors without it never see them.
  */
 const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=70`;
 const base = { city_ar: "الرياض", city_en: "Riyadh", images: [], description_en: "", status: "published" as const, created_at: 0, updated_at: 0, created_by: "", updated_by: "" };
@@ -14,14 +15,16 @@ const DEMO: Offer[] = [
   { ...base, id: "d4", slug: "demo-4", title_ar: "شقق الياسمين بارك", title_en: "Yasmin Park Apartments", type: "apartment", district_ar: "الياسمين", district_en: "Al Yasmin", price_from: 710_000, price_to: 1_327_000, area_from: 75, area_to: 176, rooms: 3, bathrooms: 3, cover_image: img("photo-1600607687939-ce8a6c25118c"), description_ar: "شقق ذكية بمساحات متنوعة ومواقف خاصة.", sold_percentage: 10, featured: false },
   { ...base, id: "d5", slug: "demo-5", title_ar: "فلل العارض الحديثة", title_en: "Arid Modern Villas", type: "villa", district_ar: "العارض", district_en: "Al Arid", price_from: 1_960_000, price_to: 2_310_000, area_from: 299, area_to: 312, rooms: 6, bathrooms: 5, cover_image: img("photo-1605276374104-dee2a0ed3cd6"), description_ar: "فلل دوبلكس بتشطيبات عالية.", sold_percentage: 100, featured: false },
   { ...base, id: "d6", units: [{ name: "دور أرضي", area: 303, price: 2300000, rooms: 5, living_rooms: 3, bathrooms: 4, status: "available" as const }, { name: "دور أول", area: 265, price: 1790000, rooms: 5, living_rooms: 3, bathrooms: 4, status: "available" as const }, { name: "دور أول (غربي)", area: 270, price: 1850000, rooms: 5, living_rooms: 3, bathrooms: 4, status: "sold" as const }], slug: "demo-6", title_ar: "أدوار الملقا 7", title_en: "Malqa Floors 7", type: "floor", district_ar: "الملقا", district_en: "Al Malqa", price_from: 1_790_000, price_to: 2_300_000, area_from: 265, area_to: 303, rooms: 5, bathrooms: 4, cover_image: img("photo-1600566753190-17f0baa2a6c3"), description_ar: "أدوار واسعة قريبة من المدارس والحدائق.", sold_percentage: 33, featured: false },
+  { ...base, id: "d7", slug: "demo-7", title_ar: "بنتهاوس الصحافة", title_en: "Sahafah Penthouse", type: "penthouse", district_ar: "الصحافة", district_en: "As Sahafah", price_from: 2_450_000, price_to: null, area_from: 280, area_to: null, rooms: 4, bathrooms: 5, cover_image: img("photo-1600210492486-724fe5c67fb0"), description_ar: "بنتهاوس بإطلالة مفتوحة وسطح خاص ومصعد مباشر.", sold_percentage: null, featured: false },
+  { ...base, id: "d8", slug: "demo-8", title_ar: "أرض سكنية في القيروان", title_en: "Qirawan Residential Land", type: "land", district_ar: "القيروان", district_en: "Al Qirawan", price_from: 1_850_000, price_to: null, area_from: 625, area_to: null, rooms: null, bathrooms: null, cover_image: img("photo-1500382017468-9049fed747ef"), description_ar: "أرض سكنية على شارعين، جاهزة للبناء.", sold_percentage: null, featured: false },
+  { ...base, id: "d9", slug: "demo-9", title_ar: "مكاتب تجارية في العقيق", title_en: "Aqiq Offices", type: "other", district_ar: "العقيق", district_en: "Al Aqiq", price_from: 950_000, price_to: 1_600_000, area_from: 120, area_to: 210, rooms: null, bathrooms: null, cover_image: img("photo-1486406146926-c627a92ad1ab"), description_ar: "مكاتب تجارية بمواقف خاصة قريبة من طريق الملك فهد.", sold_percentage: null, featured: false },
 ];
 
 export const withDemo = (offers: Offer[], demo: unknown) =>
-  process.env.NODE_ENV !== "production" && demo === "1" ? [...offers, ...DEMO] : offers;
+  demo === "1" ? [...offers, ...DEMO] : offers;
 
-/** A sample offer by slug for the local design review (never in production). */
+/** A sample offer by slug (its page is reachable only from a demo card). */
 export const demoOffer = (slug: string) => {
-  if (process.env.NODE_ENV === "production") return null;
   const o = DEMO.find((x) => x.slug === slug);
   // Give the sample a gallery: its own photo first, then the other samples' photos.
   return o ? { ...o, images: [o, ...DEMO.filter((x) => x !== o)].map((x, order) => ({ url: x.cover_image || "", order })) } : null;

@@ -38,6 +38,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description,
     alternates: { canonical: `/${locale}/offers/${o.slug}`, languages: { ar: `/ar/offers/${o.slug}`, en: `/en/offers/${o.slug}` } },
     openGraph: { title, description, images: o.cover_image ? [{ url: o.cover_image }] : ["/og.jpg"] },
+    // Sample offers (demo=1) must never show up in search results.
+    ...(o.id.startsWith("d") && o.slug.startsWith("demo-") ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
