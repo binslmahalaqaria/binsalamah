@@ -6,6 +6,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPublicContactInfo } from "@/lib/settings";
 import { organizationJsonLd } from "@/lib/seo";
 import { IconMail, IconPhone, IconPin } from "@/components/site/icons";
+import { Splash } from "@/components/site/Splash";
 
 /** Office: An Narjis, Othman Bin Affan Road, Riyadh. */
 const MAP_URL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("طريق عثمان بن عفان، حي النرجس، الرياض");
@@ -27,6 +28,7 @@ export default async function PublicLayout({
     <div className="site flex min-h-screen flex-col bg-cream text-navy">
       {/* Tells Google who we are (name, other spellings, logo, address) — for searches like «بن سلمه العقارية». */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(whatsappNumber)) }} />
+      <Splash />
       <SiteHeader whatsappNumber={whatsappNumber} />
 
       <main className="flex-1">{children}</main>
