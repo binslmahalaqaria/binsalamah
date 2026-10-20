@@ -20,11 +20,17 @@ import {
   ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
+import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
 
 type F = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v));
 /** The floor question only applies to apartments (شقة) and floors (دور). */
 const needsFloor = (types: string[]) => types.some((t) => t === "شقة" || t === "دور");
+/** Property types offered on a request (client 2026-10-20: keep it short). Stored values stay singular so matching against properties works. */
+const REQ_TYPES: [string, string][] = [["أرض", "أرض"], ["فيلا", "فلل"], ["بنتهاوس", "بنتهاوس"], ["تاون هاوس", "تاون هاوس"], ["شقة", "شقق"], ["أخرى", "أخرى"]];
+/** Zones of a request: the saved ones, or the zones its saved districts fall in (older requests). */
+const zonesFor = (zones: string[] | undefined, districts: string[]) =>
+  zones?.length ? zones : Array.from(new Set(districts.map((d) => zoneOf(d)?.ar).filter((z): z is string => !!z)));
 
 function useForm<T extends F>(init: T) {
   const [f, setF] = useState<T>(init);
@@ -187,6 +193,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     budget: s(base.budget ?? presetClient?.budget),
     propTypes: (base.propTypes || presetClient?.propTypes || []) as string[],
     districts: splitList(base.districts ?? presetClient?.districts),
+    zones: zonesFor(base.zones ?? presetClient?.zones, splitList(base.districts ?? presetClient?.districts)),
     payment: s(base.payment ?? presetClient?.payment), priority: base.priority || "عادية",
     requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
     source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes),
@@ -195,17 +202,23 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   });
   const [busy, setBusy] = useState(false);
   const dists = useMemo(() => allDistricts(data, DISTRICTS), [data]);
+  // Districts offered are those of the chosen zones (any district can still be typed in).
+  const zoneDists = useMemo(() => {
+    const zs = RIYADH_ZONES.filter((z) => f.zones.includes(z.ar));
+    return dists.filter((d) => zs.some((z) => z.districts.includes(districtKey(d))));
+  }, [dists, f.zones]);
   const clientOpts = visibleClients(data).map((c) => [c.id, c.name] as [string, string]);
   if (base.clientId && !clientOpts.some(([v]) => v === base.clientId))
     clientOpts.unshift([base.clientId, presetClient?.name || preset?._clientName || "العميل"]);
 
   async function save() {
+    if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
     setBusy(true);
     try {
       const autoTo = data.isMgr && f.assignee === AUTO ? await nextAssignee(data) : null;
       if (f.assignee === AUTO && !autoTo) return toast("لا يوجد موظفون نشطون في التوزيع التلقائي — اختر المسؤول يدوياً");
       const demand = {
-        purpose: f.purpose, propTypes: f.propTypes, districts: f.districts.join("، ") || null, budget: num(f.budget),
+        purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: num(f.budget),
         payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), bedroomsMin: num(f.bedroomsMin),
         floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
@@ -307,9 +320,21 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         <Sec>متطلبات العميل</Sec>
         <Field label="نوع الطلب"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} /></Field>
         <Field label="الميزانية القصوى (ريال)"><input inputMode="decimal" value={f.budget} onChange={(e) => set("budget", e.target.value)} /></Field>
-        <Field label="نوع العقار (يمكن اختيار أكثر من نوع)" full><MultiCheck options={withCurrent(data.propTypes, f.propTypes)} value={f.propTypes} onChange={(v) => set("propTypes", v)} /></Field>
+        <Field label="نوع العقار" full>
+          <MultiCheck options={withCurrent(REQ_TYPES.map(([v]) => v), f.propTypes)} labels={Object.fromEntries(REQ_TYPES)} value={f.propTypes} onChange={(v) => set("propTypes", v)} />
+        </Field>
         {needsFloor(f.propTypes) && <Field label="الدور المطلوب" full><MultiCheck options={FLOORS} value={f.floors} onChange={(v) => set("floors", v)} /></Field>}
-        <Field label="الأحياء" full><DistrictPicker all={dists} value={f.districts} onChange={(v) => set("districts", v)} /></Field>
+        <Field label="الجهة *" full>
+          <MultiCheck options={RIYADH_ZONES.map((z) => z.ar)} value={f.zones} onChange={(v) => {
+            set("zones", v);
+            // Drop districts that no longer belong to a chosen zone (typed-in districts outside the list stay).
+            set("districts", f.districts.filter((d) => { const z = zoneOf(d); return !z || v.includes(z.ar); }));
+          }} />
+        </Field>
+        <Field label="الأحياء" full>
+          {f.zones.length ? <DistrictPicker all={zoneDists} value={f.districts} onChange={(v) => set("districts", v)} />
+            : <span className="crm-hint">اختر الجهة أولاً لتظهر أحياؤها</span>}
+        </Field>
         <Field label="طريقة الدفع"><Select value={f.payment} onChange={(v) => set("payment", v)} options={PAY} blank="—" /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
         <Field label="تفاصيل الطلب" full>

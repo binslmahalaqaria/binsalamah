@@ -40,6 +40,8 @@ export interface Client {
   // Demand fields mirrored from the client's latest request (legacy shape).
   purpose?: string | null;
   propTypes?: string[];
+  /** Riyadh areas (شمال الرياض، شرق الرياض…) — required on new requests; districts are picked inside them. */
+  zones?: string[];
   districts?: string | null;
   budget?: number | null;
   payment?: string | null;
@@ -105,6 +107,7 @@ export interface Property {
 export interface Demand {
   purpose?: string | null;
   propTypes?: string[];
+  zones?: string[];
   districts?: string | null;
   budget?: number | null;
   payment?: string | null;

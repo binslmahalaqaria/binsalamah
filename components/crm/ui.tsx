@@ -196,13 +196,17 @@ export function Select({ value, onChange, options, blank, className, disabled, a
   );
 }
 
-export function MultiCheck({ options, value, onChange }: { options: readonly string[]; value: string[]; onChange: (v: string[]) => void }) {
+export function MultiCheck({ options, value, onChange, labels }: {
+  options: readonly string[]; value: string[]; onChange: (v: string[]) => void;
+  /** Optional display text per stored value. */
+  labels?: Record<string, string>;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((o) => (
         <label key={o} className="crm-check">
           <input type="checkbox" checked={value.includes(o)} onChange={(e) => onChange(e.target.checked ? [...value, o] : value.filter((x) => x !== o))} />
-          <span>{o}</span>
+          <span>{labels?.[o] ?? o}</span>
         </label>
       ))}
     </div>

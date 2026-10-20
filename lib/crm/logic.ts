@@ -150,7 +150,7 @@ export function wantLine(d: CrmData, c: Client) {
   return [
     x.purpose && x.purpose !== "شراء" ? x.purpose : "",
     ts.join(" / "),
-    x.districts ? splitList(x.districts).slice(0, 2).join("، ") : "",
+    x.districts ? splitList(x.districts).slice(0, 2).join("، ") : (x.zones || []).join("، "),
     x.budget ? money0(x.budget) : "",
   ]
     .filter(Boolean)
