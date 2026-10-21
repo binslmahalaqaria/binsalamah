@@ -12,8 +12,8 @@ import { Link, usePathname } from "@/i18n/navigation";
  * Site header in the style of thiraa.sa / rakez.sa:
  *  - on the home page, over the hero photo: the official lockup centred between
  *    two thin gold rules, the menu centred underneath, all in white;
- *  - after scrolling (and on every other page): a compact white bar with the
- *    lockup at the start, the menu in the middle and the actions at the end.
+ *  - after scrolling (and on every other page): a charcoal bar with rounded bottom
+ *    corners, the white lockup centred between thin rules and the menu beneath (thiraa.sa).
  */
 export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
   const t = useTranslations("Nav");
@@ -70,24 +70,31 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
           </div>
         </header>
       ) : (
-        <header className={(home ? "fixed animate-[fadeDown_.35s_ease-out]" : "sticky") + " inset-x-0 top-0 z-[1000] border-b border-navy/10 bg-white/95 shadow-[0_10px_30px_-25px_rgba(0,0,0,0.4)] backdrop-blur"}>
-          {/* Inner pages: a taller bar with a larger logo that eases down to the compact size once scrolled. */}
-          <div className={"mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 transition-[padding] duration-300 " + (!home && !scrolled ? "py-5" : "py-3")}>
-            <Logo variant="dark" height={!home && !scrolled ? 50 : 38} />
-            <nav className="hidden items-center gap-8 lg:flex">
-              {links.map((l) => <Link key={l.href} href={l.href} className={navLink(false)}>{l.label}</Link>)}
-            </nav>
-            <div className="hidden items-center gap-3 lg:flex">
-              <WhatsAppLink whatsappNumber={whatsappNumber} className="rounded-full bg-navy px-5 py-2 text-[13px] text-cream transition-colors hover:bg-gold hover:text-navy">{t("contact")}</WhatsAppLink>
-              <LanguageSwitcher />
+        // Inner pages (and the home page once scrolled), in the style of thiraa.sa: a charcoal bar with rounded
+        // bottom corners, the white lockup centred between two thin rules, and the menu in a row beneath it.
+        <header className={(home ? "fixed animate-[fadeDown_.35s_ease-out]" : "sticky") + " inset-x-0 top-0 z-[1000] rounded-b-[26px] bg-[#333333] text-cream shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"}>
+          <div className={"mx-auto max-w-7xl px-6 transition-[padding] duration-300 " + (scrolled ? "pt-2.5 pb-2.5 lg:pb-3" : "pt-4 pb-4 lg:pb-3.5")}>
+            <div className="flex items-center gap-6">
+              <span className="hidden h-px flex-1 bg-cream/25 lg:block" />
+              <div className="flex flex-1 justify-start lg:flex-none lg:justify-center"><Logo variant="light" height={scrolled ? 38 : 48} /></div>
+              <span className="hidden h-px flex-1 bg-cream/25 lg:block" />
+              {burger(true)}
             </div>
-            {burger(false)}
+            <div className="mt-3 hidden items-center justify-between lg:flex">
+              <nav className="flex items-center gap-8">
+                {links.map((l) => <Link key={l.href} href={l.href} className={navLink(true)}>{l.label}</Link>)}
+              </nav>
+              <div className="flex items-center gap-3">
+                <WhatsAppLink whatsappNumber={whatsappNumber} className="rounded-full border border-cream/40 px-5 py-1.5 text-[13px] text-cream transition-colors hover:bg-cream hover:text-navy">{t("contact")}</WhatsAppLink>
+                <LanguageSwitcher variant="light" />
+              </div>
+            </div>
           </div>
           {open && (
-            <nav className="flex flex-col gap-1 border-t border-navy/10 bg-white px-6 py-4 text-sm lg:hidden">
-              {links.map((l) => <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-2 py-3 text-navy hover:bg-navy/5">{l.label}</Link>)}
-              <WhatsAppLink whatsappNumber={whatsappNumber} className="mt-2 rounded-full bg-navy px-4 py-2.5 text-center text-cream">{t("contact")}</WhatsAppLink>
-              <div className="mt-2"><LanguageSwitcher /></div>
+            <nav className="flex flex-col gap-1 border-t border-cream/15 px-6 py-4 text-sm lg:hidden">
+              {links.map((l) => <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-2 py-3 text-cream/90 hover:bg-cream/10">{l.label}</Link>)}
+              <WhatsAppLink whatsappNumber={whatsappNumber} className="mt-2 rounded-full bg-cream px-4 py-2.5 text-center text-navy">{t("contact")}</WhatsAppLink>
+              <div className="mt-2"><LanguageSwitcher variant="light" /></div>
             </nav>
           )}
         </header>
