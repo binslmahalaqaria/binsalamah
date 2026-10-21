@@ -25,7 +25,7 @@ export function ModalHost() {
     case "request": return <RequestForm key={(modal.id || "new") + (modal.preset?.clientId || "")} id={modal.id} preset={modal.preset} />;
     case "property": return <PropertyForm key={modal.id || "new"} id={modal.id} />;
     case "task": return <TaskForm key={modal.id || "new"} id={modal.id} preset={modal.preset} />;
-    case "update": return <UpdateModal key={modal.clientId} clientId={modal.clientId} type={modal.type} propertyId={modal.propertyId} />;
+    case "update": return <UpdateModal key={modal.clientId} clientId={modal.clientId} type={modal.type} propertyId={modal.propertyId} reqId={modal.reqId} />;
     case "visit": return <VisitModal reqId={modal.reqId} />;
     case "close": return <CloseModal reqId={modal.reqId} to={modal.to} />;
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
@@ -39,8 +39,11 @@ export function ModalHost() {
 }
 
 /* ---------- log a client update ---------- */
-function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string; type?: string; propertyId?: string }) {
-  const { data, closeModal, toast } = useCrm();
+/** Deposit and sale go through their own form (amount, unit, reservation) — never straight from an update. */
+const DEAL_UPD: Record<string, string> = { "دفع عربون": "عربون", "تم الإغلاق": "تم البيع" };
+
+function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: string; type?: string; propertyId?: string; reqId?: string }) {
+  const { data, closeModal, toast, openModal } = useCrm();
   const c = clientById(data, clientId);
   const [type, setType] = useState(t0 || "");
   const [next, setNext] = useState(t0 ? String(UPD.find((u) => u.k === t0)?.n ?? 3) : "3");
@@ -51,12 +54,18 @@ function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string;
   const u = UPD.find((x) => x.k === type);
   async function save() {
     if (!type) return toast("يرجى اختيار نتيجة التواصل أولاً");
+    if (DEAL_UPD[type]) {
+      const r = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.filter((x) => x.clientId === clientId && OPEN_REQ(x)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0];
+      if (!r) return toast("سجّل طلباً للعميل أولاً، ثم سجّل " + (type === "دفع عربون" ? "العربون" : "البيع") + " عليه");
+      openModal({ kind: "close", reqId: r.id, to: DEAL_UPD[type] });
+      return;
+    }
     let nx: string | null = null;
     if (next === "date") {
       if (!date) return toast("اختر التاريخ");
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
-    await applyUpdate(data, clientId, type, nx, note.trim(), prop || null);
+    await applyUpdate(data, clientId, type, nx, note.trim(), prop || null, { reqId });
     toast("تم — " + (nx ? "الاتصال القادم " + relDay(nx) + " (" + nx + ")" : "بدون موعد اتصال"));
     closeModal();
   }
@@ -64,7 +73,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string;
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={save}>حفظ التحديث</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
-      <RadioChips options={UPD.map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(String(UPD.find((x) => x.k === v)?.n ?? 3)); }} />
+      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(String(UPD.find((x) => x.k === v)?.n ?? 3)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في معاينتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
@@ -72,7 +81,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0 }: { clientId: string;
       <div className="crm-sec mb-2">الاتصال القادم</div>
       <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
       {next === "date" && <input type="date" className="mt-2" min={today()} value={date} onChange={(e) => setDate(e.target.value)} />}
-      {u?.status && <p className="crm-hint mt-2">ستتغير حالة العميل إلى: {u.status}</p>}
+      {u?.status && !DEAL_UPD[type] && <p className="crm-hint mt-2">ستتغير حالة العميل إلى: {u.status}</p>}
+      {DEAL_UPD[type] && <p className="crm-hint mt-2">عند الحفظ يُفتح نموذج {type === "دفع عربون" ? "العربون" : "البيع"} لتسجيل المبلغ والعقار والوحدة.</p>}
     </ModalFrame>
   );
 }

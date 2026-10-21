@@ -98,10 +98,11 @@ function pushLog(c: Client, entry: LogEntry) {
 }
 
 /** Moves the client's newest open request forward to `to` (never backwards, except cancel/sold). */
-export async function advanceReq(d: CrmData, clientId: string, to: string) {
+/** `reqId`: the request the update was made from (else the client's newest open request). */
+export async function advanceReq(d: CrmData, clientId: string, to: string, reqId?: string) {
   const c = clientById(d, clientId);
   if (!c || !to) return;
-  const r = reqsOf(d, c)[0];
+  const r = (reqId && d.requests.find((x) => x.id === reqId && x.clientId === c.id && OPEN_REQ(x))) || reqsOf(d, c)[0];
   if (!r) return;
   const cur = REQ.indexOf((r.status || "جديد") as never),
     nx = REQ.indexOf(to as never);
@@ -139,9 +140,9 @@ export async function applyUpdate0(d: CrmData, id: string, type: string, next: s
   return true;
 }
 
-export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean } = {}) {
+export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; reqId?: string } = {}) {
   const ok = await applyUpdate0(d, id, type, next, text, propertyId, opts);
-  if (ok && UPD_STAGE[type]) await advanceReq(d, id, UPD_STAGE[type]);
+  if (ok && UPD_STAGE[type]) await advanceReq(d, id, UPD_STAGE[type], opts.reqId);
   return ok;
 }
 

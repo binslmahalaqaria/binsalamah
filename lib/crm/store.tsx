@@ -30,7 +30,7 @@ export type Modal =
   | { kind: "request"; id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string } }
   | { kind: "property"; id?: string }
   | { kind: "task"; id?: string; preset?: Partial<Task> }
-  | { kind: "update"; clientId: string; type?: string; propertyId?: string }
+  | { kind: "update"; clientId: string; type?: string; propertyId?: string; reqId?: string }
   | { kind: "visit"; reqId: string }
   | { kind: "close"; reqId: string; to: string }
   | { kind: "cancel"; reqId: string; to?: string }

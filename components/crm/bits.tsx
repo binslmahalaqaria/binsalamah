@@ -207,9 +207,9 @@ export function reqMenu(data: CrmData, r: Request, open: (m: Modal) => void): Ke
   const sold = SOLD_ST.includes(r.status);
   const deals = can(data, "recordDeals");
   const items: (KebabItem | false)[] = [
-    { label: "تم إرسال الموقع", onClick: () => open({ kind: "update", clientId: r.clientId, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id }) },
+    { label: "تم إرسال الموقع", onClick: () => open({ kind: "update", clientId: r.clientId, reqId: r.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id }) },
     { label: c?.visitAt ? "تعديل موعد الزيارة" : "تحديد موعد زيارة", onClick: () => open({ kind: "visit", reqId: r.id }) },
-    !!c && { label: "تسجيل تحديث", onClick: () => open({ kind: "update", clientId: c.id }) },
+    !!c && { label: "تسجيل تحديث", onClick: () => open({ kind: "update", clientId: c.id, reqId: r.id }) },
     deals && !sold && { label: "تسجيل عربون", onClick: () => open({ kind: "close", reqId: r.id, to: "عربون" }) },
     deals && r.status !== "تم البيع" && { label: "تم البيع", onClick: () => open({ kind: "close", reqId: r.id, to: "تم البيع" }) },
     deals && sold && { label: "تعديل بيانات " + (r.status === "تم البيع" ? "البيع" : "العربون"), onClick: () => open({ kind: "close", reqId: r.id, to: r.status }) },

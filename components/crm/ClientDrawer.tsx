@@ -128,7 +128,7 @@ export function ClientDrawer() {
                         <button type="button" className={"crm-btn sm " + (mc ? "primary" : "")} onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>
                           {mc ? mc + " عقار مناسب" : "لا يوجد عقار مطابق"}
                         </button>
-                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: c.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id })}>تم إرسال الموقع</button>
+                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id })}>تم إرسال الموقع</button>
                         <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: r.id })}>{c.visitAt ? "تعديل الموعد" : "تحديد موعد"}</button>
                         <Kebab items={[
                           can(data, "recordDeals") && { label: "تسجيل عربون", onClick: () => openModal({ kind: "close", reqId: r.id, to: "عربون" }) },
