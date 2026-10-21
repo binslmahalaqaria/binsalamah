@@ -12,6 +12,7 @@ import { readSheet } from "read-excel-file/browser";
 import readExcelFile from "read-excel-file/browser";
 import writeExcelFile from "write-excel-file/browser";
 import { db } from "@/lib/firebase";
+import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
 import { TO_CONTACT } from "@/lib/crm/constants";
 import { members, nameOf } from "@/lib/crm/logic";
@@ -160,7 +161,9 @@ export function ContactImport({ onClose }: { onClose: () => void }) {
           let who: string | null = null;
           if (assign === "rr") { i = (i + 1) % order.length; who = last = order[i]; }
           else if (assign !== "none") who = assign;
-          batch.set(doc(collection(db, "clients")), {
+          const ref = doc(collection(db, "clients"));
+          claimPhone(batch, r.phone, ref.id);
+          batch.set(ref, {
             // Number only (client's choice): the employee records the name and request when they call.
             name: r.phone, phone: r.phone, source: source || null, status: TO_CONTACT, temp: "دافئ",
             assignee: who, assignedAt: who ? nowStamp() : null, assignedBy: who ? data.uid : null, unseen: !!who && who !== data.uid,

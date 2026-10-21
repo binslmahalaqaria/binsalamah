@@ -7,7 +7,7 @@
  */
 import {
   addDoc, collection, deleteDoc, doc, runTransaction, setDoc, updateDoc,
-  writeBatch,
+  writeBatch, type DocumentReference,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
@@ -17,7 +17,7 @@ import {
 } from "./logic";
 import type { AttendanceDay, Client, LogEntry, Request, Unit } from "./types";
 import { syncWebOffer } from "./web-sync";
-import { addDays, dayDiff, fmtVisit, localDay, moneyFull, nowStamp, today } from "./util";
+import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, today } from "./util";
 
 const LOG_MAX = 80;
 const clean = <T extends object>(o: T) => JSON.parse(JSON.stringify(o)) as T; // drop undefined
@@ -38,6 +38,56 @@ export async function writeProperty(id: string, data: { units?: Unit[]; status?:
   await write("properties", id, data, "update");
   await syncWebOffer(id, data).catch(() => {});
 }
+/**
+ * One client per phone number, enforced by the database (client 2026-10-21): every new client also
+ * creates `phones/<normalised number>` in the same batch/transaction, and the rules allow creating
+ * that document but never overwriting it — so a second client with the same number fails even when
+ * two people save at the same moment. (Numbers already in the CRM are also checked in the browser.)
+ */
+type Writer = { set(ref: DocumentReference, data: object): unknown; delete(ref: DocumentReference): unknown };
+export function claimPhone(w: Writer, phone: string | null | undefined, clientId: string) {
+  const n = normPhone(phone);
+  if (n) w.set(doc(db, "phones", n), { clientId, at: nowStamp() });
+}
+export function releasePhone(w: Writer, phone: string | null | undefined) {
+  const n = normPhone(phone);
+  if (n) w.delete(doc(db, "phones", n));
+}
+/** Firestore refused the write: with claimPhone in it, that means the number is already taken. */
+export const isPhoneTaken = (e: unknown) => (e as { code?: string })?.code === "permission-denied";
+export const PHONE_TAKEN = "ترا الرقم هذا موجود — سُجّل لعميل آخر قبل لحظات. ابحث عنه في العملاء.";
+
+/** Creates a client and reserves its phone number in one batch. */
+export async function createClient(data: { phone?: string | null } & Record<string, unknown>) {
+  assertWritable();
+  const ref = doc(collection(db, "clients"));
+  const b = writeBatch(db);
+  b.set(ref, clean(data));
+  claimPhone(b, data.phone, ref.id);
+  await b.commit();
+  return ref.id;
+}
+/** Updates a client; when the phone changes, the new number is reserved and the old one freed. */
+export async function updateClient(c: Client, patch: { phone?: string | null } & Record<string, unknown>) {
+  assertWritable();
+  const changed = patch.phone !== undefined && normPhone(patch.phone) !== normPhone(c.phone);
+  if (!changed) return write("clients", c.id, patch, "update");
+  const b = writeBatch(db);
+  b.update(doc(db, "clients", c.id), clean(patch) as Record<string, unknown>);
+  claimPhone(b, patch.phone, c.id);
+  releasePhone(b, c.phone);
+  await b.commit();
+  return c.id;
+}
+/** Deletes a client and frees their number. */
+export async function deleteClient(c: Client) {
+  assertWritable();
+  const b = writeBatch(db);
+  b.delete(doc(db, "clients", c.id));
+  releasePhone(b, c.phone);
+  await b.commit();
+}
+
 export const remove = (col: string, id: string) => {
   assertWritable();
   return deleteDoc(doc(db, col, id));

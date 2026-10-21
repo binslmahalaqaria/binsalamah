@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { doc, collection, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
 import { assertWritable } from "@/lib/crm/preview";
 import { members, nameOf } from "@/lib/crm/logic";
@@ -67,7 +68,9 @@ export function WaImport({ sources, onClose }: { sources: WaSource[]; onClose: (
           if (assign === "rr") { i = (i + 1) % rrOrder.length; who = last = rrOrder[i]; }
           else if (assign !== "none") who = assign;
           const d = new Date(c.ts);
-          batch.set(doc(collection(db, "clients")), {
+          const ref = doc(collection(db, "clients"));
+          claimPhone(batch, localPhone(c.phone), ref.id);
+          batch.set(ref, {
             name: c.name || localPhone(c.phone), phone: localPhone(c.phone), source,
             assignee: who, assignedAt: who ? nowStamp() : null, assignedBy: who ? data.uid : null, unseen: !!who && who !== data.uid,
             temp: "دافئ", status: "نشط", nextCall: call === "today" ? today() : null, visitAt: null, visitProperty: null, visitConfirmed: false,

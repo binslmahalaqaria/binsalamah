@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { nextAssignee, releaseUnit, remove, write, writeProperty } from "@/lib/crm/actions";
+import { createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -114,16 +114,16 @@ export function ClientForm({ id }: { id?: string }) {
       }
       if ((body.visitAt || null) !== (rec?.visitAt || null)) body.visitConfirmed = false;
       if (rec) {
-        await write("clients", rec.id, body, "update");
+        await updateClient(rec, body as Record<string, unknown>);
         toast("تم الحفظ");
         closeModal();
       } else {
-        const nid = await write("clients", null, { ...body, log: [], createdAt: nowStamp() });
+        const nid = await createClient({ ...body, log: [], createdAt: nowStamp() });
         toast("تم حفظ العميل، يرجى الآن تسجيل طلبه");
         openModal({ kind: "request", preset: { clientId: nid, assignee: body.assignee || data.uid, source: body.source || null, _clientName: body.name } });
       }
-    } catch {
-      toast("تعذّر الحفظ");
+    } catch (e) {
+      toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ");
     } finally {
       setBusy(false);
     }
@@ -138,7 +138,7 @@ export function ClientForm({ id }: { id?: string }) {
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
           {rec && data.isMgr && (
-            <ConfirmButton onConfirm={async () => { await remove("clients", rec.id); toast("تم الحذف"); closeModal(); }}>حذف</ConfirmButton>
+            <ConfirmButton onConfirm={async () => { await deleteClient(rec); toast("تم الحذف"); closeModal(); }}>حذف</ConfirmButton>
           )}
         </>
       }>
@@ -252,7 +252,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         if (!f.newName.trim()) return toast("اختر عميل موجود أو اكتب اسم عميل جديد");
         const dup = f.newPhone && findDup(data, f.newPhone);
         if (dup) return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
-        body.clientId = await write("clients", null, {
+        body.clientId = await createClient({
           name: f.newName.trim(), phone: f.newPhone.trim() || null, temp: f.priority === "عاجلة" ? "ساخن" : "دافئ", status: "نشط",
           nextCall: today(), log: [], source: body.source || null, assignee: body.assignee || data.uid,
           createdAt: nowStamp(), updatedAt: nowStamp(), ...demand,
@@ -273,8 +273,8 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : "تم الحفظ");
       closeModal();
       if (closeTo && reqId) openModal({ kind: "close", reqId, to: closeTo });
-    } catch {
-      toast("تعذّر الحفظ، يرجى المحاولة مجدداً");
+    } catch (e) {
+      toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ، يرجى المحاولة مجدداً");
     } finally {
       setBusy(false);
     }

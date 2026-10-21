@@ -15,7 +15,7 @@ import { assertWritable } from "@/lib/crm/preview";
 import { waApi, type WaSource } from "@/lib/crm/wa";
 import { nowStamp } from "@/lib/crm/util";
 
-const WORK = ["clients", "requests", "properties", "tasks", "chat", "goals", "hr", "payroll"] as const;
+const WORK = ["clients", "phones", "requests", "properties", "tasks", "chat", "goals", "hr", "payroll"] as const;
 const AR: Record<string, string> = {
   clients: "العملاء", requests: "الطلبات", properties: "العقارات", tasks: "المهام", chat: "رسائل الدردشة", goals: "الأهداف",
   hr: "ملفات الموظفين", payroll: "الرواتب", attendance: "أيام الحضور", leads: "استفسارات الموقع", offers: "عروض الموقع", demoStaff: "موظفون تجريبيون", realStaff: "حسابات موظفين",

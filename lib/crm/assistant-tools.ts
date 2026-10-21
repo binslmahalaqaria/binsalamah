@@ -11,7 +11,7 @@ import {
   clientById, demandOf, isMgrId, match, matchesFor, members, nameOf, OPEN_REQ, propById, propMsg, propSummary, reqsOf,
   statsFor, typesOf, unitsOf, unitView, visibleClients, visibleRequests, visibleTasks, type CrmData,
 } from "./logic";
-import { applyUpdate, applyUpdate0, assignClient, write, writeProperty } from "./actions";
+import { applyUpdate, applyUpdate0, assignClient, createClient, write, writeProperty } from "./actions";
 import type { Client, Property, Request } from "./types";
 import { addDays, fmtStamp, moneyFull, normPhone, nowStamp, num, relDay, splitList, today, waLink } from "./util";
 
@@ -390,7 +390,7 @@ export function buildTools(): Tool[] {
               const dup = findDup(d, str(i.new_client_phone));
               if (dup) throw new Error("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(d, dup.assignee) : "") + ". ما تقدر تضيفه مرة ثانية.");
             }
-            cid = await write("clients", null, {
+            cid = await createClient({
               name: str(i.new_client_name), phone: i.new_client_phone ? str(i.new_client_phone) : null, status: "نشط",
               temp: p.priority === "عاجلة" ? "ساخن" : "دافئ", nextCall: today(), log: [], source: i.source || null, assignee: m || d.uid,
               notes: null, visitAt: null, createdAt: nowStamp(), ...p,

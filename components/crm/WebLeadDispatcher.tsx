@@ -16,6 +16,7 @@
 import { useEffect, useRef } from "react";
 import { collection, doc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
 import { isPreview } from "@/lib/crm/preview";
 import { intl, nowStamp, today } from "@/lib/crm/util";
@@ -95,6 +96,7 @@ export function WebLeadDispatcher() {
       if (!clientId) {
         const cref = doc(collection(db, "clients"));
         clientId = cref.id;
+        claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
           name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: "دافئ", status: "نشط",
           nextCall: today(), source: "الموقع", assignee: to, assignedAt: now, unseen: !!to,

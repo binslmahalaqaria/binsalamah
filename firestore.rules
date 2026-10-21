@@ -84,6 +84,13 @@ service cloud.firestore {
       allow read, create, update: if isActiveStaff();
       allow delete: if isManager();
     }
+    // One client per phone number: phones/{normalised number} is created with
+    // each new client and can never be overwritten (no update), so a second
+    // client with the same number is refused. Freed when the number changes
+    // or the client is deleted.
+    match /phones/{n} {
+      allow read, create, delete: if isActiveStaff();
+    }
     match /properties/{id} {
       allow read, write: if isActiveStaff();
     }
