@@ -416,6 +416,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-10-21** — **Call outcome «غير مهتم».** Client could not find a "not interested" call option; it existed as «عدل عن الطلب». The stored type «صرف النظر» is unchanged; its label (`QL_OUT` and `LBL` in `lib/crm/constants.ts`) is now «غير مهتم», everywhere it is shown. Same effect as before: client → غير مهتم (archive), open request → ملغي (with the property freed if it held a deposit), no next call. Affects §9.
+
 - **2026-10-21** — **Today: one count for calls done.** The calls card said «2 من 2 مكالمة تمت اليوم» while the routine said «1 من 1»: `planFor()` (`lib/crm/logic.ts`) counted only active clients, so a client called today and then marked «عدل عن الطلب» (غير مهتم) dropped out. It now counts the person's clients of any status touched today, like the «تمت اليوم» list. Affects §9.
 
 - **2026-10-21** — **Call-log fixes.** Client asked whether the call-log options had a problem; two did. (1) «عدل عن الطلب» (stored «صرف النظر») on a client whose newest open request held a deposit or sale set the request to ملغي but left the property/unit «محجوز» and the deposit on the request. `advanceReq()` (`lib/crm/actions.ts`) now clears the deal fields and frees the property/unit when it cancels a request in عربون/تم البيع, and the Today quick log asks for confirmation first. (2) Cancelling a deposit/sale (`cancelSale()`) logged the client entry as «اتصلت عليه», so it counted as a call in the daily figures and showed as «تم الاتصال»; it now logs «إلغاء صفقة», added to `NOCALL` (still schedules a call for tomorrow). Entries logged before this change keep their old type. Affects §9.
