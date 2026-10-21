@@ -214,6 +214,7 @@ export function reqMenu(data: CrmData, r: Request, open: (m: Modal) => void): Ke
     deals && r.status !== "تم البيع" && { label: "تم البيع", onClick: () => open({ kind: "close", reqId: r.id, to: "تم البيع" }) },
     deals && sold && { label: "تعديل بيانات " + (r.status === "تم البيع" ? "البيع" : "العربون"), onClick: () => open({ kind: "close", reqId: r.id, to: r.status }) },
     deals && sold && { label: "إلغاء " + (r.status === "تم البيع" ? "البيع" : "العربون"), onClick: () => open({ kind: "cancel", reqId: r.id }) },
+    data.isMgr && { label: "⇄ تحويل الطلب لموظف آخر", onClick: () => open({ kind: "transfer", reqId: r.id }) },
     !!c?.phone && { label: "واتساب", href: waLink(c.phone) || undefined },
     { label: "تعديل الطلب", onClick: () => open({ kind: "request", id: r.id }) },
     { label: "🗑 حذف الطلب", onClick: () => { deleteRequest(data, r); } },

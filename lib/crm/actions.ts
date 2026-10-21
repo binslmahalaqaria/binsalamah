@@ -336,6 +336,22 @@ export async function assignClient(d: CrmData, cid: string | null, uid: string |
   return { n: rs.length, name: uid ? nameOf(d, uid) : null };
 }
 
+/**
+ * «تحويل الطلب» (client 2026-10-21): hands a request to another employee. The client goes with it
+ * (with their other open requests — one client, one owner), and the client's file records who moved it
+ * and why («تحويل», never counted as a call).
+ */
+export async function transferRequest(d: CrmData, r: Request, to: string, note: string) {
+  const c = clientById(d, r.clientId);
+  const from = r.assignee || c?.assignee || null;
+  const res = await assignClient(d, r.clientId, to, r.id);
+  if (c) {
+    const text = "تحويل الطلب من " + (from ? nameOf(d, from) : "غير مسند") + " إلى " + nameOf(d, to) + (note ? ": " + note : "");
+    await write("clients", c.id, { log: pushLog(clientById(d, c.id) || c, { at: nowStamp(), byId: d.uid, type: "تحويل", text, call: false }), updatedAt: nowStamp() }, "update");
+  }
+  return res;
+}
+
 export async function toggleTask(d: CrmData, id: string, done: boolean) {
   await write("tasks", id, { done, doneAt: done ? nowStamp() : null, doneBy: done ? d.uid : null, updatedAt: nowStamp() }, "update");
 }

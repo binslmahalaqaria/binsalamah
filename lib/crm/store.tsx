@@ -36,6 +36,7 @@ export type Modal =
   | { kind: "cancel"; reqId: string; to?: string }
   | { kind: "reqMatches"; reqId: string }
   | { kind: "propReqs"; propId: string }
+  | { kind: "transfer"; reqId: string }
   | { kind: "goal"; uid: string; month: string }
   | { kind: "hr"; uid: string }
   | { kind: "attEdit"; uid: string; date: string };

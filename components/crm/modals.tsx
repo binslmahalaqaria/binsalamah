@@ -9,7 +9,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  applyUpdate, cancelSale, deleteAttendance, reqSent, saveAttendance, saveClose, saveVisit, write,
+  applyUpdate, cancelSale, deleteAttendance, reqSent, saveAttendance, saveClose, saveVisit, transferRequest, write,
 } from "@/lib/crm/actions";
 import type { HrFile } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -31,6 +31,7 @@ export function ModalHost() {
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
     case "reqMatches": return <ReqMatchesModal reqId={modal.reqId} />;
     case "propReqs": return <PropReqsModal propId={modal.propId} />;
+    case "transfer": return <TransferModal reqId={modal.reqId} />;
     case "goal": return <GoalModal key={modal.uid + modal.month} uid={modal.uid} month={modal.month} />;
     case "hr": return <HrModal uid={modal.uid} />;
     case "attEdit": return <AttEditModal uid={modal.uid} date={modal.date} />;
@@ -221,6 +222,40 @@ function CancelModal({ reqId, to }: { reqId: string; to?: string }) {
         يعود الطلب إلى مرحلة <b>{dest}</b>، ويُستبعد من المبيعات والعمولات.
       </p>
       <Field label="السبب (اختياري)"><input value={note} placeholder="مثال: تراجع العميل" onChange={(e) => setNote(e.target.value)} /></Field>
+    </ModalFrame>
+  );
+}
+
+/* ---------- transfer a request ---------- */
+function TransferModal({ reqId }: { reqId: string }) {
+  const { data, closeModal, toast } = useCrm();
+  const r = data.requests.find((x) => x.id === reqId);
+  const [to, setTo] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!r) return null;
+  const c = clientById(data, r.clientId);
+  const cur = r.assignee || c?.assignee || null;
+  const others = (c ? data.requests.filter((x) => x.clientId === c.id && x.id !== r.id && OPEN_REQ(x)) : []).length;
+  return (
+    <ModalFrame title={"تحويل طلب " + (c?.name || "")} onClose={closeModal} width={460}
+      footer={<div className="flex gap-2">
+        <button type="button" className="crm-btn primary" disabled={!to || busy} onClick={async () => {
+          setBusy(true);
+          try { await transferRequest(data, r, to, note.trim()); toast("تم تحويل الطلب إلى " + nameOf(data, to)); closeModal(); }
+          catch { toast("تعذّر التحويل، يرجى المحاولة مجدداً"); setBusy(false); }
+        }}>تحويل</button>
+        <button type="button" className="crm-btn" onClick={closeModal}>رجوع</button>
+      </div>}>
+      <p className="m-0">المسؤول الحالي: <b>{cur ? nameOf(data, cur) : "غير مسند"}</b></p>
+      <Field label="حوّله إلى">
+        <select value={to} onChange={(e) => setTo(e.target.value)}>
+          <option value="">اختر الموظف</option>
+          {members(data).filter((id) => id !== cur).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
+        </select>
+      </Field>
+      <Field label="السبب (اختياري)"><input value={note} placeholder="مثال: الموظف في إجازة" onChange={(e) => setNote(e.target.value)} /></Field>
+      <p className="crm-hint m-0">ينتقل العميل معه{others ? " ومعه " + others + " طلب مفتوح آخر" : ""}، ويُسجَّل التحويل في ملف العميل، ويظهر للموظف الجديد كعميل جديد.</p>
     </ModalFrame>
   );
 }
