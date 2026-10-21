@@ -62,6 +62,7 @@ function organization(phone?: string) {
 export const SOCIAL = [
   { id: "instagram", label: "Instagram", handle: "binslmah_alaqaria", url: "https://www.instagram.com/binslmah_alaqaria" },
   { id: "x", label: "X", handle: "binslmah_alaqar", url: "https://x.com/binslmah_alaqar" },
+  { id: "tiktok", label: "TikTok", handle: "binslmah_alaqaria", url: "https://www.tiktok.com/@binslmah_alaqaria" },
 ] as const;
 
 /** Full public link of a property. */
