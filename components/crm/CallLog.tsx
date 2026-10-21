@@ -3,12 +3,14 @@
 /**
  * «سجل المكالمات» on لوحة المدير (client 2026-10-21): every call in the dashboard's period, filterable
  * by outcome (successful / unsuccessful / one outcome) and employee, with the client's number to call
- * back. Calls are the same as in the figures above (isCall), each within its employee's period range.
+ * back, and reassign the client from the row (e.g. no answer → give it to someone else).
+ * Calls are the same as in the figures above (isCall), each within its employee's period range.
  */
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { CALL_T, isCall, lbl } from "@/lib/crm/constants";
 import { members, nameOf } from "@/lib/crm/logic";
+import { assignClient } from "@/lib/crm/actions";
 import { rangeFor, type Period } from "@/lib/crm/report";
 import { fmtStamp, localDay } from "@/lib/crm/util";
 import { ContactIcons, Empty } from "./ui";
@@ -19,7 +21,7 @@ const PAGE = 100;
 export function CallLog({ period, custom, filter, setFilter }: {
   period: Period; custom: [string, string]; filter: CallFilter; setFilter: (f: CallFilter) => void;
 }) {
-  const { data, openClient } = useCrm();
+  const { data, openClient, toast } = useCrm();
   const [who, setWho] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const ids = members(data);
@@ -56,8 +58,8 @@ export function CallLog({ period, custom, filter, setFilter }: {
         <Empty>لا توجد مكالمات بهذا الفلتر في الفترة المختارة.</Empty>
       ) : (
         <div className="overflow-x-auto">
-          <table className="crm-table min-w-[760px]">
-            <thead><tr><th>الوقت</th><th>الموظف</th><th>العميل</th><th>الجوال</th><th>النتيجة</th><th>الملاحظة</th></tr></thead>
+          <table className="crm-table min-w-[880px]">
+            <thead><tr><th>الوقت</th><th>الموظف</th><th>العميل</th><th>الجوال</th><th>النتيجة</th><th>الملاحظة</th><th>المسؤول الآن</th></tr></thead>
             <tbody>
               {list.slice(0, limit).map(({ c, l }, i) => (
                 <tr key={c.id + l.at + i}>
@@ -67,6 +69,14 @@ export function CallLog({ period, custom, filter, setFilter }: {
                   <td><span className="flex items-center gap-1.5"><span className="num">{c.phone || "—"}</span>{c.phone && <ContactIcons phone={c.phone} />}</span></td>
                   <td className={l.type === "ما رد" ? "font-semibold text-[var(--crm-danger)]" : ""}>{lbl(l.type)}</td>
                   <td className="max-w-[260px] truncate text-[12.5px] text-[var(--crm-ink-3)]">{l.text}</td>
+                  <td>
+                    {/* Moves the client and their open requests (same as assigning anywhere else). */}
+                    <select className={"crm-quiet !text-[13px] " + (c.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label={"إسناد " + c.name} value={c.assignee || ""}
+                      onChange={async (e) => { const x = await assignClient(data, c.id, e.target.value || null); toast(x.name ? "تم إسناد " + c.name + " إلى " + x.name : "أصبح " + c.name + " غير مسند"); }}>
+                      <option value="">غير مسند</option>
+                      {ids.map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
+                    </select>
+                  </td>
                 </tr>
               ))}
             </tbody>
