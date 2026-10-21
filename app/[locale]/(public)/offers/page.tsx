@@ -27,14 +27,16 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <section className="bg-navy px-6 pt-16 pb-24 text-cream">
-        <div className="mx-auto max-w-6xl">
-          <span className="text-sm tracking-[0.2em] text-gold">{s("heroKicker")}</span>
-          <h1 className="mt-2 font-heading text-4xl font-bold">{t("title")}</h1>
-          <p className="mt-2 text-cream/70">{s("featuredSub")}</p>
+      {/* Title band in the style of thiraa.sa: a shade darker than the header (so its rounded corners show), the mark pattern, centred text. */}
+      <section className="relative isolate -mt-6 overflow-hidden bg-[#262524] px-6 pt-24 pb-28 text-center text-cream">
+        <div aria-hidden className="absolute -inset-1/2 -z-10 -rotate-[18deg] bg-[url(/brand/pattern-footer.png)] bg-[length:96px_96px] opacity-60" />
+        <div className="mx-auto max-w-3xl">
+          <span className="text-sm tracking-[0.2em] text-[#b79579]">{s("heroKicker")}</span>
+          <h1 className="mt-3 font-heading text-4xl font-bold sm:text-5xl">{t("title")}</h1>
+          <p className="mt-3 text-cream/70">{s("featuredSub")}</p>
         </div>
       </section>
-      <section className="mx-auto -mt-14 max-w-6xl px-4 pb-20 sm:px-6">
+      <section className="relative z-10 mx-auto -mt-14 max-w-6xl px-4 pb-20 sm:px-6">
         <OffersGrid offers={offers} whatsappNumber={whatsappNumber} initial={{ type: sp.type, zone: sp.zone, districts: sp.districts || sp.district, price: sp.price }} />
       </section>
     </>

@@ -26,7 +26,7 @@ export function LanguageSwitcher({
       className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
         variant === "dark"
           ? "border-navy/20 text-navy hover:bg-navy hover:text-cream"
-          : "border-cream/30 text-cream hover:bg-cream/10"
+          : "border-cream/40 bg-transparent text-cream hover:bg-cream hover:text-navy"
       }`}
     >
       {t("language")}

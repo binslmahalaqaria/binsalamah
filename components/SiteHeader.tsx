@@ -75,9 +75,9 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
         <header className={(home ? "fixed animate-[fadeDown_.35s_ease-out]" : "sticky") + " inset-x-0 top-0 z-[1000] rounded-b-[26px] bg-[#333333] text-cream shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"}>
           <div className={"mx-auto max-w-7xl px-6 transition-[padding] duration-300 " + (scrolled ? "pt-2.5 pb-2.5 lg:pb-3" : "pt-4 pb-4 lg:pb-3.5")}>
             <div className="flex items-center gap-6">
-              <span className="hidden h-px flex-1 bg-cream/25 lg:block" />
+              <span className="hidden h-px flex-1 bg-[#b79579]/45 lg:block" />
               <div className="flex flex-1 justify-start lg:flex-none lg:justify-center"><Logo variant="light" height={scrolled ? 38 : 48} /></div>
-              <span className="hidden h-px flex-1 bg-cream/25 lg:block" />
+              <span className="hidden h-px flex-1 bg-[#b79579]/45 lg:block" />
               {burger(true)}
             </div>
             <div className="mt-3 hidden items-center justify-between lg:flex">
