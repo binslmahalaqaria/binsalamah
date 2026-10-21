@@ -10,14 +10,12 @@
  * issued. "طباعة / حفظ PDF" prints only the receipt.
  */
 import { use, useRef, useState } from "react";
-import { toJpeg } from "html-to-image";
+import { downloadDocPdf, sendDocWhatsApp } from "@/components/crm/shareDoc";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
 import { write } from "@/lib/crm/actions";
-import { intl, localDay, nowStamp, num, waLink } from "@/lib/crm/util";
-import { can } from "@/lib/crm/logic";
-import { seesAllOf, waApi, type WaSource } from "@/lib/crm/wa";
+import { localDay, nowStamp, num } from "@/lib/crm/util";
 import { tafqit } from "@/lib/crm/tafqit";
 import { Empty } from "@/components/crm/ui";
 
@@ -68,40 +66,29 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  /**
-   * Sends the receipt to the client as an image through the CRM's WhatsApp (company number first).
-   * Without a linked number or WhatsApp access, downloads the image and opens WhatsApp on the phone instead.
-   */
+  /** Sends the receipt to the client as a PDF through the CRM's WhatsApp (falls back to download + wa.me). */
   async function sendWhatsApp() {
     if (!c?.phone) return toast("لا يوجد رقم جوال للعميل");
     if (!(await saveAndPrint(false, true)) || !sheet.current) return;
     setSending(true);
     try {
-      const img = await toJpeg(sheet.current, { pixelRatio: 2, quality: 0.92, backgroundColor: "#ffffff", cacheBust: true });
       const caption = "سند قبض رقم " + number + " — عربون بمبلغ " + sar(dep) + (p ? " — " + p.title : "") + "\nشاكرين لكم ثقتكم، بن سلمه العقارية";
-      const phone = intl(c.phone);
-      let sent = false;
-      if (can(data, "whatsapp") && phone) {
-        const { sources } = await waApi<{ sources: WaSource[] }>("/api/sources").catch(() => ({ sources: [] as WaSource[] }));
-        const open = sources.filter((x) => x.status === "open");
-        const src = open.find((x) => x.kind === "company" && seesAllOf(x, data.uid, data.isMgr)) || open.find((x) => seesAllOf(x, data.uid, data.isMgr));
-        if (src) {
-          await waApi("/api/send-media", { source: src.id, jid: phone + "@s.whatsapp.net", dataUrl: img, caption });
-          sent = true;
-          toast("أُرسل السند للعميل على واتساب عبر «" + src.label + "»");
-        }
-      }
-      if (!sent) {
-        const a = document.createElement("a");
-        a.href = img;
-        a.download = "سند-قبض-" + number + ".jpg";
-        a.click();
-        const link = waLink(c.phone, caption);
-        if (link) window.open(link, "_blank", "noopener");
-        toast("نُزّلت صورة السند — أرفقها في محادثة واتساب التي فُتحت");
-      }
+      toast(await sendDocWhatsApp(data, sheet.current, c.phone, caption, "سند-قبض-" + number));
     } catch {
       toast("تعذّر إرسال السند — حاول مرة أخرى");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  /** Saves the receipt as a real PDF file (A4, sharp text — not a picture). */
+  async function savePdf() {
+    if (!(await saveAndPrint(false, true)) || !sheet.current) return;
+    setSending(true);
+    try {
+      await downloadDocPdf(sheet.current, "سند-قبض-" + number);
+    } catch {
+      toast("تعذّر تجهيز ملف PDF — حاول مرة أخرى");
     } finally {
       setSending(false);
     }
@@ -134,8 +121,9 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="crm-btn primary" disabled={busy || !dep} onClick={() => saveAndPrint(true)}>🖨 {r.receiptNo ? "طباعة / حفظ PDF" : "إصدار السند وطباعته"}</button>
-          <button type="button" className="crm-btn wa" disabled={busy || sending || !dep || !c?.phone} onClick={sendWhatsApp}>{sending ? "جارٍ الإرسال…" : "📤 إرسال للعميل واتساب"}</button>
+          <button type="button" className="crm-btn primary" disabled={busy || !dep} onClick={() => saveAndPrint(true)}>🖨 {r.receiptNo ? "طباعة" : "إصدار السند وطباعته"}</button>
+          <button type="button" className="crm-btn" disabled={busy || sending || !dep} onClick={savePdf}>⬇ تنزيل PDF</button>
+          <button type="button" className="crm-btn wa" disabled={busy || sending || !dep || !c?.phone} onClick={sendWhatsApp}>{sending ? "جارٍ تجهيز الملف…" : "📤 إرسال PDF للعميل واتساب"}</button>
           <button type="button" className="crm-btn" disabled={busy || !dep} onClick={() => saveAndPrint(false)}>حفظ</button>
           {data.isAdmin && (!settings.crNo || !settings.iban || !settings.signature) && <Link href="/admin/setup" className="crm-hint underline">أكمل بيانات السندات (السجل التجاري، الآيبان، التوقيع) من الإعدادات ← أدوات</Link>}
           <span className="crm-hint">{r.receiptNo ? "صدر بتاريخ " + localDay(r.receiptAt) + " بواسطة " + nameOf(data, r.receiptBy) + " — الرقم ثابت." : "يُثبَّت رقم السند عند أول إصدار."}</span>
