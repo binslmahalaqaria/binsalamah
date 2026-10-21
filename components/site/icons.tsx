@@ -14,3 +14,5 @@ export const IconShield = () => <svg viewBox="0 0 24 24" className={box} {...P}>
 export const IconMap = () => <svg viewBox="0 0 24 24" className={box} {...P}><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" /></svg>;
 export const IconPhone = () => <svg viewBox="0 0 24 24" className={box} {...P}><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>;
 export const IconMail = () => <svg viewBox="0 0 24 24" className={box} {...P}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>;
+export const IconInstagram = () => <svg viewBox="0 0 24 24" className={box} {...P}><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" /></svg>;
+export const IconX = () => <svg viewBox="0 0 24 24" className={box} fill="currentColor"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.3l-4.9-6.4L5.2 21H2.1l7.3-8.3L2 3h6.4l4.4 5.9L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.5l11.2 14.5z" /></svg>;

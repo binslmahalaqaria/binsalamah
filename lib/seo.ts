@@ -43,6 +43,7 @@ function organization(phone?: string) {
     alternateName: [NAME_EN, ...ALT_NAMES],
     url: SITE_URL,
     logo: SITE_URL + "/brand/logo-full-dark.png",
+    sameAs: SOCIAL.map((x) => x.url),
     image: SITE_URL + "/og.jpg",
     description: DESC_AR,
     ...(phone ? { telephone: "+" + phone.replace(/\D/g, "") } : {}),
@@ -56,6 +57,12 @@ function organization(phone?: string) {
     knowsLanguage: ["ar", "en"],
   };
 }
+
+/** Company social accounts (client 2026-10-21), shown in the footer and given to Google as sameAs. */
+export const SOCIAL = [
+  { id: "instagram", label: "Instagram", handle: "binslmah_alaqaria", url: "https://www.instagram.com/binslmah_alaqaria" },
+  { id: "x", label: "X", handle: "binslmah_alaqar", url: "https://x.com/binslmah_alaqar" },
+] as const;
 
 /** Full public link of a property. */
 export const offerUrl = (slug: string, locale = "ar") => `${SITE_URL}/${locale}/offers/${encodeURIComponent(slug)}`;

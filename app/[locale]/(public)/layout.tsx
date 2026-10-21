@@ -4,8 +4,8 @@ import { FloatingWhatsApp, WhatsAppLink } from "@/components/WhatsAppButton";
 import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPublicContactInfo } from "@/lib/settings";
-import { organizationJsonLd } from "@/lib/seo";
-import { IconMail, IconPhone, IconPin } from "@/components/site/icons";
+import { SOCIAL, organizationJsonLd } from "@/lib/seo";
+import { IconInstagram, IconMail, IconPhone, IconPin, IconX } from "@/components/site/icons";
 import { Splash } from "@/components/site/Splash";
 
 /** Office: An Narjis, Othman Bin Affan Road, Riyadh. */
@@ -65,7 +65,17 @@ export default async function PublicLayout({
             </a>
           </div>
 
-          <div className="mx-auto mt-12 h-px max-w-xl bg-cream/15" />
+          {/* Social accounts. */}
+          <div className="mt-8 flex items-center justify-center gap-3">
+            {SOCIAL.map((x) => (
+              <a key={x.id} href={x.url} target="_blank" rel="noopener noreferrer" aria-label={x.label + " @" + x.handle} title={"@" + x.handle}
+                className="grid h-10 w-10 place-items-center rounded-full border border-cream/25 text-[18px] text-cream transition-colors hover:border-cream hover:bg-cream hover:text-navy">
+                {x.id === "instagram" ? <IconInstagram /> : <IconX />}
+              </a>
+            ))}
+          </div>
+
+          <div className="mx-auto mt-10 h-px max-w-xl bg-cream/15" />
           <div className="mt-6 flex flex-col items-center gap-2 text-xs text-cream/50">
             <span>© {new Date().getFullYear()} {ar ? "جميع الحقوق محفوظة لبن سلمه العقارية" : "All rights reserved — Bin Slmah Real Estate"}</span>
             <span className="flex gap-4">
