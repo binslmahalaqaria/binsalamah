@@ -31,6 +31,7 @@ export const offerTypeEnum = z.enum([
 
 export const offerUnitSchema = z.object({
   name: z.string().trim().min(1, "Unit name is required"),
+  name_en: z.string().trim().nullable().optional(),
   area: z.number().positive("Unit area is required"),
   price: z.number().positive("Unit price is required"),
   rooms: z.number().int().positive().nullable().optional(),
@@ -60,10 +61,14 @@ export const offerFormSchema = z.object({
   units: z.array(offerUnitSchema).optional().default([]),
   living_rooms: z.number().int().positive().nullable().optional(),
   developer: z.string().trim().nullable().optional(),
+  developer_en: z.string().trim().nullable().optional(),
   stage: z.enum(["ready", "under_construction", "off_plan"]).nullable().optional(),
   handover: z.string().trim().nullable().optional(),
+  handover_en: z.string().trim().nullable().optional(),
   warranties_text: z.string().trim().max(3000).nullable().optional(),
+  warranties_text_en: z.string().trim().max(4000).nullable().optional(),
   features: z.array(z.string().trim().min(1)).optional().default([]),
+  features_en: z.array(z.string().trim()).optional().default([]),
   map_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   brochure_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   video_url: z.string().trim().url().nullable().optional().or(z.literal("")),

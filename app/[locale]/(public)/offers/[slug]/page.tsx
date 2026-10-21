@@ -70,7 +70,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
   const range = (a: number, b: number | null) => (b && b !== a ? <><bdi>{num(a)}</bdi> <span className="text-[0.75em] font-normal text-navy/50">{s("to")}</span> <bdi>{num(b)}</bdi></> : <bdi>{num(a)}</bdi>);
 
   // Warranties are free text (one per line); older offers may still carry the structured list.
-  const warrantyLines = (offer.warranties_text || "").split("\n").map((l) => l.trim()).filter(Boolean)
+  const warrantyLines = ((!ar && offer.warranties_text_en) || offer.warranties_text || "").split("\n").map((l) => l.trim()).filter(Boolean)
     .concat(offer.warranties_text ? [] : (offer.warranties ?? []).map((w) => (ar ? `${w.item}: ${w.years} سنوات` : `${w.item}: ${w.years} years`)));
   const living = offer.living_rooms ?? (Math.max(0, ...(offer.units ?? []).map((u) => u.living_rooms ?? 0)) || null);
   const facts = [
@@ -78,7 +78,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
     offer.rooms ? { icon: <IconBed />, label: ar ? "الغرف" : "Bedrooms", value: offer.rooms } : null,
     living ? { icon: <IconSofa />, label: ar ? "الصالات" : "Living rooms", value: living } : null,
     offer.bathrooms ? { icon: <IconBath />, label: ar ? "دورات المياه" : "Bathrooms", value: offer.bathrooms } : null,
-    { icon: <IconPin />, label: ar ? "الموقع" : "Location", value: district + (city ? "، " + city : "") },
+    { icon: <IconPin />, label: ar ? "الموقع" : "Location", value: district + (city ? (ar ? "، " : ", ") + city : "") },
   ].filter(Boolean) as { icon: React.ReactNode; label: string; value: React.ReactNode }[];
 
   return (
@@ -99,7 +99,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               <span className={"rounded-full px-3 py-1 text-xs font-semibold " + (sold === 100 ? "bg-red-600 text-white" : "bg-gold/20 text-navy")}>{sold === 100 ? s("soldOut") : s("available")}</span>
             </div>
             <h1 className="font-heading text-3xl font-bold text-navy sm:text-4xl">{title}</h1>
-            <p className="flex items-center gap-1.5 text-navy/60"><IconPin /> {district}{city ? "، " + city : ""}</p>
+            <p className="flex items-center gap-1.5 text-navy/60"><IconPin /> {district}{city ? (ar ? "، " : ", ") + city : ""}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -125,9 +125,9 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               <h2 className="font-heading text-xl font-bold text-navy">{ar ? "معلومات المشروع" : "Project information"}</h2>
               {(offer.developer || offer.stage || offer.handover) && <dl className="grid gap-px overflow-hidden rounded-2xl border border-navy/10 bg-navy/10 sm:grid-cols-3">
                 {[
-                  offer.developer ? [ar ? "المطوّر" : "Developer", offer.developer] : null,
+                  offer.developer ? [ar ? "المطوّر" : "Developer", (!ar && offer.developer_en) || offer.developer] : null,
                   offer.stage ? [ar ? "حالة المشروع" : "Status", ar ? STAGE[offer.stage].ar : STAGE[offer.stage].en] : null,
-                  offer.handover ? [ar ? "موعد التسليم" : "Handover", offer.handover] : null,
+                  offer.handover ? [ar ? "موعد التسليم" : "Handover", (!ar && offer.handover_en) || offer.handover] : null,
                 ].filter(Boolean).map((r) => (
                   <div key={r![0]} className="bg-white p-4"><dt className="text-xs text-navy/50">{r![0]}</dt><dd className="mt-1 font-semibold text-navy">{r![1]}</dd></div>
                 ))}
@@ -147,7 +147,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             <div className="grid gap-3">
               <h2 className="font-heading text-xl font-bold text-navy">{ar ? "المميزات" : "Features"}</h2>
               <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {offer.features.map((x) => (
+                {(!ar && offer.features_en?.length === offer.features.length ? offer.features_en : offer.features).map((x) => (
                   <li key={x} className="flex items-center gap-2 text-navy/80"><span className="grid h-6 w-6 place-items-center rounded-full bg-gold/15 text-sm text-gold"><IconCheck /></span>{x}</li>
                 ))}
               </ul>

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { createOffer, updateOffer } from "@/lib/offers";
+import { fillEnglish } from "@/lib/translate-offer";
 import { uploadOfferImage } from "@/lib/upload-image";
 import { allDistricts } from "@/lib/districts";
 import { offerFormSchema, canPublishOffer, deriveFromUnits, type OfferFormInput } from "@/lib/validators";
@@ -29,6 +30,25 @@ const OFFER_TYPES: OfferType[] = [
 
 type ImageRow = { url: string };
 
+/**
+ * When an Arabic field was edited but its English was not, the old English no longer matches:
+ * clear it so it is translated again on save. English the owner edited is kept.
+ */
+function staleEnglishCleared(o: OfferFormInput, prev?: Offer | null): OfferFormInput {
+  if (!prev) return o;
+  const pairs = [["title_ar", "title_en"], ["city_ar", "city_en"], ["district_ar", "district_en"], ["description_ar", "description_en"],
+    ["developer", "developer_en"], ["handover", "handover_en"], ["warranties_text", "warranties_text_en"]] as const;
+  const out = { ...o } as Record<string, unknown>;
+  const was = prev as unknown as Record<string, unknown>;
+  for (const [ar, en] of pairs) if ((o[ar] ?? "") !== (was[ar] ?? "") && (o[en] ?? "") === (was[en] ?? "")) out[en] = "";
+  if (JSON.stringify(o.features) !== JSON.stringify(prev.features ?? [])) out.features_en = [];
+  out.units = (o.units ?? []).map((u) => {
+    const old = (prev.units ?? []).find((x) => x.name === u.name);
+    return old ? { ...u, name_en: u.name_en || old.name_en || "" } : { ...u, name_en: "" };
+  });
+  return out as OfferFormInput;
+}
+
 function toFormInput(offer?: Offer | null): OfferFormInput {
   return {
     title_ar: offer?.title_ar ?? "",
@@ -51,10 +71,14 @@ function toFormInput(offer?: Offer | null): OfferFormInput {
     units: offer?.units ?? [],
     living_rooms: offer?.living_rooms ?? null,
     developer: offer?.developer ?? "",
+    developer_en: offer?.developer_en ?? "",
     stage: offer?.stage ?? null,
     handover: offer?.handover ?? "",
+    handover_en: offer?.handover_en ?? "",
     warranties_text: offer?.warranties_text ?? (offer?.warranties?.length ? offer.warranties.map((w) => w.item + ": " + w.years + " سنوات").join("\n") : ""),
+    warranties_text_en: offer?.warranties_text_en ?? "",
     features: offer?.features ?? [],
+    features_en: offer?.features_en ?? [],
     map_url: offer?.map_url ?? "",
     brochure_url: offer?.brochure_url ?? "",
     video_url: offer?.video_url ?? "",
@@ -157,10 +181,12 @@ export function OfferForm({ offer }: { offer?: Offer | null }) {
     setSubmitting(true);
     try {
       const status = publish ? "published" : "draft";
+      // English for the English site: empty English fields are translated from the Arabic before saving.
+      const data = await fillEnglish(staleEnglishCleared(parsed.data, offer), await user.getIdToken());
       if (offer) {
-        await updateOffer(offer.id, { ...parsed.data, images: cleanImages }, status, user.uid);
+        await updateOffer(offer.id, { ...data, images: cleanImages }, status, user.uid);
       } else {
-        await createOffer({ ...parsed.data, images: cleanImages }, status, user.uid);
+        await createOffer({ ...data, images: cleanImages }, status, user.uid);
       }
       router.push("/admin/offers");
     } catch (err) {

@@ -54,7 +54,7 @@ export function OfferCard({ offer, whatsappNumber }: { offer: Offer; whatsappNum
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div>
-          <p className="text-xs text-gold">{district}{city ? "، " + city : ""}</p>
+          <p className="text-xs text-gold">{district}{city ? (ar ? "، " : ", ") + city : ""}</p>
           <Link href={href}><h3 className="mt-1 font-heading text-lg leading-snug font-bold text-navy">{title}</h3></Link>
         </div>
 

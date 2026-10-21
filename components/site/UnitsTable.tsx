@@ -26,7 +26,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
   const L = ar
     ? { title: "الوحدات", unit: "الوحدة", area: "المساحة", rooms: "الغرف", living: "الصالات", baths: "دورات المياه", price: "السعر", status: "الحالة", ask: "استفسار", all: "الكل", free: "المتاحة فقط", of: "متاحة من", sar: "ريال", m: "م²" }
     : { title: "Units", unit: "Unit", area: "Area", rooms: "Beds", living: "Living", baths: "Baths", price: "Price", status: "Status", ask: "Enquire", all: "All", free: "Available only", of: "available of", sar: "SAR", m: "m²" };
-  const msg = (u: OfferUnit) => enquiryMessage(enquiry, u, ar);
+  const msg = (u: OfferUnit) => enquiryMessage(enquiry, ar ? u : { ...u, name: u.name_en || u.name }, ar);
   const chip = (on: boolean) => "rounded-full px-4 py-1.5 text-sm transition-colors " + (on ? "bg-navy text-cream" : "bg-navy/5 text-navy hover:bg-navy/10");
   const badge = (u: OfferUnit) => <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 " + STATUS[u.status].cls}>{ar ? STATUS[u.status].ar : STATUS[u.status].en}</span>;
   const ask = (u: OfferUnit) => u.status === "sold" ? null : (
@@ -53,7 +53,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
           <tbody>
             {list.map((u, i) => (
               <tr key={i} className={"border-t border-navy/10 " + (u.status === "sold" ? "text-navy/40" : "text-navy")}>
-                <td className="px-4 py-3 font-semibold">{u.name}</td>
+                <td className="px-4 py-3 font-semibold">{ar ? u.name : u.name_en || u.name}</td>
                 <td className="px-4 py-3"><bdi>{num(u.area)}</bdi> {L.m}</td>
                 <td className="px-4 py-3">{u.rooms ?? "—"}</td>
                 <td className="px-4 py-3">{u.living_rooms ?? "—"}</td>
@@ -71,7 +71,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
       <div className="grid gap-3 sm:hidden">
         {list.map((u, i) => (
           <div key={i} className={"grid gap-2 rounded-2xl border border-navy/10 p-4 " + (u.status === "sold" ? "opacity-60" : "")}>
-            <div className="flex items-center justify-between"><b className="text-navy">{u.name}</b>{badge(u)}</div>
+            <div className="flex items-center justify-between"><b className="text-navy">{ar ? u.name : u.name_en || u.name}</b>{badge(u)}</div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-navy/70">
               <span><bdi>{num(u.area)}</bdi> {L.m}</span>
               {u.rooms ? <span>{u.rooms} {L.rooms}</span> : null}

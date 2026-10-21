@@ -29,6 +29,8 @@ export type UnitStatus = "available" | "reserved" | "sold";
 /** One sellable unit inside an offer (e.g. «دور أرضي», «شقة 3»), with its own price and area. */
 export interface OfferUnit {
   name: string;
+  /** English name (filled automatically on save when empty). */
+  name_en?: string | null;
   area: number;
   price: number;
   rooms?: number | null;
@@ -68,13 +70,18 @@ export interface Offer {
   living_rooms?: number | null;
   /** Project details shown on the property page. */
   developer?: string | null;
+  developer_en?: string | null;
   stage?: ProjectStage | null;
   handover?: string | null;
+  handover_en?: string | null;
   /** Warranties written freely by the owner, one per line. */
   warranties_text?: string | null;
+  warranties_text_en?: string | null;
   /** Older structured warranties (still shown if present). */
   warranties?: OfferWarranty[];
   features?: string[];
+  /** English features, same order as `features` (filled automatically on save). */
+  features_en?: string[];
   map_url?: string | null;
   brochure_url?: string | null;
   video_url?: string | null;
