@@ -17,14 +17,18 @@ import { PERIOD_AR, scoreboard, type Period, type Row } from "@/lib/crm/report";
 import { fmtStamp, money, today, ym } from "@/lib/crm/util";
 import { ManagerTabs } from "@/components/crm/PageTabs";
 import { Empty, PageHeader, Pill } from "@/components/crm/ui";
+import { CallLog, type CallFilter } from "@/components/crm/CallLog";
 
-function Tile({ v, l, gold }: { v: string | number; l: string; gold?: boolean }) {
-  return (
-    <div className="crm-card flex flex-col-reverse gap-0.5 px-4 py-3.5">
+function Tile({ v, l, gold, onClick }: { v: string | number; l: string; gold?: boolean; onClick?: () => void }) {
+  const body = (
+    <>
       <b className={"num font-heading text-[26px] " + (gold ? "text-[var(--crm-gold-ink)]" : "")}>{v}</b>
-      <span className="text-[12.5px] text-[var(--crm-ink-3)]">{l}</span>
-    </div>
+      <span className="text-[12.5px] text-[var(--crm-ink-3)]">{l}{onClick && " ←"}</span>
+    </>
   );
+  return onClick
+    ? <button type="button" onClick={onClick} className="crm-card flex flex-col-reverse gap-0.5 px-4 py-3.5 text-start hover:border-[var(--crm-ink-3)]">{body}</button>
+    : <div className="crm-card flex flex-col-reverse gap-0.5 px-4 py-3.5">{body}</div>;
 }
 
 function TH({ k, cur, set, children }: { k: keyof Row; cur: keyof Row; set: (k: keyof Row) => void; children: React.ReactNode }) {
@@ -41,6 +45,9 @@ export default function ManagerPage() {
   const [period, setPeriod] = useState<Period>("today");
   const [sortK, setSortK] = useState<keyof Row>("calls");
   const [custom, setCustom] = useState<[string, string]>(() => [ym() + "-01", today()]);
+  const [callF, setCallF] = useState<CallFilter>("all");
+  // The call tiles open the call log below, filtered.
+  const showCalls = (f: CallFilter) => { setCallF(f); setTimeout(() => document.getElementById("calls")?.scrollIntoView({ behavior: "smooth" }), 0); };
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
   if (!data.isMgr) return <Empty>هذه الصفحة مخصصة للمدير والمالك فقط.</Empty>;
@@ -92,9 +99,9 @@ export default function ManagerPage() {
         } />
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
-        <Tile v={sum("calls")} l="مكالمات" />
-        <Tile v={sum("answered") + (sum("calls") ? " (" + Math.round((sum("answered") / sum("calls")) * 100) + "%)" : "")} l="مكالمات ناجحة" />
-        <Tile v={sum("noAnswer")} l="مكالمات غير ناجحة" />
+        <Tile v={sum("calls")} l="مكالمات" onClick={() => showCalls("all")} />
+        <Tile v={sum("answered") + (sum("calls") ? " (" + Math.round((sum("answered") / sum("calls")) * 100) + "%)" : "")} l="مكالمات ناجحة" onClick={() => showCalls("ok")} />
+        <Tile v={sum("noAnswer")} l="مكالمات غير ناجحة" onClick={() => showCalls("no")} />
         <Tile v={sum("visits")} l="زيارات" />
         <Tile v={sum("sent")} l="عروض مُرسلة" />
         <Tile v={sum("reqs")} l="طلبات جديدة" />
@@ -163,6 +170,8 @@ export default function ManagerPage() {
           </tbody>
         </table>
       </div>
+
+      <CallLog period={period} custom={custom} filter={callF} setFilter={setCallF} />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <section className="crm-card grid content-start gap-2.5 p-4">
