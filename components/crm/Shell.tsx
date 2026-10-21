@@ -99,7 +99,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     me && (
       <div className="grid gap-2">
         <div className="flex items-center gap-2.5">
-          <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full font-semibold " + (dark ? "bg-white/10" : "bg-[var(--crm-surface-2)]")}>
+          <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full font-semibold " + (dark ? "bg-gradient-to-b from-[#c6a688] to-[#9a785a] text-white ring-2 ring-white/10" : "bg-[var(--crm-surface-2)]")}>
             {(me.name || "؟").slice(0, 1)}
           </div>
           <div className="min-w-0">
@@ -117,18 +117,21 @@ export function CrmShell({ children }: { children: ReactNode }) {
   return (
     <div className="crm min-h-screen" dir="rtl" lang="ar">
       <div className="md:grid md:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="sticky top-0 hidden h-screen flex-col gap-4 overflow-y-auto border-s border-[var(--crm-gold)]/20 bg-[#262626] px-3.5 py-5 text-[#efeae3] md:flex">
-          <div className="border-b border-[var(--crm-gold)]/25 px-2 pb-4">
+        <aside className="sticky top-0 isolate hidden h-screen flex-col gap-4 overflow-y-auto border-s border-[var(--crm-gold)]/25 bg-gradient-to-b from-[#2e2c2a] via-[#242322] to-[#1b1a19] px-3.5 py-5 text-[#efeae3] md:flex">
+          {/* faint brand-mark pattern, like the website footer */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[url(/brand/pattern-footer.png)] bg-[length:90px_90px] opacity-[.05]" />
+          <div className="px-2 pt-1 pb-4">
             <Logo variant="light" locale={locale} />
+            <div className="mt-4 h-px bg-gradient-to-l from-transparent via-[var(--crm-gold)]/60 to-transparent" />
           </div>
           <nav className="grid flex-1 content-start gap-0.5" aria-label="الأقسام">
             {groups.map(([g, xs]) => (
               <div key={g || "top"} className="grid gap-0.5">
-                {g && <div className="px-3 pt-3.5 pb-1 text-[11px] tracking-wide text-white/40">{g}</div>}
+                {g && <div className="flex items-center gap-2 px-3 pt-4 pb-1.5 text-[11px] tracking-wide text-[var(--crm-gold)]/70">{g}<span className="h-px flex-1 bg-white/[.07]" /></div>}
                 {xs.map((x) => (
                   <Link key={x.href} href={x.href} aria-current={isOn(x.href) ? "page" : undefined}
                     className={"flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14.5px] font-medium transition-colors " +
-                      (isOn(x.href) ? "bg-[var(--crm-gold)]/15 text-white shadow-[inset_-2px_0_0_var(--crm-gold)] [&_svg]:text-[var(--crm-gold)]" : "text-white/75 hover:bg-white/5 hover:text-white")}>
+                      (isOn(x.href) ? "bg-gradient-to-l from-[var(--crm-gold)]/25 to-[var(--crm-gold)]/[.06] text-white shadow-[inset_-3px_0_0_var(--crm-gold),0_6px_18px_-10px_rgb(0_0_0/.6)] [&_svg]:text-[var(--crm-gold)]" : "text-white/70 hover:bg-white/[.06] hover:text-white [&_svg]:text-white/45 hover:[&_svg]:text-[var(--crm-gold)]")}>
                     <Icon k={x.k} />
                     <span>{x.label}</span>
                     {!!x.badge && (
@@ -140,7 +143,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
               </div>
             ))}
           </nav>
-          <div className="border-t border-[var(--crm-gold)]/20 px-1.5 pt-3">{meBox(true)}</div>
+          <div className="rounded-2xl border border-white/[.08] bg-white/[.04] px-3 py-3">{meBox(true)}</div>
         </aside>
 
         <div className="mx-auto w-full min-w-0 max-w-[1280px] px-3.5 pt-3 pb-28 md:px-7 md:pt-6 md:pb-16">
@@ -172,7 +175,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* phones: bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--crm-line)] bg-white px-1 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] md:hidden" aria-label="التنقل">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--crm-line)] bg-white/90 px-1 shadow-[0_-8px_24px_-12px_rgb(0_0_0/.15)] backdrop-blur-md pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] md:hidden" aria-label="التنقل">
         {all.filter((x) => mainK.includes(x.k)).map((x) => (
           <Link key={x.href} href={x.href} className={"relative grid justify-items-center gap-0.5 py-1 text-[11px] " + (isOn(x.href) ? "font-bold text-[var(--crm-ink)] [&_svg]:text-[var(--crm-gold)]" : "text-[var(--crm-ink-3)]")}>
             <Icon k={x.k} />

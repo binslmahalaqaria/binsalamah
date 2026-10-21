@@ -317,9 +317,11 @@ export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?:
 
 export function PageHeader({ title, sub, action }: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
   return (
-    <header className="mb-5 flex flex-wrap items-end gap-3 border-b border-[var(--crm-line)] pb-4">
+    <header className="relative mb-6 flex flex-wrap items-end gap-3 pb-4">
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-l from-[var(--crm-gold)]/70 via-[var(--crm-line)] to-transparent" />
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl md:text-[28px]">{title}</h1>
+        <span aria-hidden className="mb-2 block h-[3px] w-9 rounded-full bg-gradient-to-l from-[#c6a688] to-[#9a785a]" />
+        <h1 className="text-2xl tracking-tight md:text-[30px]">{title}</h1>
         {sub && <p className="mt-1 hidden text-[13.5px] text-[var(--crm-ink-3)] md:block">{sub}</p>}
       </div>
       {action}
