@@ -27,7 +27,7 @@ function dayFor(d: CrmData, id: string, t: string) {
 
 function Tile({ v, l, sub, tone }: { v: string | number; l: string; sub?: string; tone?: "gold" | "bad" }) {
   return (
-    <div className="grid content-start gap-0.5 rounded-xl border border-[#efebe4] bg-[var(--crm-surface-2)] px-3 py-2.5">
+    <div className="grid content-start gap-0.5 rounded-xl border border-[#ededed] bg-[var(--crm-surface-2)] px-3 py-2.5">
       <span className="text-[12px] text-[var(--crm-ink-3)]">{l}</span>
       <b className={"num font-heading text-[22px] leading-tight " + (tone === "gold" ? "text-[var(--crm-gold-ink)]" : tone === "bad" ? "text-[var(--crm-danger)]" : "")}>{v}</b>
       {sub && <span className="num text-[11.5px] text-[var(--crm-ink-2)]">{sub}</span>}
@@ -62,7 +62,7 @@ export function DaySummary({ compact }: { compact?: boolean }) {
         <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
-        <div className="grid gap-3 border-t border-[#efebe4] px-4 pt-3 pb-4">
+        <div className="grid gap-3 border-t border-[#ededed] px-4 pt-3 pb-4">
           <div className={"grid grid-cols-2 gap-2.5 " + (compact ? "" : "sm:grid-cols-3 lg:grid-cols-6")}>
             <Tile v={sum("calls")} l="مكالمات تمت" sub={sum("dueLeft") ? "المتبقي: " + sum("dueLeft") : "لا يوجد متبقٍ"} />
             <Tile v={sum("visits")} l="زيارات" />

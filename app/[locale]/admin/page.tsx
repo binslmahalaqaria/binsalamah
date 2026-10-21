@@ -371,12 +371,12 @@ export default function TodayPage() {
                 <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{planOpen ? "▴" : "▾"}</span>
               </button>
               {planOpen && (
-                <div className="grid border-t border-[#efebe4]">
+                <div className="grid border-t border-[#ededed]">
                   {(["الصباح", "خلال اليوم", "آخر اليوم"] as const).map((sec) => {
                     const xs = plan.filter((x) => x.sec === sec);
                     if (!xs.length) return null;
                     return (
-                      <div key={sec} className="grid content-start gap-0.5 border-t border-[#efebe4] px-3 pt-2.5 pb-3 first:border-t-0">
+                      <div key={sec} className="grid content-start gap-0.5 border-t border-[#ededed] px-3 pt-2.5 pb-3 first:border-t-0">
                         <span className="px-1.5 pb-1 text-[11.5px] font-semibold tracking-wide text-[var(--crm-gold-ink)]">{sec}</span>
                         {xs.map((x) => (
                           <button key={x.k} type="button" disabled={who !== data.uid} onClick={() => planGo(x.k)}
@@ -403,7 +403,7 @@ export default function TodayPage() {
               {g.note && <div className="border-s-2 border-[var(--crm-gold)] ps-2.5 text-[13px] text-[var(--crm-ink-2)]">{g.note}</div>}
               <div className="grid grid-cols-2 gap-2.5">
                 {goalTiles.map((x) => (
-                  <div key={x.k} className="grid gap-1.5 rounded-xl border border-[#efebe4] bg-[var(--crm-surface-2)] px-3 py-2.5">
+                  <div key={x.k} className="grid gap-1.5 rounded-xl border border-[#ededed] bg-[var(--crm-surface-2)] px-3 py-2.5">
                     <span className="text-[12.5px] text-[var(--crm-ink-2)]">{x.label}</span>
                     <span className="num font-heading text-xl">{x.v} <small className="text-[13px] text-[var(--crm-ink-3)]">/ {x.target}</small></span>
                     <div className={"crm-bar " + x.st}><i style={{ width: x.w + "%" }} /></div>

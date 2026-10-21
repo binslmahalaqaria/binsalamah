@@ -17,7 +17,7 @@ import { ManagerTabs } from "@/components/crm/PageTabs";
 import { Empty } from "@/components/crm/ui";
 
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف مبيعات" };
-const GOLD = "#b79579", INK = "#333333";
+const GOLD = "#b8b8b8", INK = "#333333";
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return d && m && y ? +d + "/" + +m + "/" + y : s; };
 const daysBetween = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 864e5) + 1);
@@ -146,7 +146,7 @@ function Report() {
                     <td className="px-2 py-1.5 font-semibold">{r.name}</td>
                     <td className="num px-2">{fmt(r.calls)}</td><td className="num px-2">{fmt(r.answered)}{r.calls ? <span className="text-[11px] text-[#999]"> ({Math.round((r.answered / r.calls) * 100)}%)</span> : null}</td><td className="num px-2">{fmt(r.noAnswer)}</td><td className="num px-2">{fmt(r.visits)}</td><td className="num px-2">{fmt(r.reqs)}</td>
                     <td className="num px-2">{fmt(r.deposits)}</td><td className="num px-2 font-semibold">{fmt(r.sales)}</td>
-                    <td className="num px-2" style={{ color: "#8a6a4e" }}>{money(r.commission)}</td>
+                    <td className="num px-2" style={{ color: "#555555" }}>{money(r.commission)}</td>
                     <td className="num px-2">{fmt(r.attDays)}</td><td className="num px-2">{fmt(r.attLateDays)}</td>
                   </tr>
                 ))}
@@ -177,9 +177,9 @@ function H({ children }: { children: React.ReactNode }) {
 
 function Kpi({ l, v, gold, hint }: { l: string; v: string; gold?: boolean; hint?: string }) {
   return (
-    <div className="rounded-xl border px-3.5 py-3" style={{ borderColor: gold ? GOLD : "#eee", background: gold ? "#fbf7f3" : "#fff" }}>
+    <div className="rounded-xl border px-3.5 py-3" style={{ borderColor: gold ? GOLD : "#eee", background: gold ? "#f7f7f7" : "#fff" }}>
       <div className="text-[12px] text-[#888]">{l}</div>
-      <div className="num font-heading text-[22px] leading-tight" style={{ color: gold ? "#8a6a4e" : INK }}>{v}</div>
+      <div className="num font-heading text-[22px] leading-tight" style={{ color: gold ? "#555555" : INK }}>{v}</div>
       {hint && <div className="text-[10.5px] text-[#aaa]">{hint}</div>}
     </div>
   );
@@ -194,7 +194,7 @@ function Bars({ title, rows, k, k2, legend = ["بيع", "عربون"], colors = 
       {rows.map((r) => (
         <div key={r.id} className="grid grid-cols-[90px_1fr_40px] items-center gap-2 text-[12.5px]">
           <span className="truncate">{r.name}</span>
-          <span className="flex h-3.5 overflow-hidden rounded-full" style={{ background: "#f1ece7" }}>
+          <span className="flex h-3.5 overflow-hidden rounded-full" style={{ background: "#efefef" }}>
             <i className="block h-full" style={{ width: (Number(r[k]) / max) * 100 + "%", background: k2 ? colors[0] : GOLD }} />
             {k2 && <i className="block h-full" style={{ width: (Number(r[k2]) / max) * 100 + "%", background: colors[1] }} />}
           </span>
@@ -226,7 +226,7 @@ function Card({ r, role }: { r: Row; role: string }) {
         </div>
         <div className="text-end">
           <div className="text-[11px] text-[#888]">السعي</div>
-          <div className="num font-heading text-[18px]" style={{ color: "#8a6a4e" }}>{money(r.commission)}</div>
+          <div className="num font-heading text-[18px]" style={{ color: "#555555" }}>{money(r.commission)}</div>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -237,7 +237,7 @@ function Card({ r, role }: { r: Row; role: string }) {
         {stat("عروض مرسلة", fmt(r.sent))}
         {stat("طلبات جديدة", fmt(r.reqs))}
         {stat("عربون", fmt(r.deposits))}
-        {stat("بيع", fmt(r.sales), "#8a6a4e")}
+        {stat("بيع", fmt(r.sales), "#555555")}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {stat("أيام الحضور", fmt(r.attDays) + (days > 1 ? " (" + attRate + "%)" : ""))}

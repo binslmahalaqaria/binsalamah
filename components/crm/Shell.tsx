@@ -99,7 +99,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     me && (
       <div className="grid gap-2">
         <div className="flex items-center gap-2.5">
-          <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full font-semibold " + (dark ? "bg-gradient-to-b from-[#c6a688] to-[#9a785a] text-white ring-2 ring-white/10" : "bg-[var(--crm-surface-2)]")}>
+          <div className={"grid h-9 w-9 shrink-0 place-items-center rounded-full font-semibold " + (dark ? "bg-gradient-to-b from-[#d2d2d2] to-[#9c9c9c] text-[#262626] ring-2 ring-white/10" : "bg-[var(--crm-surface-2)]")}>
             {(me.name || "؟").slice(0, 1)}
           </div>
           <div className="min-w-0">
@@ -117,7 +117,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   return (
     <div className="crm min-h-screen" dir="rtl" lang="ar">
       <div className="md:grid md:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="sticky top-0 isolate hidden h-screen flex-col gap-4 overflow-y-auto border-s border-[var(--crm-gold)]/25 bg-gradient-to-b from-[#2e2c2a] via-[#242322] to-[#1b1a19] px-3.5 py-5 text-[#efeae3] md:flex">
+        <aside className="sticky top-0 isolate hidden h-screen flex-col gap-4 overflow-y-auto border-s border-[var(--crm-gold)]/25 bg-gradient-to-b from-[#333333] via-[#2a2a2a] to-[#1f1f1f] px-3.5 py-5 text-[#efeae3] md:flex">
           {/* faint brand-mark pattern, like the website footer */}
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[url(/brand/pattern-footer.png)] bg-[length:90px_90px] opacity-[.05]" />
           <div className="px-2 pt-1 pb-4">
