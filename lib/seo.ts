@@ -60,9 +60,9 @@ function organization(phone?: string) {
 
 /** Company social accounts (client 2026-10-21), shown in the footer and given to Google as sameAs. */
 export const SOCIAL = [
-  { id: "instagram", label: "Instagram", handle: "binslmah_alaqaria", url: "https://www.instagram.com/binslmah_alaqaria" },
-  { id: "x", label: "X", handle: "binslmah_alaqar", url: "https://x.com/binslmah_alaqar" },
-  { id: "tiktok", label: "TikTok", handle: "binslmah_alaqaria", url: "https://www.tiktok.com/@binslmah_alaqaria" },
+  { id: "instagram", label: "Instagram", handle: "binslmahre", url: "https://www.instagram.com/binslmahre" },
+  { id: "x", label: "X", handle: "binslmahre", url: "https://x.com/binslmahre" },
+  { id: "tiktok", label: "TikTok", handle: "binslmahre", url: "https://www.tiktok.com/@binslmahre" },
 ] as const;
 
 /** Full public link of a property. */
