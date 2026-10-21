@@ -71,8 +71,9 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
         </header>
       ) : (
         <header className={(home ? "fixed animate-[fadeDown_.35s_ease-out]" : "sticky") + " inset-x-0 top-0 z-[1000] border-b border-navy/10 bg-white/95 shadow-[0_10px_30px_-25px_rgba(0,0,0,0.4)] backdrop-blur"}>
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-3">
-            <Logo variant="dark" height={38} />
+          {/* Inner pages: a taller bar with a larger logo that eases down to the compact size once scrolled. */}
+          <div className={"mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 transition-[padding] duration-300 " + (!home && !scrolled ? "py-5" : "py-3")}>
+            <Logo variant="dark" height={!home && !scrolled ? 50 : 38} />
             <nav className="hidden items-center gap-8 lg:flex">
               {links.map((l) => <Link key={l.href} href={l.href} className={navLink(false)}>{l.label}</Link>)}
             </nav>
