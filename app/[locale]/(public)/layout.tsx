@@ -7,6 +7,8 @@ import { getPublicContactInfo } from "@/lib/settings";
 import { SOCIAL, organizationJsonLd } from "@/lib/seo";
 import { IconInstagram, IconMail, IconPhone, IconPin, IconTikTok, IconX } from "@/components/site/icons";
 import { Splash } from "@/components/site/Splash";
+import { ComingSoon } from "@/components/site/ComingSoon";
+import { COMING_SOON } from "@/lib/site-mode";
 
 /** Office: An Narjis, Othman Bin Affan Road, Riyadh. */
 const MAP_URL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("طريق عثمان بن عفان، حي النرجس، الرياض");
@@ -23,6 +25,16 @@ export default async function PublicLayout({
     getTranslations("Nav"),
   ]);
   const ar = locale === "ar";
+
+  // «انتظرونا قريباً»: only the request form until the owner says the site is ready (lib/site-mode.ts).
+  if (COMING_SOON) {
+    return (
+      <div className="site flex min-h-screen flex-col bg-cream text-navy">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(whatsappNumber)) }} />
+        <ComingSoon />
+      </div>
+    );
+  }
 
   return (
     <div className="site flex min-h-screen flex-col bg-cream text-navy">
