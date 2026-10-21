@@ -13,6 +13,7 @@ import { useCrm } from "@/lib/crm/store";
 import { fmtDur, members, nameOf } from "@/lib/crm/logic";
 import { PERIOD_AR, scoreboard, type Period, type Row } from "@/lib/crm/report";
 import { fmtStamp, money, nowStamp, today, ym } from "@/lib/crm/util";
+import { ManagerTabs } from "@/components/crm/PageTabs";
 import { Empty } from "@/components/crm/ui";
 
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف مبيعات" };
@@ -48,6 +49,7 @@ function Report() {
 
   return (
     <>
+      <div className="crm-noprint"><ManagerTabs /></div>
       {/* controls — not printed */}
       <div className="crm-noprint mb-4 flex flex-wrap items-center gap-2">
         <div className="crm-seg">

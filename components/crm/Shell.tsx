@@ -28,6 +28,8 @@ interface NavItem {
   k: string;
   label: string;
   badge?: number;
+  /** Other screens shown as tabs of this item (highlight it there too). */
+  also?: string[];
 }
 
 /** Screens whose content follows the manager's "عرض بيانات" choice. */
@@ -54,25 +56,20 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const unread = chat.filter((m) => m.by !== data.uid && (!myStaff?.chatSeen || m.at > myStaff.chatSeen)).length
     + dms.filter((m) => m.to === data.uid && !m.read).length;
 
-  // Re-contact list ("للتواصل"): each person's own remaining clients (managers see the totals on the page).
+  // Re-contact list ("للتواصل", a tab of العملاء): each person's own remaining clients (managers see the totals on the page).
   const toContact = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "اليوم", badge: due + newTasks }]],
     ["المبيعات", [
-      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq },
-      { href: "/admin/clients", k: "clients", label: "العملاء" },
-      ...(data.isMgr || toContact ? [{ href: "/admin/contact", k: "phone", label: "للتواصل", badge: toContact }] : []),
+      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads"] },
+      { href: "/admin/clients", k: "clients", label: "العملاء", badge: toContact, also: ["/admin/contact"] },
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),
       ...(data.isMgr || can(data, "recordDeals") ? [{ href: "/admin/invoices", k: "leads", label: "الفواتير" }] : []),
     ]],
-    ["المخزون", [{ href: "/admin/properties", k: "props", label: "العقارات" }]],
-    // The website screens write through their own helpers, so they are left out of the read-only preview.
-    ...(previewAs ? [] : [["الموقع", [
-      { href: "/admin/leads", k: "leads", label: "استفسارات الموقع" },
-      { href: "/admin/offers", k: "web", label: "عروض الموقع" },
-    ]] as [string, NavItem[]]]),
+    // Website listings and website enquiries are tabs of العقارات and الطلبات (one place for each thing).
+    ["المخزون", [{ href: "/admin/properties", k: "props", label: "العقارات", also: ["/admin/offers"] }]],
     ["الفريق", [
-      ...(data.isMgr ? [{ href: "/admin/manager", k: "sales", label: "لوحة المدير" }, { href: "/admin/report", k: "leads", label: "تقرير الأداء" }] : []),
+      ...(data.isMgr ? [{ href: "/admin/manager", k: "sales", label: "لوحة المدير", also: ["/admin/report"] }] : []),
       ...(can(data, "whatsapp") ? [{ href: "/admin/whatsapp", k: "wa", label: "واتساب" }] : []),
       { href: "/admin/tasks", k: "tasks", label: "المهام", badge: newTasks },
       { href: "/admin/chat", k: "chat", label: "الدردشة", badge: pathname === "/admin/chat" ? 0 : unread },
@@ -81,7 +78,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     ]],
   ];
   const all = groups.flatMap(([, xs]) => xs);
-  const isOn = (h: string) => (h === "/admin" ? pathname === "/admin" : pathname.startsWith(h));
+  const isOn = (h: string) => (h === "/admin" ? pathname === "/admin" : pathname.startsWith(h) || !!all.find((x) => x.href === h)?.also?.some((a) => pathname.startsWith(a)));
   const mainK = ["today", "requests", "clients", "props"];
   const moreItems = all.filter((x) => !mainK.includes(x.k));
   const moreBadge = moreItems.reduce((a, x) => a + (x.badge || 0), 0);

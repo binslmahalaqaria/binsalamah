@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * "ملخص اليوم" on the Today screen. Managers looking at the whole team see
- * team totals plus a row per employee; everyone else (and a manager viewing
- * one employee) sees only that person's numbers. Today's deposits and sales
- * are listed by name so they stand out.
+ * "ملخص اليوم" on the Today screen. Managers looking at the whole team get one
+ * line of team totals (folded; the per-employee table lives in لوحة المدير, so it
+ * is not repeated here); everyone else (and a manager viewing one employee) sees
+ * only that person's numbers. Today's deposits and sales are listed by name.
  */
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
-import { activityFor, attToday, clientById, fmtDur, isActive, lateMin, members, nameOf, propById, type CrmData } from "@/lib/crm/logic";
+import { activityFor, clientById, isActive, members, nameOf, propById, type CrmData } from "@/lib/crm/logic";
 import type { Request } from "@/lib/crm/types";
-import { hm, localDay, moneyFull, num, today } from "@/lib/crm/util";
+import { localDay, moneyFull, num, today } from "@/lib/crm/util";
 import { Pill } from "./ui";
 
 function dayFor(d: CrmData, id: string, t: string) {
@@ -36,11 +36,11 @@ function Tile({ v, l, sub, tone }: { v: string | number; l: string; sub?: string
 }
 
 export function DaySummary({ compact }: { compact?: boolean }) {
-  const { data, setViewAs, openClient } = useCrm();
+  const { data, openClient } = useCrm();
   const router = useRouter();
-  const [open, setOpen] = useState(true);
   const t = today();
   const team = data.isMgr && (!data.viewAs || data.viewAs === "none");
+  const [open, setOpen] = useState(!team);
   const ids = team ? members(data) : [data.isMgr && data.viewAs ? data.viewAs : data.uid];
   const rows = ids.map((id) => ({ id, ...dayFor(data, id, t) }));
   const sum = (k: "calls" | "visits" | "sent" | "reqs" | "late" | "dueLeft" | "tasksDone" | "depositSum" | "commission") =>
@@ -56,6 +56,7 @@ export function DaySummary({ compact }: { compact?: boolean }) {
         <b className="font-heading text-[15px]">{title}</b>
         <span className="text-[13px] text-[var(--crm-ink-2)]">
           <span className="num">{sum("calls")}</span> مكالمة
+          {team && <> · <span className="num">{sum("visits")}</span> زيارة · <span className="num">{sum("reqs")}</span> طلب جديد{sum("late") ? <> · <span className="font-semibold text-[var(--crm-danger)]"><span className="num">{sum("late")}</span> متأخر</span></> : null}</>}
           {depCount + saleCount > 0 && <> · <span className="font-semibold text-[var(--crm-gold-ink)]"><span className="num">{depCount}</span> عربون{saleCount ? <> · <span className="num">{saleCount}</span> بيع</> : null}</span></>}
         </span>
         <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{open ? "▴" : "▾"}</span>
@@ -91,35 +92,10 @@ export function DaySummary({ compact }: { compact?: boolean }) {
             </div>
           )}
 
-          {team && rows.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="crm-table min-w-[720px]">
-                <thead>
-                  <tr><th>الموظف</th><th>الحضور</th><th>مكالمات</th><th>باقي</th><th>زيارات</th><th>إرسال</th><th>طلبات</th><th>عربون</th><th>المتأخرون</th></tr>
-                </thead>
-                <tbody>
-                  {rows.sort((a, b) => b.calls - a.calls).map((r) => {
-                    const a = attToday(data, r.id), lm = lateMin(data, a, r.id);
-                    return (
-                      <tr key={r.id}>
-                        <td><b className="link" onClick={() => setViewAs(r.id)}>{nameOf(data, r.id)}</b></td>
-                        <td>{a ? <span className="num text-[12.5px]">{hm(a.in)}{a.out ? " – " + hm(a.out) : ""}{lm > 0 && <> <Pill tone="warm">متأخر {fmtDur(lm)}</Pill></>}</span> : <Pill tone="hot">لم يحضر</Pill>}</td>
-                        <td className="num"><b>{r.calls}</b></td>
-                        <td className="num">{r.dueLeft}</td>
-                        <td className="num">{r.visits}</td>
-                        <td className="num">{r.sent}</td>
-                        <td className="num">{r.reqs}</td>
-                        <td className="num">{r.deposits.length ? <b className="text-[var(--crm-gold-ink)]">{r.deposits.length}</b> : 0}</td>
-                        <td className={"num " + (r.late ? "font-semibold text-[var(--crm-danger)]" : "")}>{r.late}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="muted text-xs">اضغط على اسم الموظف لعرض تفاصيل يومه.</span>
-                <button type="button" className="crm-btn sm ms-auto" onClick={() => router.push("/admin/manager")}>لوحة المدير الكاملة</button>
-              </div>
+          {team && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="muted text-xs">تفاصيل كل موظف في لوحة المدير.</span>
+              <button type="button" className="crm-btn sm ms-auto" onClick={() => router.push("/admin/manager")}>لوحة المدير</button>
             </div>
           )}
         </div>

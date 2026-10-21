@@ -2,16 +2,18 @@
 
 /** "العقارات" — inventory: properties and projects (with units), ready-made WhatsApp messages, and matching clients. */
 import { useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { OWNERK, OWNERK_TONE, PSTATUS, PSTATUS_TONE } from "@/lib/crm/constants";
 import {
   activeClients, availUnits, clientMatchesProp, nameOf, propAreas, propMsg, propPrice, unitsOf, unitView, can } from "@/lib/crm/logic";
 import type { Property } from "@/lib/crm/types";
 import { exportCsv, num } from "@/lib/crm/util";
+import { PropertyTabs } from "@/components/crm/PageTabs";
 import { ContactIcons, Empty, PageHeader, Pill, Select } from "@/components/crm/ui";
 
 export default function PropertiesPage() {
-  const { data, loaded, openModal, toast } = useCrm();
+  const { data, loaded, openModal, toast, previewAs } = useCrm();
   const [q, setQ] = useState("");
   const [showF, setShowF] = useState(false);
   const [F, setF] = useState<Record<string, string>>({});
@@ -53,6 +55,7 @@ export default function PropertiesPage() {
 
   return (
     <>
+      <PropertyTabs />
       <PageHeader eyebrow="المخزون" title="العقارات" sub="المخزون والمشاريع والوحدات"
         action={can(data, "manageProps") ? <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "property" })}>+ عقار جديد</button> : undefined} />
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -119,6 +122,10 @@ export default function PropertiesPage() {
                   <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button type="button" className="crm-btn sm wa" onClick={() => copyWa(p)}>نسخ رسالة الواتساب</button>
                     {!p.waMessage && <span className="crm-hint">تلقائية من البيانات</span>}
+                    {/* One inventory: a property is put on the website from here, its details copied into the website form. */}
+                    {data.isMgr && !previewAs && st !== "مباع" && (
+                      <Link href={"/admin/offers/new?from=" + encodeURIComponent(p.id)} className="crm-btn sm">🌐 اعرضه في الموقع</Link>
+                    )}
                   </div>
                   {(p.contactName || p.contactPhone) && (
                     <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-[var(--crm-line)] pt-2 text-[13.5px]" onClick={(e) => e.stopPropagation()}>

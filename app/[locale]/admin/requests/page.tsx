@@ -10,6 +10,7 @@ import { assignClient } from "@/lib/crm/actions";
 import type { Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, today } from "@/lib/crm/util";
 import { Empty, Icon, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
+import { RequestTabs } from "@/components/crm/PageTabs";
 import { changeStage, NeedLine, NextStep, reqMenu } from "@/components/crm/bits";
 
 export default function RequestsPage() {
@@ -133,6 +134,7 @@ export default function RequestsPage() {
 
   return (
     <>
+      <RequestTabs />
       <PageHeader eyebrow="المبيعات" title="الطلبات" sub="طلبات العملاء ومراحلها"
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button>} />
 

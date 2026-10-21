@@ -20,6 +20,7 @@ import type { Client } from "@/lib/crm/types";
 import { fmtStamp, nowStamp } from "@/lib/crm/util";
 import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { SendRequestButton, WaChatButton } from "@/components/crm/WaButtons";
+import { ClientTabs } from "@/components/crm/PageTabs";
 import { ContactImport, exportContactList } from "@/components/crm/ContactImport";
 
 const PAGE = 60;
@@ -127,6 +128,7 @@ export default function ContactPage() {
 
   return (
     <>
+      <ClientTabs />
       <PageHeader title="للتواصل" sub="عملاء يجب التواصل معهم: المهتم سجّل طلبه فينتقل إلى الطلبات، وغير المهتم يُنقل إلى الأرشيف"
         action={
           <div className="flex flex-wrap gap-2">

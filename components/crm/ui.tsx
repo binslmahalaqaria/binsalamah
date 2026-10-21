@@ -2,6 +2,7 @@
 
 /** Small shared building blocks for the sales CRM screens. */
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, usePathname } from "@/i18n/navigation";
 import type { Tone } from "@/lib/crm/constants";
 import { nz, telLink, waLink } from "@/lib/crm/util";
 
@@ -291,6 +292,29 @@ export function ConfirmButton({ onConfirm, children, className }: { onConfirm: (
 }
 
 /** Page title row. `eyebrow` (the sidebar section name) is accepted but no longer shown — the sidebar already says where you are. */
+/**
+ * Tabs that join related screens under one sidebar item (e.g. العملاء / للتواصل),
+ * so the same thing is not listed twice under different names.
+ */
+export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?: number; show?: boolean }[] }) {
+  const pathname = usePathname();
+  return (
+    <nav className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--crm-line)]" aria-label="أقسام الصفحة">
+      {tabs.filter((x) => x.show !== false).map((x) => {
+        const on = pathname === x.href || pathname.startsWith(x.href + "/");
+        return (
+          <Link key={x.href} href={x.href} aria-current={on ? "page" : undefined}
+            className={"-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-semibold " +
+              (on ? "border-[var(--crm-gold)] text-[var(--crm-ink)]" : "border-transparent text-[var(--crm-ink-3)] hover:text-[var(--crm-ink)]")}>
+            {x.label}
+            {!!x.badge && <span className="num rounded-full bg-[var(--crm-gold-soft)] px-2 text-[11px] leading-[18px] text-[var(--crm-ink)]">{x.badge}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function PageHeader({ title, sub, action }: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
   return (
     <header className="mb-5 flex flex-wrap items-end gap-3 border-b border-[var(--crm-line)] pb-4">

@@ -99,14 +99,16 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-export function OfferForm({ offer }: { offer?: Offer | null }) {
+/** `prefill`: a new offer started from a CRM property (العقارات → «اعرضه في الموقع»); still saved as a new offer. */
+export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: Offer | null }) {
   const t = useTranslations("AdminOfferForm");
   const tType = useTranslations("Offers.types");
   const router = useRouter();
   const { user } = useAuth();
-  const [form, setForm] = useState<OfferFormInput>(toFormInput(offer));
+  const start = offer ?? prefill;
+  const [form, setForm] = useState<OfferFormInput>(toFormInput(start));
   const [images, setImages] = useState<ImageRow[]>(
-    offer?.images?.length ? offer.images.map((i) => ({ url: i.url })) : [{ url: "" }]
+    start?.images?.length ? start.images.map((i) => ({ url: i.url })) : [{ url: "" }]
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

@@ -15,6 +15,7 @@ import { OPEN_STAGES, REQ_TONE, lbl } from "@/lib/crm/constants";
 import { attToday, fmtDur, hrOf, isActive, members, nameOf } from "@/lib/crm/logic";
 import { PERIOD_AR, scoreboard, type Period, type Row } from "@/lib/crm/report";
 import { fmtStamp, money, today, ym } from "@/lib/crm/util";
+import { ManagerTabs } from "@/components/crm/PageTabs";
 import { Empty, PageHeader, Pill } from "@/components/crm/ui";
 
 function Tile({ v, l, gold }: { v: string | number; l: string; gold?: boolean }) {
@@ -71,6 +72,7 @@ export default function ManagerPage() {
 
   return (
     <>
+      <ManagerTabs />
       <PageHeader eyebrow="الفريق" title="لوحة المدير" sub="أداء الفريق وما يحتاج إلى متابعة"
         action={
           <div className="flex flex-wrap items-center gap-2">

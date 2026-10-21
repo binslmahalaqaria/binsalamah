@@ -11,6 +11,7 @@ import type { Client } from "@/lib/crm/types";
 import { exportCsv, fmtStamp, fmtVisit, num, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Empty, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
 import { TempPill } from "@/components/crm/bits";
+import { ClientTabs } from "@/components/crm/PageTabs";
 import { TransferClients } from "@/components/crm/TransferClients";
 
 type Filters = Record<string, string>;
@@ -110,6 +111,7 @@ export default function ClientsPage() {
 
   return (
     <>
+      <ClientTabs />
       <PageHeader eyebrow="المبيعات" title="العملاء" sub="بيانات العملاء ومتابعتهم"
         action={
           <div className="flex flex-wrap gap-2">
