@@ -3,7 +3,8 @@
 /**
  * «سجل المكالمات» on لوحة المدير (client 2026-10-21): every call in the dashboard's period, filterable
  * by outcome (successful / unsuccessful / one outcome) and employee, with the client's number to call
- * back, and reassign the client from the row (e.g. no answer → give it to someone else).
+ * back. A new contact with no request yet can be reassigned from the row; a client who has a request
+ * stays with their employee (client 2026-10-21). «لم يرد» shows the attempt count so repeated no-answers stand out.
  * Calls are the same as in the figures above (isCall), each within its employee's period range.
  */
 import { useState } from "react";
@@ -25,6 +26,9 @@ export function CallLog({ period, custom, filter, setFilter }: {
   const [who, setWho] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const ids = members(data);
+  const hasReq = new Set(data.requests.map((r) => r.clientId));
+  // Which no-answer attempt this was: no-answers logged on the client up to and including this one.
+  const noAnswerNo = (c: { log?: { type: string; at: string }[] }, at: string) => (c.log || []).filter((x) => x.type === "ما رد" && x.at <= at).length;
   const ranges = Object.fromEntries(ids.map((id) => [id, rangeFor(data, id, period, custom)]));
 
   const all = data.clients.flatMap((c) =>
@@ -67,15 +71,21 @@ export function CallLog({ period, custom, filter, setFilter }: {
                   <td>{nameOf(data, l.byId)}</td>
                   <td><b className="link" onClick={() => openClient(c.id)}>{c.name}</b></td>
                   <td><span className="flex items-center gap-1.5"><span className="num">{c.phone || "—"}</span>{c.phone && <ContactIcons phone={c.phone} />}</span></td>
-                  <td className={l.type === "ما رد" ? "font-semibold text-[var(--crm-danger)]" : ""}>{lbl(l.type)}</td>
+                  <td className={l.type === "ما رد" ? "font-semibold text-[var(--crm-danger)]" : ""}>
+                    {lbl(l.type)}
+                    {l.type === "ما رد" && <span className="num ms-1 text-[11.5px] font-normal text-[var(--crm-ink-3)]">(محاولة {noAnswerNo(c, l.at)})</span>}
+                  </td>
                   <td className="max-w-[260px] truncate text-[12.5px] text-[var(--crm-ink-3)]">{l.text}</td>
                   <td>
-                    {/* Moves the client and their open requests (same as assigning anywhere else). */}
+                    {hasReq.has(c.id) ? (
+                      <span title="للعميل طلب — يبقى مع الموظف المسؤول عنه">{nameOf(data, c.assignee)} <span className="text-[11.5px] text-[var(--crm-ink-3)]">· له طلب</span></span>
+                    ) : (
                     <select className={"crm-quiet !text-[13px] " + (c.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label={"إسناد " + c.name} value={c.assignee || ""}
                       onChange={async (e) => { const x = await assignClient(data, c.id, e.target.value || null); toast(x.name ? "تم إسناد " + c.name + " إلى " + x.name : "أصبح " + c.name + " غير مسند"); }}>
                       <option value="">غير مسند</option>
                       {ids.map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
                     </select>
+                    )}
                   </td>
                 </tr>
               ))}
