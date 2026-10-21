@@ -601,7 +601,9 @@ export function planFor(d: CrmData, uid: string, hmFmt: (s: string | null) => st
   const att = (d.att[uid] || []).find((x) => x.id === t);
   const dueNow = mine.filter((c) => c.nextCall && c.nextCall <= t);
   const lateN = dueNow.filter((c) => (c.nextCall as string) < t).length;
-  const calledN = mine.filter((c) => touched(c) && !(c.nextCall && c.nextCall <= t)).length;
+  // Same count as the Today list's «تمت اليوم»: also clients called today who then left the active list
+  // (e.g. «عدل عن الطلب» → غير مهتم), which used to drop out of the routine's figure.
+  const calledN = d.clients.filter((c) => c.assignee === uid && touched(c) && !(isActive(c) && c.nextCall && c.nextCall <= t)).length;
   const tmV = mine.filter((c) => c.visitAt && c.visitAt.slice(0, 10) === tm);
   const tmLeft = tmV.filter((c) => !c.visitConfirmed).length;
   const pastV = mine.filter((c) => c.visitAt && c.visitAt.slice(0, 10) < t).length;
