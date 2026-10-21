@@ -114,7 +114,10 @@ export function visibleTasks(d: CrmData) {
   return d.tasks.filter((t) => t.assignee === who || (!d.isMgr && t.createdBy === d.uid));
 }
 export const myTasksOpen = (d: CrmData) => d.tasks.filter((t) => !t.done && t.assignee === d.uid);
-export const activeClients = (d: CrmData) => visibleClients(d).filter(isActive);
+/** Clients whose calls/visits are this person's work: managers follow the view filter; employees only their own
+ *  (the «viewAll» permission lets them browse everyone, not take over colleagues' call queues). */
+export const workClients = (d: CrmData) => (d.isMgr ? visibleClients(d) : d.clients.filter((c) => c.assignee === d.uid));
+export const activeClients = (d: CrmData) => workClients(d).filter(isActive);
 
 export function dueCalls(d: CrmData) {
   const t = today();

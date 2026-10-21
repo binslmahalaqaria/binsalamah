@@ -104,9 +104,11 @@ export function WebLeadDispatcher() {
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
         });
       } else {
+        // The log is newest-first; an existing client without an (active) owner gets the request's employee too.
         tx.update(doc(db, "clients", clientId), {
           updatedAt: now, nextCall: today(), status: "نشط",
-          log: [...(existing!.log || []), { at: now, byId: null, type: "طلب من الموقع", text: note }],
+          log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }, ...(existing!.log || [])].slice(0, 80),
+          ...(!keep && to ? { assignee: to, assignedAt: now, unseen: true } : {}),
         });
       }
       const rref = doc(collection(db, "requests"));

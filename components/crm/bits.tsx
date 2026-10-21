@@ -227,7 +227,8 @@ export function changeStage(d: CrmData, r: Request, to: string, open: (m: Modal)
   const from = r.status || "جديد";
   if (from === to) return;
   if ((SOLD_ST.includes(to) || SOLD_ST.includes(from)) && !can(d, "recordDeals")) return toast("لا تملك صلاحية تسجيل العربون أو البيع");
-  if (SOLD_ST.includes(to) && needsSaleInfo({ ...r, status: to })) return open({ kind: "close", reqId: r.id, to });
+  // Every move into a deposit or sale goes through its form (amount, unit, sale date, reservation).
+  if (SOLD_ST.includes(to)) return open({ kind: "close", reqId: r.id, to });
   if (SOLD_ST.includes(from) && !SOLD_ST.includes(to)) return open({ kind: "cancel", reqId: r.id, to });
   setReqStage(r.id, to).then(() => toast("انتقل الطلب إلى: " + lbl(to)));
 }

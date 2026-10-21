@@ -17,7 +17,7 @@ import {
 } from "./logic";
 import type { AttendanceDay, Client, LogEntry, Request, Unit } from "./types";
 import { syncWebOffer } from "./web-sync";
-import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, today } from "./util";
+import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
 const LOG_MAX = 80;
 const clean = <T extends object>(o: T) => JSON.parse(JSON.stringify(o)) as T; // drop undefined
@@ -79,13 +79,16 @@ export async function updateClient(c: Client, patch: { phone?: string | null } &
   await b.commit();
   return c.id;
 }
-/** Deletes a client and frees their number. */
-export async function deleteClient(c: Client) {
+/** Deletes a client with their requests (no orphan «عميل محذوف» requests), frees their number and any property they held. */
+export async function deleteClient(d: CrmData, c: Client) {
   assertWritable();
+  const reqs = d.requests.filter((r) => r.clientId === c.id);
   const b = writeBatch(db);
   b.delete(doc(db, "clients", c.id));
+  for (const r of reqs) b.delete(doc(db, "requests", r.id));
   releasePhone(b, c.phone);
   await b.commit();
+  for (const r of reqs) if (SOLD_ST.includes(r.status) && r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
 }
 
 export const remove = (col: string, id: string) => {
@@ -221,7 +224,7 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
     },
     "update"
   );
-  if (!clear) await advanceReq(d, c.id, "معاينة");
+  if (!clear) await advanceReq(d, c.id, "معاينة", reqId);
   return true;
 }
 
@@ -263,7 +266,7 @@ export async function saveClose(
       v.depositDay && v.depositDay !== localDay(r.depositAt)
         ? (v.depositDay === today() ? nowStamp() : new Date(v.depositDay + "T12:00:00").toISOString())
         : r.depositAt || nowStamp();
-    patch.deposit = v.extra ? Number(v.extra) || null : null;
+    patch.deposit = num(v.extra);
     patch.depositBy = r.status === "عربون" && r.depositBy ? r.depositBy : d.uid;
   } else {
     patch.closedBy = r.status === "تم البيع" && r.closedBy ? r.closedBy : d.uid;
@@ -284,7 +287,8 @@ export async function saveClose(
       (to === "عربون" && patch.deposit ? "عربون " + moneyFull(patch.deposit) + " · " : "") +
         (p ? p.title : "") + (v.unit ? " — " + v.unit : "") + " · قيمة البيع " + moneyFull(v.price), v.propertyId
     );
-  if (to === "تم البيع" && r.clientId) await write("clients", r.clientId, { status: "مغلق" }, "update");
+  if (to === "تم البيع" && r.clientId && !d.requests.some((x) => x.clientId === r.clientId && x.id !== r.id && OPEN_REQ(x)))
+    await write("clients", r.clientId, { status: "مغلق" }, "update");
   return true;
 }
 
@@ -407,8 +411,7 @@ export async function runEscalation(d: CrmData, mgr: string, days: number, done:
       },
       "update"
     );
-    const r = reqsOf(d, c)[0];
-    if (r && r.assignee === c.assignee) await write("requests", r.id, { assignee: mgr, updatedAt: nowStamp() }, "update");
+    for (const r of reqsOf(d, c)) if (r.assignee === c.assignee) await write("requests", r.id, { assignee: mgr, updatedAt: nowStamp() }, "update");
   }
   return list.length;
 }

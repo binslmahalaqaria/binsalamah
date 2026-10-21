@@ -12,7 +12,7 @@ import { useCrm } from "@/lib/crm/store";
 import { GOALK, QL_OUT, REQ_TONE, SOLD_ST, TEMP_TONE, lbl } from "@/lib/crm/constants";
 import {
   activeClients, actualsFor, attToday, fmtDur, calledToday, dueCalls, fmtK, goalOf, goalVals, hoursOf, lateMin, monthInfo,
-  myTasksOpen, nameOf, noDate, pace, PACE_TXT, planFor, propById, reqsOf, upcoming, visibleClients, visibleTasks, wantLine,
+  myTasksOpen, nameOf, noDate, pace, PACE_TXT, planFor, propById, reqsOf, upcoming, visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
 import { applyUpdate, checkIO, confirmVisit, markTasksSeen, visitNoShow } from "@/lib/crm/actions";
 import type { Client } from "@/lib/crm/types";
@@ -45,7 +45,7 @@ export default function TodayPage() {
     nowL = due.filter((c) => c.nextCall === t);
   const doneL = activeClients(data)
     .filter((c) => calledToday(c) && !(c.nextCall && c.nextCall <= t))
-    .concat(visibleClients(data).filter((c) => (c.status || "نشط") !== "نشط" && calledToday(c)));
+    .concat(workClients(data).filter((c) => (c.status || "نشط") !== "نشط" && calledToday(c)));
   const total = due.length + doneL.length;
   const pct = total ? Math.round((doneL.length / total) * 100) : 0;
   const vis = activeClients(data).filter((c) => c.visitAt);

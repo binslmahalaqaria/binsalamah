@@ -20,7 +20,7 @@ import { remove, write } from "@/lib/crm/actions";
 import { issueInvoice, round2, SELLER_NAME, sellerAddress, totalsOf } from "@/lib/crm/invoice";
 import { tafqit } from "@/lib/crm/tafqit";
 import type { Invoice, InvoiceLine } from "@/lib/crm/types";
-import { nowStamp, today } from "@/lib/crm/util";
+import { nowStamp, num, today } from "@/lib/crm/util";
 import { ConfirmButton, Empty, Pill } from "@/components/crm/ui";
 import { sendDocWhatsApp } from "@/components/crm/shareDoc";
 import { zatcaSubmit } from "@/lib/crm/zatca";
@@ -197,9 +197,9 @@ function InvoiceView({ id }: { id: string }) {
           {d.lines.map((l, i) => (
             <div key={i} className="grid gap-2 sm:grid-cols-[1fr_70px_150px_32px]">
               <input placeholder="مثال: عمولة تسويق فيلا حي الملقا" value={l.desc} onChange={(e) => setLine(i, { desc: e.target.value })} />
-              <input className="num" inputMode="decimal" value={String(l.qty)} onChange={(e) => setLine(i, { qty: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} />
+              <input className="num" inputMode="decimal" value={String(l.qty)} onChange={(e) => setLine(i, { qty: num(e.target.value) || 0 })} />
               <input className="num" inputMode="decimal" value={String(price(l) || "")} placeholder="0.00"
-                onChange={(e) => { const v = Number(e.target.value.replace(/[^\d.]/g, "")) || 0; setLine(i, { price: inclusive ? round2(v / (1 + d.vatRate / 100)) : v }); }} />
+                onChange={(e) => { const v = num(e.target.value) || 0; setLine(i, { price: inclusive ? round2(v / (1 + d.vatRate / 100)) : v }); }} />
               <button type="button" className="crm-btn ghost sm" aria-label="حذف البند" onClick={() => set({ lines: d.lines.length > 1 ? d.lines.filter((_, j) => j !== i) : d.lines })}>×</button>
             </div>
           ))}

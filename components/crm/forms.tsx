@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
+import { assignClient, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -138,7 +138,7 @@ export function ClientForm({ id }: { id?: string }) {
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
           {rec && data.isMgr && (
-            <ConfirmButton onConfirm={async () => { await deleteClient(rec); toast("تم الحذف"); closeModal(); }}>حذف</ConfirmButton>
+            <ConfirmButton onConfirm={async () => { await deleteClient(data, rec); toast("تم حذف العميل وطلباته"); closeModal(); }}>حذف{data.requests.some((r) => r.clientId === rec.id) ? " مع طلباته" : ""}</ConfirmButton>
           )}
         </>
       }>
@@ -228,14 +228,12 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         propertyId: f.propertyId || null, unit: f.unit || null, price: num(f.price), commissionPct: num(f.commissionPct) ?? 2.5,
         updatedAt: nowStamp(),
       };
-      if (rec && body.assignee !== rec.assignee && body.clientId) {
-        const cc = clientById(data, body.clientId);
-        if (cc && cc.assignee !== body.assignee)
-          await write("clients", cc.id, { assignee: body.assignee || null, assignedAt: nowStamp(), assignedBy: data.uid, unseen: !!body.assignee && body.assignee !== data.uid, updatedAt: nowStamp() }, "update");
-      }
+      // Reassigning from the edit form moves the client and their other open requests too (one owner per client).
+      if (rec && body.assignee !== rec.assignee && body.clientId) await assignClient(data, body.clientId, body.assignee || null, rec.id);
       if (rec && SOLD_ST.includes(rec.status) && !SOLD_ST.includes(body.status!)) {
         body.depositAt = null;
         body.closedAt = null;
+        body.deposit = null;
         body.depositBy = null;
         body.closedBy = null;
         if (rec.propertyId) await releaseUnit(data, rec.propertyId, rec.unit);
@@ -262,7 +260,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         // Recording a request for a client from "للتواصل" (or the archive) makes them an active client again.
         const revive = cc && (cc.status === TO_CONTACT || cc.status === "غير مهتم")
           ? { status: "نشط", nextCall: cc.nextCall || today(), lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
-              log: [...(cc.log || []), { at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه" }] }
+              log: [{ at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه", call: true }, ...(cc.log || [])].slice(0, 80) }
           : {};
         await write("clients", body.clientId, { ...demand, ...revive, updatedAt: nowStamp() }, "update");
       }
