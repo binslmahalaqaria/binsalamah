@@ -106,6 +106,14 @@ export const lbl = (v: string | null | undefined) => (v ? LBL[v] || v : "");
 
 export const SENT_T = ["تم إرسال الموقع", "تم إرسال التفاصيل"];
 /** Log types that don't count as a call. */
+/**
+ * Call outcomes: what «تسجيل المكالمة» (and the update form, the re-contact list) records. Only these
+ * count as calls (client 2026-10-21) — recording a deposit/sale, a visit, a confirmation, a transfer or
+ * a property sent from the matching screen is not a call.
+ */
+export const CALL_T = ["اتصلت عليه", "ما رد", "استفسر", "تم إرسال الموقع", "تم إرسال التفاصيل", "سجّل اهتمام", "صرف النظر", "تفاوض"];
+/** Is this log entry a call? New entries carry `call`; older ones are judged by their type. */
+export const isCall = (l: { type: string; call?: boolean }) => l.call ?? CALL_T.includes(l.type);
 export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل", "إلغاء صفقة"];
 
 /** Monthly goal keys: [key, form label, column label]. */

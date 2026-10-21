@@ -11,11 +11,12 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
-import { REQ, SOLD_ST, UPD, UPD_STAGE } from "./constants";
+import { CALL_T, REQ, SOLD_ST, UPD, UPD_STAGE } from "./constants";
 import {
   clientById, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
-import type { AttendanceDay, Client, LogEntry, Request } from "./types";
+import type { AttendanceDay, Client, LogEntry, Request, Unit } from "./types";
+import { syncWebOffer } from "./web-sync";
 import { addDays, dayDiff, fmtVisit, localDay, moneyFull, nowStamp, today } from "./util";
 
 const LOG_MAX = 80;
@@ -31,6 +32,11 @@ export async function write(col: string, id: string | null, data: object, mode: 
   }
   const ref = await addDoc(collection(db, col), clean(data));
   return ref.id;
+}
+/** Property writes also update the property's website listing, if it has one (lib/crm/web-sync.ts). */
+export async function writeProperty(id: string, data: { units?: Unit[]; status?: string | null } & Record<string, unknown>) {
+  await write("properties", id, data, "update");
+  await syncWebOffer(id, data).catch(() => {});
 }
 export const remove = (col: string, id: string) => {
   assertWritable();
@@ -60,11 +66,11 @@ export async function advanceReq(d: CrmData, clientId: string, to: string) {
 }
 
 /** Logs what happened with a client and sets their next call. Doesn't touch requests. */
-export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null) {
+export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean } = {}) {
   const c = clientById(d, id);
   if (!c) return false;
   const u = UPD.find((x) => x.k === type);
-  const entry: LogEntry = { at: nowStamp(), byId: d.uid || null, type, text: text || "", propertyId: propertyId || null };
+  const entry: LogEntry = { at: nowStamp(), byId: d.uid || null, type, text: text || "", propertyId: propertyId || null, call: opts.call ?? CALL_T.includes(type) };
   const patch: Partial<Client> = {
     log: pushLog(c, entry),
     lastUpdate: type,
@@ -83,8 +89,8 @@ export async function applyUpdate0(d: CrmData, id: string, type: string, next: s
   return true;
 }
 
-export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null) {
-  const ok = await applyUpdate0(d, id, type, next, text, propertyId);
+export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean } = {}) {
+  const ok = await applyUpdate0(d, id, type, next, text, propertyId, opts);
   if (ok && UPD_STAGE[type]) await advanceReq(d, id, UPD_STAGE[type]);
   return ok;
 }
@@ -175,8 +181,8 @@ export async function releaseUnit(d: CrmData, pid: string, unit: string | null |
   if (unit && unitsOf(p).length) {
     if (!(p.units || []).some((u) => u && u.name === unit && u.status !== "متاح")) return;
     const units = (p.units || []).map((u) => (u && u.name === unit ? { ...u, status: "متاح" } : u));
-    await write("properties", p.id, { units, updatedAt: nowStamp() }, "update");
-  } else if (!unitsOf(p).length && p.status !== "متاح") await write("properties", p.id, { status: "متاح", updatedAt: nowStamp() }, "update");
+    await writeProperty(p.id, { units, updatedAt: nowStamp() });
+  } else if (!unitsOf(p).length && p.status !== "متاح") await writeProperty(p.id, { status: "متاح", updatedAt: nowStamp() });
 }
 
 async function markUnit(d: CrmData, pid: string, unit: string | null, st: string) {
@@ -184,8 +190,8 @@ async function markUnit(d: CrmData, pid: string, unit: string | null, st: string
   if (!p) return;
   if (unit && unitsOf(p).length) {
     const units = (p.units || []).map((u) => (u && u.name === unit ? { ...u, status: st } : u));
-    await write("properties", p.id, { units, updatedAt: nowStamp() }, "update");
-  } else if (!unitsOf(p).length) await write("properties", p.id, { status: st, updatedAt: nowStamp() }, "update");
+    await writeProperty(p.id, { units, updatedAt: nowStamp() });
+  } else if (!unitsOf(p).length) await writeProperty(p.id, { status: st, updatedAt: nowStamp() });
 }
 
 /** Records a deposit (عربون) or a completed sale (تم البيع) on a request. */
@@ -259,7 +265,8 @@ export async function setReqStage(reqId: string, to: string) {
 export async function reqSent(d: CrmData, reqId: string, pid: string) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return;
-  if (r.clientId) await applyUpdate(d, r.clientId, "تم إرسال التفاصيل", addDays(3), "", pid);
+  // A property sent from the matching screen / WhatsApp is not a call.
+  if (r.clientId) await applyUpdate(d, r.clientId, "تم إرسال التفاصيل", addDays(3), "", pid, { call: false });
   const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
   const sent = [...new Set((r.sent || []).concat(pid))];
   await write("requests", reqId, { sent, updatedAt: nowStamp(), ...(early ? { status: "أرسلنا خيارات" } : {}) }, "update");

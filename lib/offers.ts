@@ -84,7 +84,7 @@ export async function getPublishedOfferBySlug(slug: string): Promise<Offer | nul
 }
 
 export async function createOffer(
-  input: OfferFormInput & { images: { url: string; order: number }[] },
+  input: OfferFormInput & { images: { url: string; order: number }[]; property_id?: string | null },
   status: OfferStatus,
   staffUid: string
 ): Promise<string> {

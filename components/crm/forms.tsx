@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { nextAssignee, releaseUnit, remove, write } from "@/lib/crm/actions";
+import { nextAssignee, releaseUnit, remove, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -414,7 +414,7 @@ export function PropertyForm({ id }: { id?: string }) {
         floors: num(f.floors), facing: f.facing || null, streetWidth: num(f.streetWidth), age: f.age.trim() || null,
         videoLink: f.videoLink.trim() || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
       };
-      if (rec) await write("properties", rec.id, { ...body, updatedBy: data.uid }, "update");
+      if (rec) await writeProperty(rec.id, { ...body, updatedBy: data.uid });
       else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
       toast("تم الحفظ");
       closeModal();

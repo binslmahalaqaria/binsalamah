@@ -11,7 +11,7 @@ import {
   clientById, demandOf, isMgrId, match, matchesFor, members, nameOf, OPEN_REQ, propById, propMsg, propSummary, reqsOf,
   statsFor, typesOf, unitsOf, unitView, visibleClients, visibleRequests, visibleTasks, type CrmData,
 } from "./logic";
-import { applyUpdate, applyUpdate0, assignClient, write } from "./actions";
+import { applyUpdate, applyUpdate0, assignClient, write, writeProperty } from "./actions";
 import type { Client, Property, Request } from "./types";
 import { addDays, fmtStamp, moneyFull, normPhone, nowStamp, num, relDay, splitList, today, waLink } from "./util";
 
@@ -258,7 +258,7 @@ export function buildTools(): Tool[] {
         if (i.property_id) {
           const x = propById(d, str(i.property_id));
           if (!x) throw new Error("ما لقيت العقار");
-          await write("properties", x.id, { ...p, updatedBy: d.uid }, "update");
+          await writeProperty(x.id, { ...p, updatedBy: d.uid });
           ctx.act("عدّل العقار: " + (str(p.title) || x.title), "property", x.id);
           return { ok: true, property_id: x.id };
         }
@@ -421,8 +421,8 @@ export function buildTools(): Tool[] {
         else { patch.closedAt = nowStamp(); if (!r.depositAt) patch.depositAt = patch.closedAt; }
         await write("requests", r.id, patch, "update");
         const st = to === "تم البيع" ? "مباع" : "محجوز";
-        if (unit && unitsOf(prop).length) await write("properties", prop.id, { units: prop.units.map((u) => (u.name === unit ? { ...u, status: st } : u)), updatedAt: nowStamp() }, "update");
-        else if (!unitsOf(prop).length) await write("properties", prop.id, { status: st, updatedAt: nowStamp() }, "update");
+        if (unit && unitsOf(prop).length) await writeProperty(prop.id, { units: prop.units.map((u) => (u.name === unit ? { ...u, status: st } : u)), updatedAt: nowStamp() });
+        else if (!unitsOf(prop).length) await writeProperty(prop.id, { status: st, updatedAt: nowStamp() });
         if (r.clientId) await applyUpdate0(d, r.clientId, to === "تم البيع" ? "تم الإغلاق" : "دفع عربون", null, prop.title + (unit ? " — " + unit : "") + " · " + moneyFull(price), prop.id);
         if (to === "تم البيع" && r.clientId) await write("clients", r.clientId, { status: "مغلق" }, "update");
         ctx.act((to === "تم البيع" ? "سجّل البيع: " : "سجّل العربون: ") + prop.title + (unit ? " — " + unit : ""), "request", r.id);

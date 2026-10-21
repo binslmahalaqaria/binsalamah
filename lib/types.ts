@@ -46,6 +46,8 @@ export type ProjectStage = "ready" | "under_construction" | "off_plan";
 
 export interface Offer {
   id: string;
+  /** CRM property this listing was made from (العقارات → «اعرضه في الموقع»); its status follows that property. */
+  property_id?: string | null;
   title_ar: string;
   title_en: string;
   slug: string;

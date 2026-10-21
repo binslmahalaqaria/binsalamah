@@ -6,7 +6,7 @@
  * test and reason about — no Firestore access here (see actions.ts).
  */
 import {
-  FLOOR_TYPES, NOCALL, OPEN_STAGES, PSTATUS, REQ, SENT_T, SOLD_ST, TEMPS, PRIO,
+  FLOOR_TYPES, isCall, OPEN_STAGES, PSTATUS, REQ, SENT_T, SOLD_ST, TEMPS, PRIO,
 } from "./constants";
 import type {
   AttendanceDay, Client, Demand, Goal, HrFile, PayrollRow, Property, Request, Task, Unit,
@@ -386,7 +386,7 @@ export { OPEN_STAGES };
 /* ---------- today ---------- */
 export function calledToday(c: Client) {
   const t = today();
-  return (c.log || []).find((l) => localDay(l.at) === t && !NOCALL.includes(l.type));
+  return (c.log || []).find((l) => localDay(l.at) === t && isCall(l));
 }
 export function allDistricts(d: CrmData, base: readonly string[]) {
   const s = new Set(base);
@@ -423,7 +423,10 @@ export function overtimeMin(d: CrmData, rec: AttendanceDay | undefined, id: stri
   return Math.max(0, worked - need);
 }
 /** Working days in [from, to] (to capped at today) with no check-in. */
+/** The owner (admin role) keeps no working hours: never late, early or absent (client 2026-10-21). */
+const noShift = (d: CrmData, id: string) => d.staff.find((s) => s.id === id)?.role === "admin";
 export function absentDays(d: CrmData, id: string, from: string, to: string) {
+  if (noShift(d, id)) return 0;
   const t = today(), end = to < t ? to : t;
   // Nobody is absent before they started.
   const hired = hrOf(d, id).hireDate;
@@ -438,7 +441,7 @@ export function absentDays(d: CrmData, id: string, from: string, to: string) {
 }
 /** Minutes late (counted only past a 15-minute grace period after the shift start; never on a day off). */
 export function lateMin(d: CrmData, rec: AttendanceDay | undefined, id: string) {
-  if (!rec || !rec.in || !isWorkDay(d, id, rec.id)) return 0;
+  if (!rec || !rec.in || !isWorkDay(d, id, rec.id) || noShift(d, id)) return 0;
   const st = mins(hrOf(d, id).workStart || "09:00") ?? 540;
   const t = new Date(rec.in);
   const v = t.getHours() * 60 + t.getMinutes() - st - 15;
@@ -446,7 +449,7 @@ export function lateMin(d: CrmData, rec: AttendanceDay | undefined, id: string) 
 }
 /** Minutes left before the shift end (no grace); 0 when there is no check-out or it is on time. */
 export function earlyMin(d: CrmData, rec: AttendanceDay | undefined, id: string) {
-  if (!rec || !rec.out || !isWorkDay(d, id, rec.id)) return 0;
+  if (!rec || !rec.out || !isWorkDay(d, id, rec.id) || noShift(d, id)) return 0;
   const end = mins(hrOf(d, id).workEnd || "17:00") ?? 1020;
   const t = new Date(rec.out);
   const v = end - (t.getHours() * 60 + t.getMinutes());
@@ -509,7 +512,7 @@ export function activityFor(d: CrmData, id: string, from: string, to: string) {
   for (const c of d.clients)
     for (const l of c.log || []) {
       if (l.byId !== id || !inR(l.at)) continue;
-      if (!NOCALL.includes(l.type)) {
+      if (isCall(l)) {
         calls++;
         // A successful call is any logged contact except "no answer".
         if (l.type !== "ما رد") answered++;
@@ -551,7 +554,7 @@ export function actualsFor(d: CrmData, uid: string, month: string) {
       if (l.byId !== uid || !l.at) continue;
       const day = localDay(l.at);
       if (day.slice(0, 7) !== month) continue;
-      if (!NOCALL.includes(l.type)) {
+      if (isCall(l)) {
         calls++;
         if (day === t) callsToday++;
       }
@@ -597,7 +600,7 @@ export function planFor(d: CrmData, uid: string, hmFmt: (s: string | null) => st
   const t = today(),
     tm = addDays(1);
   const mine = d.clients.filter((c) => c.assignee === uid && isActive(c));
-  const touched = (c: Client) => (c.log || []).some((l) => l.byId === uid && localDay(l.at) === t && !NOCALL.includes(l.type));
+  const touched = (c: Client) => (c.log || []).some((l) => l.byId === uid && localDay(l.at) === t && isCall(l));
   const att = (d.att[uid] || []).find((x) => x.id === t);
   const dueNow = mine.filter((c) => c.nextCall && c.nextCall <= t);
   const lateN = dueNow.filter((c) => (c.nextCall as string) < t).length;

@@ -23,7 +23,7 @@ function toOffer(p: Property): Offer {
   const prices = units.map((u) => u.price).filter(Boolean);
   const areas = units.map((u) => u.area).filter(Boolean);
   return {
-    id: "", slug: "", status: "draft", created_at: 0, updated_at: 0, created_by: "", updated_by: "",
+    id: "", property_id: p.id, slug: "", status: "draft", created_at: 0, updated_at: 0, created_by: "", updated_by: "",
     title_ar: p.title, title_en: "", type: TYPE[p.type || ""] || "other",
     city_ar: p.city || "الرياض", city_en: "", district_ar: (p.district || "").replace(/^حي\s+/, ""), district_en: "",
     price_from: prices.length ? Math.min(...prices) : p.price || 0, price_to: prices.length > 1 ? Math.max(...prices) : null,

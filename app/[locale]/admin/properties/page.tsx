@@ -1,7 +1,9 @@
 "use client";
 
 /** "العقارات" — inventory: properties and projects (with units), ready-made WhatsApp messages, and matching clients. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { listOffers } from "@/lib/offers";
+import type { Offer } from "@/lib/types";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { OWNERK, OWNERK_TONE, PSTATUS, PSTATUS_TONE } from "@/lib/crm/constants";
@@ -18,6 +20,12 @@ export default function PropertiesPage() {
   const [showF, setShowF] = useState(false);
   const [F, setF] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
+  // Website listings made from a property (property_id), so the card shows it is already on the site.
+  const [web, setWeb] = useState<Record<string, Offer>>({});
+  useEffect(() => {
+    if (!data.isMgr || previewAs) return;
+    listOffers().then((os) => setWeb(Object.fromEntries(os.filter((o) => o.property_id).map((o) => [o.property_id as string, o])))).catch(() => {});
+  }, [data.isMgr, previewAs]);
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
 
@@ -123,9 +131,11 @@ export default function PropertiesPage() {
                     <button type="button" className="crm-btn sm wa" onClick={() => copyWa(p)}>نسخ رسالة الواتساب</button>
                     {!p.waMessage && <span className="crm-hint">تلقائية من البيانات</span>}
                     {/* One inventory: a property is put on the website from here, its details copied into the website form. */}
-                    {data.isMgr && !previewAs && st !== "مباع" && (
+                    {data.isMgr && !previewAs && (web[p.id] ? (
+                      <Link href={"/admin/offers/" + web[p.id].id + "/edit"} className="crm-btn sm">🌐 {web[p.id].status === "published" ? "معروض في الموقع" : "مسودة في الموقع"}</Link>
+                    ) : st !== "مباع" && (
                       <Link href={"/admin/offers/new?from=" + encodeURIComponent(p.id)} className="crm-btn sm">🌐 اعرضه في الموقع</Link>
-                    )}
+                    ))}
                   </div>
                   {(p.contactName || p.contactPhone) && (
                     <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-[var(--crm-line)] pt-2 text-[13.5px]" onClick={(e) => e.stopPropagation()}>

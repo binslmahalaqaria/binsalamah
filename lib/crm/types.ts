@@ -13,6 +13,8 @@ export interface LogEntry {
   type: string;
   text: string;
   propertyId?: string | null;
+  /** Counted as a call in the figures (set from 2026-10-21; older entries are judged by their type, see isCall). */
+  call?: boolean;
 }
 
 export interface Client {

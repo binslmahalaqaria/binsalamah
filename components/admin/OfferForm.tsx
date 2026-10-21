@@ -188,7 +188,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
       if (offer) {
         await updateOffer(offer.id, { ...data, images: cleanImages }, status, user.uid);
       } else {
-        await createOffer({ ...data, images: cleanImages }, status, user.uid);
+        await createOffer({ ...data, images: cleanImages, ...(prefill?.property_id ? { property_id: prefill.property_id } : {}) }, status, user.uid);
       }
       router.push("/admin/offers");
     } catch (err) {

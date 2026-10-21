@@ -3,7 +3,7 @@
 /** "الطلبات" — client requests by stage (list or board), with matching, journey, and sale recording. */
 import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { NOCALL, OPEN_STAGES, PRIO_TONE, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
+import { isCall, OPEN_STAGES, PRIO_TONE, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
 import {
   clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, sortRequests, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
@@ -16,7 +16,7 @@ import { changeStage, NeedLine, NextStep, reqMenu } from "@/components/crm/bits"
 /** Under the client's name: the last call (outcome + when) and the next one, so follow-up is visible here too. */
 function CallLine({ c, open }: { c: Client | undefined; open: boolean }) {
   if (!c) return null;
-  const last = (c.log || []).find((l) => !NOCALL.includes(l.type));
+  const last = (c.log || []).find((l) => isCall(l));
   const late = open && !!c.nextCall && c.nextCall < today();
   return (
     <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">

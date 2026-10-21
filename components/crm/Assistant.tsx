@@ -209,7 +209,7 @@ export function Assistant() {
                       {x.link ? (
                         <a className="crm-btn sm wa" href={x.link} target="_blank" rel="noopener" onClick={() => {
                           const d = dataRef.current;
-                          (m.offer!.pid && x.rid ? reqSent(d, x.rid, m.offer!.pid) : applyUpdate(d, x.cid, "تم إرسال التفاصيل", addDays(3), "عرض: " + m.offer!.title, null))
+                          (m.offer!.pid && x.rid ? reqSent(d, x.rid, m.offer!.pid) : applyUpdate(d, x.cid, "تم إرسال التفاصيل", addDays(3), "عرض: " + m.offer!.title, null, { call: false }))
                             .then(() => toast("تم التسجيل: إرسال العرض — الاتصال بعد 3 أيام"));
                         }}>أرسل</a>
                       ) : <span className="muted text-xs">بدون جوال</span>}
