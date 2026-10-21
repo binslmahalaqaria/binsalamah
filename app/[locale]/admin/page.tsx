@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
-import { GOALK, QL_OUT, REQ_TONE, TEMP_TONE, lbl } from "@/lib/crm/constants";
+import { GOALK, QL_OUT, REQ_TONE, SOLD_ST, TEMP_TONE, lbl } from "@/lib/crm/constants";
 import {
   activeClients, actualsFor, attToday, fmtDur, calledToday, dueCalls, fmtK, goalOf, goalVals, hoursOf, lateMin, monthInfo,
   myTasksOpen, nameOf, noDate, pace, PACE_TXT, planFor, propById, reqsOf, upcoming, visibleClients, visibleTasks, wantLine,
@@ -124,6 +124,8 @@ export default function TodayPage() {
   /* ---- call queue ---- */
   async function saveQuick(c: Client) {
     if (!qType) return toast("يرجى اختيار نتيجة الاتصال");
+    const r0 = reqsOf(data, c)[0], held = r0 && SOLD_ST.includes(r0.status || "") ? r0 : null;
+    if (qType === "صرف النظر" && held && !window.confirm("لدى العميل " + (held.status === "تم البيع" ? "صفقة بيع" : "عربون") + " مسجّل. سيُلغى ويعود العقار متاحاً، ويُنقل العميل إلى الأرشيف. متابعة؟")) return;
     const def = QL_OUT.find((x) => x[0] === qType)?.[2];
     const nx = qNext || String(def);
     let next: string | null = null;

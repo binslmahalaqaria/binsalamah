@@ -49,6 +49,13 @@ export async function advanceReq(d: CrmData, clientId: string, to: string) {
   if (!r) return;
   const cur = REQ.indexOf((r.status || "جديد") as never),
     nx = REQ.indexOf(to as never);
+  // A client who backs out while holding a deposit/sale: clear the deal and free the property or unit too
+  // (it used to stay «محجوز» with the request cancelled).
+  if (to === "ملغي" && SOLD_ST.includes(r.status || "")) {
+    await write("requests", r.id, { status: to, depositAt: null, closedAt: null, deposit: null, depositBy: null, closedBy: null, updatedAt: nowStamp() }, "update");
+    if (r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
+    return;
+  }
   if (to === "ملغي" || to === "تم البيع" || nx > cur) await write("requests", r.id, { status: to, updatedAt: nowStamp() }, "update");
 }
 
@@ -234,8 +241,9 @@ export async function cancelSale(d: CrmData, reqId: string, to: string, note: st
   if (r.clientId) {
     const c = clientById(d, r.clientId);
     if (c && c.status === "مغلق") await write("clients", c.id, { status: "نشط" }, "update");
+    // Logged as a deal cancellation, not as a call (it used to count as «تم الاتصال» in the call figures).
     await applyUpdate0(
-      d, r.clientId, "اتصلت عليه", addDays(1),
+      d, r.clientId, "إلغاء صفقة", addDays(1),
       "إلغاء " + (was === "تم البيع" ? "البيع" : "العربون") + (note ? ": " + note : ""), r.propertyId || null
     );
   }

@@ -106,7 +106,7 @@ export const lbl = (v: string | null | undefined) => (v ? LBL[v] || v : "");
 
 export const SENT_T = ["تم إرسال الموقع", "تم إرسال التفاصيل"];
 /** Log types that don't count as a call. */
-export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل"];
+export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل", "إلغاء صفقة"];
 
 /** Monthly goal keys: [key, form label, column label]. */
 export const GOALK: [GoalKey, string, string][] = [
