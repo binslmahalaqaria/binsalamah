@@ -6,11 +6,11 @@ import { useCrm } from "@/lib/crm/store";
 import { can, clientById, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
 import { confirmVisit, deleteRequest, postpone, write } from "@/lib/crm/actions";
 import { isPreview } from "@/lib/crm/preview";
-import { fmtStamp, fmtVisit, money, relDay, today } from "@/lib/crm/util";
+import { fmtStamp, fmtVisit, money, nowStamp, relDay, today } from "@/lib/crm/util";
 import { Chip, ContactIcons, Empty, Icon, Kebab, Pill } from "./ui";
 import { SendRequestButton, WaChatButton } from "./WaButtons";
-import { DealBox, DemandChips, JourneyBox, Stepper, TempPill } from "./bits";
-import { SOLD_ST, lbl } from "@/lib/crm/constants";
+import { DealBox, DemandChips, JourneyBox, Stepper } from "./bits";
+import { SOLD_ST, TEMPS, lbl } from "@/lib/crm/constants";
 import { TaskRow } from "./TaskRow";
 
 export function ClientDrawer() {
@@ -49,7 +49,11 @@ export function ClientDrawer() {
             <div className="min-w-0">
               <h2 className="mb-1 text-[19px]">{c.name}</h2>
               <div className="flex flex-wrap gap-1.5">
-                <TempPill t={c.temp} />
+                {/* Interest level: one tap to change (ساخن / دافئ / بارد). */}
+                <select aria-label="درجة الاهتمام" className="crm-quiet !py-0 !text-[12.5px] font-semibold" value={c.temp || "دافئ"}
+                  onChange={async (e) => { await write("clients", c.id, { temp: e.target.value, updatedAt: nowStamp() }, "update"); toast("درجة الاهتمام: " + e.target.value); }}>
+                  {TEMPS.map((x) => <option key={x}>{x}</option>)}
+                </select>
                 <Pill tone={(c.status || "نشط") === "نشط" ? "ok" : "muted"}>{c.status || "نشط"}</Pill>
                 {c.source && <Chip>{c.source}</Chip>}
                 {c.assignee ? <Chip>{nameOf(data, c.assignee)}</Chip> : <Chip cls="warn">غير مسند</Chip>}

@@ -11,7 +11,7 @@ import type { Client, Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, relDay, today } from "@/lib/crm/util";
 import { Empty, Icon, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
-import { changeStage, NeedLine, NextStep, reqMenu } from "@/components/crm/bits";
+import { changeStage, NeedLine, NextStep, reqMenu, TempPill } from "@/components/crm/bits";
 
 /** Under the client's name: the last call (outcome + when) and the next one, so follow-up is visible here too. */
 function CallLine({ c, open }: { c: Client | undefined; open: boolean }) {
@@ -80,6 +80,7 @@ export default function RequestsPage() {
         <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, r.id)}>
           <div className="flex flex-wrap items-center gap-1.5">
             <b className="font-heading text-[15.5px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+            {c?.temp && <TempPill t={c.temp} />}
             {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>
           <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}أُضيف الطلب {ageDays(r.createdAt)}</div>
