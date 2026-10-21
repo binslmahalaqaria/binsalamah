@@ -416,6 +416,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-10-21** — **Requests list shows the last and next call.** Client asked whether الطلبات shows when the client was last called; it only showed the request's age. Each request (list and board) now has a line under the client: «آخر اتصال: <outcome> · <when>» (newest log entry that counts as a call, `NOCALL` excluded; «لم يُتصل به بعد» if none) and, for open requests, «القادم: <next call>» in red when overdue (`CallLine` in `app/[locale]/admin/requests/page.tsx`). The request age now reads «أُضيف الطلب …». Affects §9.
+
 - **2026-10-21** — **Call outcome «غير مهتم».** Client could not find a "not interested" call option; it existed as «عدل عن الطلب». The stored type «صرف النظر» is unchanged; its label (`QL_OUT` and `LBL` in `lib/crm/constants.ts`) is now «غير مهتم», everywhere it is shown. Same effect as before: client → غير مهتم (archive), open request → ملغي (with the property freed if it held a deposit), no next call. Affects §9.
 
 - **2026-10-21** — **Today: one count for calls done.** The calls card said «2 من 2 مكالمة تمت اليوم» while the routine said «1 من 1»: `planFor()` (`lib/crm/logic.ts`) counted only active clients, so a client called today and then marked «عدل عن الطلب» (غير مهتم) dropped out. It now counts the person's clients of any status touched today, like the «تمت اليوم» list. Affects §9.

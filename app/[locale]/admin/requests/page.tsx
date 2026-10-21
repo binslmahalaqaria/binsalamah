@@ -3,15 +3,28 @@
 /** "الطلبات" — client requests by stage (list or board), with matching, journey, and sale recording. */
 import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { OPEN_STAGES, PRIO_TONE, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
+import { NOCALL, OPEN_STAGES, PRIO_TONE, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
 import {
   clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, sortRequests, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
-import type { Request } from "@/lib/crm/types";
-import { ageDays, exportCsv, fmtStamp, today } from "@/lib/crm/util";
+import type { Client, Request } from "@/lib/crm/types";
+import { ageDays, exportCsv, fmtStamp, relDay, today } from "@/lib/crm/util";
 import { Empty, Icon, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
 import { changeStage, NeedLine, NextStep, reqMenu } from "@/components/crm/bits";
+
+/** Under the client's name: the last call (outcome + when) and the next one, so follow-up is visible here too. */
+function CallLine({ c, open }: { c: Client | undefined; open: boolean }) {
+  if (!c) return null;
+  const last = (c.log || []).find((l) => !NOCALL.includes(l.type));
+  const late = open && !!c.nextCall && c.nextCall < today();
+  return (
+    <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">
+      {last ? <>آخر اتصال: <b className="font-semibold text-[var(--crm-ink-2)]">{lbl(last.type)}</b> · {ageDays(last.at)}</> : "لم يُتصل به بعد"}
+      {open && <> · القادم: <span className={late ? "font-semibold text-[var(--crm-danger)]" : ""}>{c.nextCall ? relDay(c.nextCall) : "بدون موعد"}</span></>}
+    </div>
+  );
+}
 
 export default function RequestsPage() {
   const { data, loaded, openModal, openClient, toast } = useCrm();
@@ -69,7 +82,8 @@ export default function RequestsPage() {
             <b className="font-heading text-[15.5px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
             {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}{ageDays(r.createdAt)}</div>
+          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}أُضيف الطلب {ageDays(r.createdAt)}</div>
+          <CallLine c={c} open={OPEN_REQ(r)} />
         </div>
         <div className="max-xl:col-span-2 max-xl:row-start-2"><NeedLine r={r} /></div>
         <div className="max-xl:col-span-2 max-xl:row-start-3 max-xl:rounded-lg max-xl:bg-[var(--crm-surface-2)] max-xl:px-2.5 max-xl:py-1.5"><NextStep r={r} /></div>
@@ -112,7 +126,8 @@ export default function RequestsPage() {
           <NeedLine r={r} />
           <div className="rounded-lg bg-[var(--crm-surface-2)] px-2 py-1.5"><NextStep r={r} /></div>
           {data.isMgr && <div className="muted text-xs">{r.assignee ? nameOf(data, r.assignee) : "غير مسند"}</div>}
-          <div className="muted text-[11.5px]">{ageDays(r.createdAt)}</div>
+          <CallLine c={c} open={OPEN_REQ(r)} />
+          <div className="muted text-[11.5px]">أُضيف الطلب {ageDays(r.createdAt)}</div>
         </div>
         {needsSaleInfo(r) && <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: r.status })}>أكمل بيانات البيع</button>}
         <div className="grid grid-cols-[30px_1fr_auto_30px] items-center gap-1.5 border-t border-[var(--crm-line)] pt-2">
