@@ -94,11 +94,16 @@ function build(ownerUid: string) {
     const who = people[i % people.length];
     const dm = DEMAND[i % DEMAND.length];
     const created = addDays(-Math.min(14, 1 + Math.floor(i / 2)));
+    // Next call first: a client whose call is due (late or today) cannot have been called after that date —
+    // logging a call always moves the next call forward — so their history ends the day before it.
+    const late = i % 4 === 1, none = i % 11 === 10;
+    const nextCall = ["تم البيع"].includes(st) || none ? null : late ? addDays(-(1 + (i % 3))) : i % 4 === 0 ? t : addDays(1 + (i % 5));
+    const dueBack = nextCall && nextCall <= t ? (late ? 1 + (i % 3) : 0) + 1 : 0;
     // Call log, newest first. Busier, later-stage clients have more history; some calls land today.
     const log: Record<string, unknown>[] = [];
     const n = Math.min(5, 1 + Math.floor(i / 5));
     for (let j = 0; j < n; j++) {
-      const day = j === 0 && i % 3 !== 2 ? t : addDays(-(j * 2 + (i % 3)));
+      const day = j === 0 && i % 3 !== 2 && !dueBack ? t : addDays(-(dueBack + j * 2 + (i % 3)));
       if (day < created) break;
       const type = st === "جديد" ? pick(["اتصلت عليه", "ما رد"]) : j === 0 && ["معاينة", "تفاوض"].includes(st) ? (st === "تفاوض" ? "تفاوض" : "زار العقار")
         : pick(["اتصلت عليه", "ما رد", "استفسر", "تم إرسال الموقع", "تم إرسال التفاصيل", "سجّل اهتمام"]);
@@ -107,8 +112,6 @@ function build(ownerUid: string) {
     const deal = PROP_OF[k];
     const depDay = k === "عربون0" ? t : addDays(-3 - (i % 4));
     if (deal) log.unshift({ at: stamp(st === "تم البيع" ? addDays(-2) : depDay, "16:20"), byId: who, type: st === "تم البيع" ? "تم الإغلاق" : "دفع عربون", text: "صفقة تجريبية", propertyId: deal.pid });
-    const late = i % 4 === 1, none = i % 11 === 10;
-    const nextCall = ["تم البيع"].includes(st) || none ? null : late ? addDays(-(1 + (i % 3))) : i % 4 === 0 ? t : addDays(1 + (i % 5));
     const visitAt = i === 13 ? addDays(1) + "T17:00" : i === 14 ? addDays(-1) + "T18:30" : i === 15 ? t + "T20:00" : null;
     docs.push(["clients", id, {
       name, phone: "05000" + String(10000 + i).slice(1), source: pick(["واتساب", "سناب", "تيك توك", "إعلان عقار", "إحالة", "اتصال"]),
