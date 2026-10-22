@@ -14,19 +14,15 @@ import { useCrm } from "@/lib/crm/store";
 import { remove, write } from "@/lib/crm/actions";
 import { nowStamp, today } from "@/lib/crm/util";
 
-interface Todo { id: string; owner: string; text: string; due: string | null; time: string | null; done: boolean; doneAt?: string | null; createdAt: string }
+export interface Todo { id: string; owner: string; text: string; due: string | null; time: string | null; done: boolean; doneAt?: string | null; createdAt: string }
 
-export function PrivateTodos() {
-  const { data, toast } = useCrm();
+/** The signed-in person's own reminders (only the owner can read them — Firestore rules). */
+export function usePrivateTodos(enabled = true) {
+  const { data } = useCrm();
   const [list, setList] = useState<Todo[]>([]);
   const [err, setErr] = useState("");
-  const [text, setText] = useState("");
-  const [due, setDue] = useState("");
-  const [time, setTime] = useState("");
-  const [showDone, setShowDone] = useState(false);
-
   useEffect(() => {
-    if (!data.uid) return;
+    if (!data.uid || !enabled) return;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let off = () => {};
     const sub = () => {
@@ -36,7 +32,19 @@ export function PrivateTodos() {
     };
     sub();
     return () => { off(); if (retry) clearTimeout(retry); };
-  }, [data.uid]);
+  }, [data.uid, enabled]);
+  return { list, err };
+}
+
+export const toggleTodo = (x: Todo) => write("todos", x.id, { done: !x.done, doneAt: x.done ? null : nowStamp() }, "update");
+
+export function PrivateTodos() {
+  const { data, toast } = useCrm();
+  const { list, err } = usePrivateTodos();
+  const [text, setText] = useState("");
+  const [due, setDue] = useState("");
+  const [time, setTime] = useState("");
+  const [showDone, setShowDone] = useState(false);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +56,7 @@ export function PrivateTodos() {
       toast("تعذّر الحفظ");
     }
   }
-  const toggle = (x: Todo) => write("todos", x.id, { done: !x.done, doneAt: x.done ? null : nowStamp() }, "update").catch(() => toast("تعذّر الحفظ"));
+  const toggle = (x: Todo) => toggleTodo(x).catch(() => toast("تعذّر الحفظ"));
   const del = (x: Todo) => remove("todos", x.id).catch(() => toast("تعذّر الحذف"));
 
   const t = today();

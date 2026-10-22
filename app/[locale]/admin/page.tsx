@@ -22,6 +22,7 @@ import type { Client, Request, Task } from "@/lib/crm/types";
 import { addDays, ageDays, fmtVisit, hm, relDay, today, weekdayLong } from "@/lib/crm/util";
 import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { TaskRow } from "@/components/crm/TaskRow";
+import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
 
@@ -45,10 +46,13 @@ function Section({ n, title, count, hint, children, open: open0 = true }: { n: n
 }
 
 export default function HomeDashboard() {
-  const { data, me, loaded, openClient, openModal, setViewAs, toast, settings } = useCrm();
+  const { data, me, loaded, openClient, openModal, setViewAs, toast, settings, previewAs } = useCrm();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  // My private reminders (visible to me only): shown when this page is my own work, not while looking at someone else.
+  const mineOnly = !previewAs && (!data.viewAs || data.viewAs === data.uid);
+  const priv = usePrivateTodos(mineOnly).list;
   // Opening the home page marks newly given tasks as seen (they are listed below; the sidebar badge clears).
   const unseenTasks = data.tasks.some((x) => x.seen === false && x.assignee === data.uid);
   useEffect(() => {
@@ -97,7 +101,8 @@ export default function HomeDashboard() {
   const prioRank = (x: Task) => -PRIO.indexOf((x.priority || "عادية") as never);
   const tasks = visibleTasks(data).filter((x) => !x.done && (x.due ? x.due <= t : x.seen === false))
     .sort((a, b) => Number(!!b.due && b.due < t) - Number(!!a.due && a.due < t) || prioRank(a) - prioRank(b) || String(a.due || "").localeCompare(String(b.due || "")));
-  const overdueTasks = tasks.filter((x) => x.due && x.due < t).length;
+  const privDue = mineOnly ? priv.filter((x) => !x.done && x.due && x.due <= t).sort((a, b) => ((a.due || "") + (a.time || "")).localeCompare((b.due || "") + (b.time || ""))) : [];
+  const overdueTasks = tasks.filter((x) => x.due && x.due < t).length + privDue.filter((x) => x.due && x.due < t).length;
 
   /* ---- attendance (checks the office location first when that rule is on) ---- */
   async function doCheck(kind: "in" | "out") {
@@ -275,8 +280,21 @@ export default function HomeDashboard() {
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length} hint="المتأخرة أولاً ثم مهام اليوم">
+      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
+        {privDue.map((x) => (
+          <div key={x.id} className="flex items-start gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 last:border-0">
+            <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--crm-gold)]" checked={x.done} aria-label="تم إنجاز التذكير"
+              onChange={() => toggleTodo(x).catch(() => toast("تعذّر الحفظ"))} />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">{x.text}</div>
+              <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-[var(--crm-ink-3)]">
+                <Pill tone="muted">🔒 خاصة</Pill>
+                <span className={x.due && x.due < t ? "text-[var(--crm-danger)]" : ""}>{x.due === t ? "اليوم" : x.due}{x.time ? " · " + x.time : ""}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </Section>
 
       <p className="crm-hint mt-2">العملاء الذين لم يردوا على 3 مكالمات تُنشأ لهم مهمة «رسالة واتساب»، وإن لم يردوا خلال 48 ساعة يُنقلون إلى «العملاء ← لا يوجد رد».</p>
