@@ -137,10 +137,10 @@ export default function ContactPage() {
                 ? exportContactList(list.map((c) => ({ name: c.name, phone: c.phone || "", assignee: nameOf(data, c.assignee), tries: noAnswers(c), last: fmtStamp(c.lastUpdateAt), notes: c.notes || "" }))).catch(() => toast("تعذّر التصدير"))
                 : toast("لا توجد بيانات للتصدير"))}>⬇ تصدير Excel</button>
             )}
-            {data.isMgr && <button type="button" className={"crm-btn" + (adding ? "" : " primary")} onClick={() => setAdding((v) => !v)}>+ إضافة عملاء</button>}
+            <button type="button" className={"crm-btn" + (adding ? "" : " primary")} onClick={() => setAdding((v) => !v)}>+ إضافة أرقام</button>
           </div>
         } />
-      {adding && data.isMgr && <ContactImport onClose={() => setAdding(false)} />}
+      {adding && <ContactImport onClose={() => setAdding(false)} />}
 
       <div className="mb-3 grid gap-2.5 sm:grid-cols-3">
         <div className="crm-card p-3.5"><div className="text-xs text-[var(--crm-ink-3)]">المتبقي</div><b className="num text-2xl">{all.length}</b></div>

@@ -23,6 +23,7 @@ import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { TaskRow } from "@/components/crm/TaskRow";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
+import { ContactImport } from "@/components/crm/ContactImport";
 
 const tempRank = (c?: Client | null) => TEMPS.indexOf((c?.temp || "دافئ") as never);
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -48,6 +49,7 @@ export default function HomeDashboard() {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [adding, setAdding] = useState(false);
   // Opening the home page marks newly given tasks as seen (they are listed below; the sidebar badge clears).
   const unseenTasks = data.tasks.some((x) => x.seen === false && x.assignee === data.uid);
   useEffect(() => {
@@ -161,7 +163,11 @@ export default function HomeDashboard() {
   return (
     <>
       <PageHeader title={(new Date().getHours() < 12 ? "☀️ صباح الخير" : "🌙 مساء الخير") + (me.name ? "، " + me.name.trim().split(/\s+/)[0] : "")}
-        sub={weekdayLong(new Date()) + " — كل ما عليك اليوم بالترتيب"} action={attBar} />
+        sub={weekdayLong(new Date()) + " — كل ما عليك اليوم بالترتيب"}
+        action={<div className="flex flex-wrap items-center gap-2">{attBar}<button type="button" className={"crm-btn" + (adding ? "" : " primary")} onClick={() => setAdding((v) => !v)}>+ إضافة أرقام</button></div>} />
+
+      {/* New numbers: typed, or from Excel; duplicates are refused; they land in «مكالمات العملاء الجدد» below. */}
+      {adding && <ContactImport onClose={() => setAdding(false)} />}
 
       {fresh.length > 0 && (
         <div className="mb-2 rounded-xl bg-[var(--crm-gold-soft)] px-3.5 py-2.5 text-sm">
@@ -200,7 +206,7 @@ export default function HomeDashboard() {
         <span className="text-[12px] text-[var(--crm-ink-3)]">تُحسب المكالمات المسجّلة فقط (رد، لم يرد، مشغول…)، ولا تُحسب رسائل الواتساب.</span>
       </div>
 
-      <Section n={1} title="مكالمات العملاء الجدد" count={newCalls.length} hint="عملاء بدون طلب بعد — سجّل نتيجة كل مكالمة">
+      <Section n={1} title="مكالمات العملاء الجدد" count={newCalls.length} hint="أرقام جديدة وعملاء بدون طلب بعد — سجّل نتيجة كل مكالمة">
         {newCalls.map((c) => {
           const miss = missedStreak(c), l = lastCall(c);
           return (
