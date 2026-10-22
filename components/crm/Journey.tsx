@@ -22,7 +22,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
     setBusy(true);
     try {
       await setProposalStatus(data, p, st, fb);
-      toast(st === "غير مناسب" ? "سُجّل العرض غير مناسب — يعود الطلب لقائمة البحث إن لم يبقَ عرض آخر" : "حالة العرض: " + st);
+      toast(st === "غير مناسب" ? "سُجّل العرض غير مناسب — يعود الطلب إلى «جاري البحث» إن لم يبقَ عرض آخر" : "حالة العرض: " + st);
     } finally { setBusy(false); }
   };
   return (

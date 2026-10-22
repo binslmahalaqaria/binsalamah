@@ -20,8 +20,10 @@ export const WA_LOG = "رسالة واتساب";
 /** Minimum calls per employee per day. */
 export const CALL_TARGET = 10;
 /** Offer statuses (proposals). Still open = waiting on the customer. */
-export const PROP_ST = ["أُرسل", "بانتظار الرد", "مهتم", "غير مناسب", "تم تحديد معاينة", "تمت المعاينة"] as const;
-export const PROP_OPEN = ["أُرسل", "بانتظار الرد", "مهتم", "تم تحديد معاينة"];
+export const PROP_ST = ["أُرسل", "بانتظار الرد", "مهتم", "غير مناسب"] as const;
+/** Old offer statuses folded into «مهتم» (a viewing is its own record now). */
+export const PROP_LEGACY = ["تم تحديد معاينة", "تمت المعاينة"];
+export const PROP_OPEN = ["أُرسل", "بانتظار الرد", "مهتم"];
 export const PROP_TONE: Record<string, Tone> = { "أُرسل": "muted", "بانتظار الرد": "warm", "مهتم": "ok", "غير مناسب": "hot", "تم تحديد معاينة": "accent", "تمت المعاينة": "ok" };
 /** Viewing statuses. */
 export const VIEW_ST = ["مجدولة", "تمت", "مؤجلة", "ملغاة"] as const;
@@ -37,7 +39,7 @@ export const FACING = [
 ] as const;
 export const FLOORS = ["أرضي", "أول", "ثاني", "ثالث", "رابع وأعلى", "روف"] as const;
 export const FLOOR_TYPES = ["دور", "شقة"];
-export const REQ = ["جديد", "جاري البحث", "أرسلنا خيارات", "معاينة", "تفاوض", "عربون", "تم البيع", "ملغي"] as const;
+export const REQ = ["جديد", "جاري البحث", "أرسلنا خيارات", "تفاوض", "عربون", "تم البيع", "ملغي"] as const;
 export const OPEN_STAGES = REQ.filter((x) => x !== "تم البيع" && x !== "ملغي");
 export const SOLD_ST = ["عربون", "تم البيع"];
 export const CONTRACT = ["دوام كامل", "دوام جزئي", "عمولة فقط", "تدريب"] as const;
@@ -93,8 +95,6 @@ export const UPD_STAGE: Record<string, string> = {
   "دفع عربون": "عربون",
   "تم إرسال الموقع": "أرسلنا خيارات",
   "تم إرسال التفاصيل": "أرسلنا خيارات",
-  "حدد موعد زيارة": "معاينة",
-  "زار العقار": "معاينة",
   "تفاوض": "تفاوض",
   "صرف النظر": "ملغي",
   "رقم خاطئ": "ملغي",
@@ -115,11 +115,11 @@ export const LBL: Record<string, string> = {
   "زار العقار": "تمت المعاينة",
   "دفع عربون": "دفع العربون",
   "تم الإغلاق": "تمت الصفقة",
-  "حدد موعد زيارة": "تحديد موعد زيارة",
-  "تأكيد زيارة": "تأكيد موعد الزيارة",
+  "حدد موعد زيارة": "تحديد موعد معاينة",
+  "تأكيد زيارة": "تأكيد موعد المعاينة",
   "ما حضر": "لم يحضر",
   "إلغاء موعد": "إلغاء الموعد",
-  "أرسلنا خيارات": "تم إرسال خيارات",
+  "أرسلنا خيارات": "تم إرسال عروض",
   "رجع لمدير المبيعات": "أُعيد إلى مدير المبيعات",
 };
 export const lbl = (v: string | null | undefined) => (v ? LBL[v] || v : "");
@@ -140,7 +140,7 @@ export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير �
 export const GOALK: [GoalKey, string, string][] = [
   ["calls", "مكالمات في اليوم", "مكالمات (معدل يومي)"],
   ["reqs", "طلبات جديدة في الشهر", "طلبات جديدة"],
-  ["visits", "زيارات منفّذة", "زيارات"],
+  ["visits", "معاينات منفّذة", "معاينات"],
   ["deals", "عربون + بيع", "عربون + بيع"],
   ["commission", "السعي (ريال)", "السعي"],
 ];

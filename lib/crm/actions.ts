@@ -219,14 +219,14 @@ export async function confirmVisit(d: CrmData, id: string) {
     id,
     {
       visitConfirmed: true,
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد الزيارة " + fmtVisit(c.visitAt) }),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد المعاينة " + fmtVisit(c.visitAt) }),
       updatedAt: nowStamp(),
     },
     "update"
   );
 }
 
-/** Sets (or clears) a visit for the request's client, and moves the request to "معاينة". */
+/** Sets (or clears) the client's visit date; the request keeps its stage (a visit is not a stage). */
 export async function saveVisit(d: CrmData, reqId: string, at: string | null, propId: string | null, note: string) {
   const r = d.requests.find((x) => x.id === reqId);
   const c = r && clientById(d, r.clientId);
@@ -246,7 +246,7 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
         at: nowStamp(),
         byId: d.uid,
         type: clear ? "إلغاء موعد" : "حدد موعد زيارة",
-        text: clear ? "تم إلغاء موعد الزيارة" : fmtVisit(at) + (note ? " — " + note : ""),
+        text: clear ? "تم إلغاء موعد المعاينة" : fmtVisit(at) + (note ? " — " + note : ""),
         propertyId: propId,
       }),
       lastUpdate: clear ? c.lastUpdate || null : "حدد موعد زيارة",
@@ -256,7 +256,6 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
     },
     "update"
   );
-  if (!clear) await advanceReq(d, c.id, "معاينة", reqId);
   return true;
 }
 
@@ -543,8 +542,6 @@ export async function scheduleViewing(d: CrmData, reqId: string, at: string, pro
     history: [ev(d, "مجدولة", note)], createdAt: nowStamp(), updatedAt: nowStamp(),
   });
   await saveVisit(d, r.id, at, propId, note);
-  const p = propId && d.proposals.find((x) => x.requestId === r.id && x.propertyId === propId);
-  if (p && p.status !== "تم تحديد معاينة") await setProposalStatus(d, p, "تم تحديد معاينة");
   return true;
 }
 
@@ -572,10 +569,10 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
   await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
   const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
   if (result === "interested") {
-    if (p) await write("proposals", p.id, { status: "تمت المعاينة", history: [...(p.history || []), ev(d, "تمت المعاينة", "مهتم")], updatedAt: nowStamp() }, "update");
+    if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد المعاينة");
     if (v.requestId) await advanceReq(d, v.clientId, "تفاوض", v.requestId);
   } else if (result === "unsuitable") {
     if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد المعاينة");
     else await backToSearch(d, v.requestId);
-  } else if (p) await write("proposals", p.id, { status: "تمت المعاينة", history: [...(p.history || []), ev(d, "تمت المعاينة", "يفكر")], updatedAt: nowStamp() }, "update");
+  }
 }

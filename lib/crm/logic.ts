@@ -643,12 +643,12 @@ export function planFor(d: CrmData, uid: string, hmFmt: (s: string | null) => st
   };
   add("الصباح", "checkin", "تسجيل الحضور", att ? 0 : 1, 1, att ? "الحضور " + hmFmt(att.in) : "");
   add("الصباح", "late", "الاتصال بالعملاء المتأخرين", lateN, lateN + (lateN ? 0 : calledN ? 1 : 0), lateN ? lateN + " عميل" : "تم إنجازها");
-  add("الصباح", "confirm", "تأكيد زيارات الغد", tmLeft, tmV.length, tmV.length - tmLeft + " من " + tmV.length + " مؤكدة");
+  add("الصباح", "confirm", "تأكيد معاينات الغد", tmLeft, tmV.length, tmV.length - tmLeft + " من " + tmV.length + " مؤكدة");
   add("الصباح", "fresh", "التواصل مع الطلبات الجديدة", freshLeft, fresh.length && freshLeft ? freshLeft : 0, freshLeft + " طلب لم يُتواصل معه");
   add("خلال اليوم", "calls", "مكالمات اليوم", dueNow.length, dueNow.length + calledN, calledN + " من " + (dueNow.length + calledN) + " تمت");
   add("خلال اليوم", "send", "إرسال عقارات مناسبة لعملاء لم يُرسل إليهم أي عرض", toSend, toSend + sentToday, toSend ? toSend + " طلب له عقار مناسب" : "تم إرسال " + sentToday);
   add("خلال اليوم", "tasks", "المهام المطلوبة", tasksLeft, tasks.length, tasks.length - tasksLeft + " من " + tasks.length);
-  add("آخر اليوم", "outcome", "تسجيل نتائج الزيارات", pastV, pastV + visitedToday, pastV ? pastV + " زيارة بدون نتيجة" : "تمت");
+  add("آخر اليوم", "outcome", "تسجيل نتائج المعاينات", pastV, pastV + visitedToday, pastV ? pastV + " معاينة بدون نتيجة" : "تمت");
   add("آخر اليوم", "checkout", "تسجيل الانصراف", att && att.out ? 0 : 1, att ? 1 : 0, att && att.out ? "الانصراف " + hmFmt(att.out) : "");
   return I;
 }

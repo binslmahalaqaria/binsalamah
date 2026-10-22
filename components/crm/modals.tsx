@@ -149,7 +149,7 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
         <button type="button" className="crm-btn primary" onClick={async () => {
           if (!res) return toast("اختر رأي العميل");
           await viewingResult(data, v, res, fb.trim(), next === "none" ? null : addDays(+next));
-          toast(res === "interested" ? "انتقل الطلب إلى التفاوض" : res === "unsuitable" ? "عاد الطلب إلى قائمة البحث" : "سُجّلت النتيجة وموعد المتابعة");
+          toast(res === "interested" ? "انتقل الطلب إلى التفاوض" : res === "unsuitable" ? "عاد الطلب إلى مرحلة «جاري البحث»" : "سُجّلت النتيجة وموعد المتابعة");
           closeModal();
         }}>حفظ</button>
         <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>

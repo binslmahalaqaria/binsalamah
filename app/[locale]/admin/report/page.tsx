@@ -96,7 +96,7 @@ function Report() {
             <Kpi l="المكالمات" v={fmt(sum("calls"))} />
             <Kpi l="المكالمات الناجحة" v={fmt(sum("answered"))} hint={"نسبة الرد " + ansRate + "%"} />
             <Kpi l="المكالمات غير الناجحة" v={fmt(sum("noAnswer"))} hint="لم يرد العميل" />
-            <Kpi l="الزيارات والمعاينات" v={fmt(sum("visits"))} />
+            <Kpi l="المعاينات" v={fmt(sum("visits"))} />
             <Kpi l="العروض المرسلة" v={fmt(sum("sent"))} />
             <Kpi l="الطلبات الجديدة" v={fmt(sum("reqs"))} />
             <Kpi l="العرابين" v={fmt(sum("deposits"))} />
@@ -136,7 +136,7 @@ function Report() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr style={{ background: INK, color: "#fff" }}>
-                  {["#", "الموظف", "مكالمات", "ناجحة", "غير ناجحة", "زيارات", "طلبات", "عربون", "بيع", "السعي", "حضور", "تأخير"].map((h) => <th key={h} className="px-2 py-2 text-start font-semibold">{h}</th>)}
+                  {["#", "الموظف", "مكالمات", "ناجحة", "غير ناجحة", "معاينات", "طلبات", "عربون", "بيع", "السعي", "حضور", "تأخير"].map((h) => <th key={h} className="px-2 py-2 text-start font-semibold">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -233,7 +233,7 @@ function Card({ r, role }: { r: Row; role: string }) {
         {stat("مكالمات", fmt(r.calls))}
         {stat("مكالمات ناجحة", fmt(r.answered) + (r.calls ? " (" + Math.round((r.answered / r.calls) * 100) + "%)" : ""), "#15803d")}
         {stat("غير ناجحة", fmt(r.noAnswer), r.noAnswer ? "#b91c1c" : undefined)}
-        {stat("زيارات", fmt(r.visits))}
+        {stat("معاينات", fmt(r.visits))}
         {stat("عروض مرسلة", fmt(r.sent))}
         {stat("طلبات جديدة", fmt(r.reqs))}
         {stat("عربون", fmt(r.deposits))}

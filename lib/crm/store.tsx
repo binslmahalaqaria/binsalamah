@@ -22,7 +22,7 @@ import type {
 } from "./types";
 import type { CrmData, RoundRobin } from "./logic";
 import { nowStamp } from "./util";
-import { PTYPES, SOURCES } from "./constants";
+import { PROP_LEGACY, PTYPES, SOURCES } from "./constants";
 import { setPreviewMode } from "./preview";
 
 export type Modal =
@@ -148,7 +148,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         markLoaded("props");
       }, (e) => { console.error("properties", e); markLoaded("props"); }),
       onSnapshot(collection(db, "requests"), (s) => {
-        setRequests(s.docs.map((d) => withId<Request>(d)));
+        setRequests(s.docs.map((d) => { const r = withId<Request>(d); return r.status === "معاينة" ? { ...r, status: "أرسلنا خيارات" } : r; }));
         markLoaded("requests");
       }, (e) => { console.error("requests", e); markLoaded("requests"); }),
       onSnapshot(collection(db, "tasks"), (s) => setTasks(s.docs.map((d) => withId<Task>(d)))),
@@ -212,7 +212,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     let t: ReturnType<typeof setTimeout> | undefined;
     const retry = () => { if (!t) t = setTimeout(() => setJrRetry((n) => n + 1), 15000); };
     const subs = [
-      onSnapshot(collection(db, "proposals"), (s) => setProposals(s.docs.map((d) => withId<Proposal>(d)).sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)))), retry),
+      onSnapshot(collection(db, "proposals"), (s) => setProposals(s.docs.map((d) => { const p = withId<Proposal>(d); return PROP_LEGACY.includes(p.status) ? { ...p, status: "مهتم" } : p; }).sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)))), retry),
       onSnapshot(collection(db, "viewings"), (s) => setViewings(s.docs.map((d) => withId<Viewing>(d)).sort((a, b) => String(a.at).localeCompare(String(b.at)))), retry),
     ];
     return () => { subs.forEach((u) => u()); if (t) clearTimeout(t); };

@@ -37,7 +37,7 @@ export function ClientChips({ c }: { c: Client }) {
     <div className="mt-1.5 flex flex-wrap gap-1.5">
       {nreq > 1 && <Chip>{nreq} طلبات</Chip>}
       <DemandChips r={d} />
-      {c.visitAt && <Chip cls="visit">زيارة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</Chip>}
+      {c.visitAt && <Chip cls="visit">معاينة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</Chip>}
       {data.isMgr && <Chip cls={c.assignee ? "" : "warn"}>{c.assignee ? "المسؤول: " + nameOf(data, c.assignee) : "غير مسند"}</Chip>}
     </div>
   );
@@ -133,10 +133,10 @@ export function NextStep({ r }: { r: Request }) {
       </span>
     );
   } else if (r.status === "ملغي") main = <span className={cls("muted")}>ملغي</span>;
-  else if (j.visit?.past) main = <span className={cls("warn")}>الزيارة فاتت ({fmtVisit(j.visit.at)}) — سجّل النتيجة</span>;
-  else if (j.visit) main = <span className={cls(j.visit.ok ? "ok" : "warn")}>زيارة {fmtVisit(j.visit.at)}{j.visit.ok ? " ✓ مؤكدة" : " · بحاجة إلى تأكيد"}</span>;
+  else if (j.visit?.past) main = <span className={cls("warn")}>المعاينة فاتت ({fmtVisit(j.visit.at)}) — سجّل النتيجة</span>;
+  else if (j.visit) main = <span className={cls(j.visit.ok ? "ok" : "warn")}>معاينة {fmtVisit(j.visit.at)}{j.visit.ok ? " ✓ مؤكدة" : " · بحاجة إلى تأكيد"}</span>;
   else if (j.visited) main = <span className={cls("ok")}>زار العقار {ageDays(j.visited.at)}</span>;
-  else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد زيارة</span>;
+  else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد معاينة</span>;
   else main = <span className={cls("muted")}>لم يُرسل إليه أي عرض بعد</span>;
   const late = c?.nextCall && c.nextCall < today();
   return (
@@ -178,7 +178,7 @@ export function JourneyBox({ r }: { r: Request }) {
       ) : j.visited ? (
         <Row tone="ok">زار العقار · {ageDays(j.visited.at)}</Row>
       ) : (
-        <Row tone="no">لم يُحدَّد موعد زيارة</Row>
+        <Row tone="no">لم يُحدَّد موعد معاينة</Row>
       )}
       {j.c?.nextCall && <Row tone="info">الاتصال القادم: {lateTxt(j.c.nextCall)}</Row>}
     </div>
@@ -208,7 +208,6 @@ export function reqMenu(data: CrmData, r: Request, open: (m: Modal) => void): Ke
   const deals = can(data, "recordDeals");
   const items: (KebabItem | false)[] = [
     { label: "تم إرسال الموقع", onClick: () => open({ kind: "update", clientId: r.clientId, reqId: r.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id }) },
-    { label: c?.visitAt ? "تعديل موعد الزيارة" : "تحديد موعد زيارة", onClick: () => open({ kind: "visit", reqId: r.id }) },
     !!c && { label: "تسجيل تحديث", onClick: () => open({ kind: "update", clientId: c.id, reqId: r.id }) },
     deals && !sold && { label: "تسجيل عربون", onClick: () => open({ kind: "close", reqId: r.id, to: "عربون" }) },
     deals && r.status !== "تم البيع" && { label: "تم البيع", onClick: () => open({ kind: "close", reqId: r.id, to: "تم البيع" }) },

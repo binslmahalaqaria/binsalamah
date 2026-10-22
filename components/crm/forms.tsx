@@ -61,14 +61,15 @@ function DupHint({ phone, exceptId }: { phone: string; exceptId?: string | null 
 /** Assignee value meaning "next employee in the round-robin" (resolved on save). */
 const AUTO = "__auto";
 
-function MemberSelect({ value, onChange, lock, auto }: { value: string | null | undefined; onChange: (v: string) => void; lock?: boolean; auto?: boolean }) {
+function MemberSelect({ value, onChange, lock, auto, owner }: { value: string | null | undefined; onChange: (v: string) => void; lock?: boolean; auto?: boolean; owner?: string | null }) {
   const { data } = useCrm();
   const order = data.rr.order.filter((id) => data.staff.some((s) => s.id === id && s.active));
   const upNext = order.length ? order[((data.rr.last ? order.indexOf(data.rr.last) : -1) + 1) % order.length] : null;
   return (
     <>
       <select value={value || ""} disabled={lock} onChange={(e) => onChange(e.target.value)}>
-        {auto && upNext && <option value={AUTO}>تلقائي بالدور (التالي: {nameOf(data, upNext)})</option>}
+        {auto && owner && <option value={AUTO}>مسؤول العميل: {nameOf(data, owner)}</option>}
+        {auto && !owner && upNext && <option value={AUTO}>تلقائي بالدور (التالي: {nameOf(data, upNext)})</option>}
         {data.isMgr && <option value="">غير مسند</option>}
         {members(data).map((id) => (
           <option key={id} value={id}>{nameOf(data, id)}{id === data.uid ? " (أنا)" : ""}</option>
@@ -163,10 +164,6 @@ export function ClientForm({ id }: { id?: string }) {
         <Field label="درجة الاهتمام"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} /></Field>
         <Field label="الحالة"><Select value={f.status} onChange={(v) => set("status", v)} options={CSTATUS} /></Field>
         <Field label="موعد الاتصال القادم"><input type="date" value={f.nextCall} onChange={(e) => set("nextCall", e.target.value)} /></Field>
-        <Field label="موعد الزيارة (اختياري)" hint="سيتم تذكيرك قبلها بيوم لتأكيد الموعد مع العميل">
-          <input type="datetime-local" value={f.visitAt} onChange={(e) => set("visitAt", e.target.value)} />
-        </Field>
-        <Field label="العقار المراد زيارته"><Select value={f.visitProperty} onChange={(v) => set("visitProperty", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
         <Field label="ملاحظات عن العميل" full hint="متطلبات العميل (نوع العقار، الحي، الميزانية…) تُسجَّل في طلبه.">
           <textarea rows={3} value={f.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
@@ -198,8 +195,8 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     // The client's interest level (ساخن/دافئ/بارد) lives on the client; set here too so it is at hand with the request.
     temp: s(presetClient?.temp || "دافئ"),
     requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
-    source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes),
-    status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && data.isMgr && data.rr.on ? AUTO : data.uid)),
+    source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes), clientName: "",
+    status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && presetClient?.assignee ? presetClient.assignee : !rec && data.isMgr && data.rr.on ? AUTO : data.uid)),
     propertyId: s(base.propertyId), unit: s(base.unit), price: s(base.price), commissionPct: s(base.commissionPct ?? 2.5),
   });
   const [busy, setBusy] = useState(false);
@@ -209,16 +206,33 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     const zs = RIYADH_ZONES.filter((z) => f.zones.includes(z.ar));
     return dists.filter((d) => zs.some((z) => z.districts.includes(districtKey(d))));
   }, [dists, f.zones]);
+  // The chosen client's active owner, if any: a new request follows it (one client, one employee).
+  const ownerNow = !rec && f.clientId ? (() => { const a = clientById(data, f.clientId)?.assignee; return a && data.staff.some((x) => x.id === a && x.active) ? a : null; })() : null;
+  // A client saved from a bare number has the number as their name: ask for the real name here.
+  const selClient = f.clientId ? clientById(data, f.clientId) : null;
+  const nameless = !!selClient && /^[\d\s+()-]+$/.test((selClient.name || "").trim());
   const clientOpts = visibleClients(data).map((c) => [c.id, c.name] as [string, string]);
   if (base.clientId && !clientOpts.some(([v]) => v === base.clientId))
     clientOpts.unshift([base.clientId, presetClient?.name || preset?._clientName || "العميل"]);
 
   async function save() {
+    if (nameless && !f.clientName.trim()) return toast("اكتب اسم العميل — محفوظ بالرقم فقط");
     if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
     setBusy(true);
     try {
-      const autoTo = data.isMgr && f.assignee === AUTO ? await nextAssignee(data) : null;
-      if (f.assignee === AUTO && !autoTo) return toast("لا يوجد موظفون نشطون في التوزيع التلقائي — اختر المسؤول يدوياً");
+      // One client, one employee: a new request for an existing client follows the client's active owner — the
+      // automatic rotation is for clients without one (and then does not use up a turn).
+      const owner0 = !rec && f.clientId ? clientById(data, f.clientId)?.assignee || null : null;
+      const owner = owner0 && data.staff.some((x) => x.id === owner0 && x.active) ? owner0 : null;
+      const autoTo = data.isMgr && f.assignee === AUTO && !owner ? await nextAssignee(data) : null;
+      if (f.assignee === AUTO && !owner && !autoTo) return toast("لا يوجد موظفون نشطون في التوزيع التلقائي — اختر المسؤول يدوياً");
+      let pick = data.isMgr ? (f.assignee === AUTO ? owner || autoTo : f.assignee || null) : rec ? rec.assignee : data.uid;
+      // Choosing someone else for an existing client's new request moves the client (and their open requests) too — ask first.
+      let moveClient = false;
+      if (!rec && owner && data.isMgr && pick && pick !== owner) {
+        if (window.confirm("هذا العميل عند " + nameOf(data, owner) + ". هل تحوّله مع كل طلباته المفتوحة إلى " + nameOf(data, pick) + "؟\n(إلغاء = يبقى الطلب عند " + nameOf(data, owner) + ")")) moveClient = true;
+        else pick = owner;
+      }
       const demand = {
         purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: num(f.budget),
         payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), bedroomsMin: num(f.bedroomsMin),
@@ -226,7 +240,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       };
       const body: Partial<Request> = {
         ...demand, clientId: f.clientId, priority: f.priority, source: f.source || null, notes: f.notes.trim() || null,
-        status: f.status || "جديد", assignee: data.isMgr ? (f.assignee === AUTO ? autoTo : f.assignee || null) : rec ? rec.assignee : data.uid,
+        status: f.status || "جديد", assignee: pick,
         propertyId: f.propertyId || null, unit: f.unit || null, price: num(f.price), commissionPct: num(f.commissionPct) ?? 2.5,
         updatedAt: nowStamp(),
       };
@@ -268,11 +282,15 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       } else if (f.temp && f.temp !== clientById(data, body.clientId)?.temp) {
         await write("clients", body.clientId, { temp: f.temp, updatedAt: nowStamp() }, "update");
       }
+      if (nameless && body.clientId) await write("clients", body.clientId, { name: f.clientName.trim(), updatedAt: nowStamp() }, "update");
       let reqId = rec?.id;
       if (rec) await write("requests", rec.id, body, "update");
-      else reqId = await write("requests", null, { ...body, createdAt: nowStamp() });
+      else {
+        reqId = await write("requests", null, { ...body, createdAt: nowStamp() });
+        if (moveClient && body.clientId && pick) await assignClient(data, body.clientId, pick, reqId);
+      }
       toast(closeTo ? "تم الحفظ — يرجى استكمال بيانات " + (closeTo === "تم البيع" ? "البيع" : "العربون")
-        : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : "تم الحفظ");
+        : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : owner && !rec && pick === owner ? "تم الحفظ — الطلب عند " + nameOf(data, owner) + " مسؤول العميل" : "تم الحفظ");
       closeModal();
       if (closeTo && reqId) openModal({ kind: "close", reqId, to: closeTo });
     } catch (e) {
@@ -304,7 +322,16 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       }>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
         <Sec>العميل</Sec>
-        <Field label="عميل موجود"><Select value={f.clientId} onChange={(v) => set("clientId", v)} options={clientOpts} blank="—" /></Field>
+        <Field label="عميل موجود"><Select value={f.clientId} options={clientOpts} blank="—"
+          onChange={(v) => {
+            set("clientId", v);
+            // A manager adding a request for an existing client: the request follows the client's owner by default.
+            const own = v ? clientById(data, v)?.assignee : null;
+            if (!rec && data.isMgr && own && data.staff.some((x) => x.id === own && x.active)) set("assignee", AUTO);
+          }} /></Field>
+        {nameless && (
+          <Field label="اسم العميل *"><input value={f.clientName} placeholder="الرقم محفوظ بدون اسم — اكتب الاسم" onChange={(e) => set("clientName", e.target.value)} /></Field>
+        )}
         {!f.clientId && (
           <>
             <WaPicker onPick={(c) => {
@@ -352,7 +379,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         </More>
         <Sec>المرحلة والمسؤول</Sec>
         <Field label="المرحلة"><Select value={f.status} onChange={(v) => set("status", v)} options={REQ.filter((v) => can(data, "recordDeals") || !SOLD_ST.includes(v) || v === rec?.status).map((v) => [v, lbl(v)] as [string, string])} /></Field>
-        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr && data.rr.on} /></Field>
+        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr && (data.rr.on || !!ownerNow)} owner={ownerNow} /></Field>
         <More title="بيانات البيع (عند العربون أو البيع)" open={!!f.propertyId}>
           <Field label="العقار"><Select value={f.propertyId} onChange={(v) => set("propertyId", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
           <Field label="الوحدة">

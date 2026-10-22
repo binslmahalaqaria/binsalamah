@@ -365,7 +365,7 @@ export interface Proposal {
   sentAt: string;
   by: string | null;
   assignee: string | null;
-  /** أُرسل · بانتظار الرد · مهتم · غير مناسب · تم تحديد معاينة · تمت المعاينة */
+  /** أُرسل · بانتظار الرد · مهتم · غير مناسب */
   status: string;
   feedback?: string | null;
   history: StageEvent[];

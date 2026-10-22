@@ -32,8 +32,7 @@ export function RequestTabs() {
   const { previewAs } = useCrm();
   return <SubTabs tabs={[
     { href: "/admin/requests", label: "الطلبات" },
-    // Trial 2026-10-22: the customer journey after the request.
-    { href: "/admin/search", label: "قائمة البحث" },
+    // The customer journey after the request.
     { href: "/admin/proposals", label: "العروض" },
     { href: "/admin/viewings", label: "المعاينات" },
     { href: "/admin/leads", label: "نماذج الموقع", show: !previewAs },

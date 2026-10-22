@@ -3,7 +3,7 @@
 /** "العملاء" — client list with search, filters, assignment, and quick actions. */
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { CSTATUS, NO_RESP, PAY, TEMPS, TO_CONTACT, UPD, lbl } from "@/lib/crm/constants";
+import { CSTATUS, NO_RESP, PAY, TEMPS, UPD, lbl } from "@/lib/crm/constants";
 import {
   demandOf, matchesFor, members, nameOf, propById, reqsOf, typesOf, visibleClients, wantLine, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
@@ -36,7 +36,7 @@ export default function ClientsPage() {
   // "للتواصل" clients live on their own page and "غير مهتم" ones are the archive; both show only when that status is picked.
   const archived = list.filter((c) => c.status === "غير مهتم").length;
   if (F.status) list = list.filter((c) => (c.status || "نشط") === F.status);
-  else list = list.filter((c) => c.status !== TO_CONTACT && c.status !== "غير مهتم" && c.status !== NO_RESP);
+  else list = list.filter((c) => c.status !== "غير مهتم" && c.status !== NO_RESP);
   if (F.temp) list = list.filter((c) => c.temp === F.temp);
   if (F.purpose) list = list.filter((c) => (demandOf(data, c).purpose || "شراء") === F.purpose);
   if (F.type) list = list.filter((c) => typesOf(demandOf(data, c)).includes(F.type));
@@ -58,7 +58,7 @@ export default function ClientsPage() {
       return {
         "الاسم": c.name, "الجوال": c.phone || "", "الطلب": d.purpose || "", "نوع العقار": typesOf(d).join("، "), "الميزانية": d.budget ?? "",
         "الدفع": d.payment || "", "البنك": d.bank || "", "الأحياء": d.districts || "", "أقل مساحة": d.areaMin ?? "", "أقل غرف": d.bedroomsMin ?? "",
-        "الدور المطلوب": (d.floors || []).join("، "), "موعد الزيارة": c.visitAt ? c.visitAt.replace("T", " ") + (c.visitConfirmed ? " (مؤكد)" : "") : "",
+        "الدور المطلوب": (d.floors || []).join("، "), "موعد المعاينة": c.visitAt ? c.visitAt.replace("T", " ") + (c.visitConfirmed ? " (مؤكد)" : "") : "",
         "استفسر عن": propById(data, c.interestIn)?.title || "", "تفاصيل الطلب": d.requirements || "", "الاهتمام": c.temp || "", "الحالة": c.status || "نشط",
         "آخر تحديث": c.lastUpdate || "", "تاريخ آخر تحديث": fmtStamp(c.lastUpdateAt), "الاتصال القادم": c.nextCall || "",
         "المسؤول": nameOf(data, c.assignee), "المصدر": c.source || "", "ملاحظات": c.notes || "",
@@ -79,7 +79,7 @@ export default function ClientsPage() {
           </div>
           <div className="mt-1 truncate text-[13px] text-[var(--crm-ink-2)]">
             {wantLine(data, c) || <span className="muted">لم يُسجَّل طلبه</span>}
-            {c.visitAt && <span className="text-[var(--crm-gold-ink)]"> · زيارة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</span>}
+            {c.visitAt && <span className="text-[var(--crm-gold-ink)]"> · معاينة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</span>}
           </div>
           {c.lastUpdate && <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">آخر تواصل: {lbl(c.lastUpdate)}</div>}
         </div>
@@ -148,7 +148,7 @@ export default function ClientsPage() {
           ? <button type="button" className="crm-btn ghost sm" onClick={() => set("status", "")}>رجوع إلى العملاء</button>
           : !F.status && archived > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => set("status", "غير مهتم")}>الأرشيف (غير مهتمين): <span className="num">{archived}</span></button>}
       </div>
-      {list.length ? <div className="grid gap-2.5">{list.map(row)}</div> : <Empty>{data.clients.length ? "لا توجد نتائج." : "لا يوجد عملاء بعد."}</Empty>}
+      {list.length ? <div className="grid gap-2.5">{list.map(row)}</div> : <Empty>{data.clients.length ? "لا توجد نتائج." : <span className="grid justify-items-center gap-2.5">لا يوجد عملاء بعد.<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "client" })}>+ عميل جديد</button></span>}</Empty>}
     </>
   );
 }

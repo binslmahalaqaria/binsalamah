@@ -91,7 +91,7 @@ export function ClientDrawer() {
                 </b>
               </div>
               <div className="grid gap-0.5 rounded-xl bg-[var(--crm-surface-2)] p-2.5">
-                <span className="muted text-xs">موعد الزيارة</span>
+                <span className="muted text-xs">موعد المعاينة</span>
                 <b className="text-sm">
                   {c.visitAt ? (
                     <>
@@ -134,7 +134,6 @@ export function ClientDrawer() {
                           {mc ? mc + " عقار مناسب" : "لا يوجد عقار مطابق"}
                         </button>
                         <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id })}>تم إرسال الموقع</button>
-                        <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: r.id })}>{c.visitAt ? "تعديل الموعد" : "تحديد موعد"}</button>
                         <Kebab items={[
                           can(data, "recordDeals") && { label: "تسجيل عربون", onClick: () => openModal({ kind: "close", reqId: r.id, to: "عربون" }) },
                           can(data, "recordDeals") && { label: "تم البيع", onClick: () => openModal({ kind: "close", reqId: r.id, to: "تم البيع" }) },

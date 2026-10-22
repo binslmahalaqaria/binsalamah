@@ -90,7 +90,7 @@ export default function PropertiesPage() {
       )}
       <div className="muted mb-2 text-[13px]">{list.length} عقار</div>
       {!list.length ? (
-        <Empty>{data.props.length ? "لا توجد نتائج." : "لا توجد عقارات بعد."}</Empty>
+        <Empty>{data.props.length ? "لا توجد نتائج." : <span className="grid justify-items-center gap-2.5">لا توجد عقارات بعد.{can(data, "manageProps") && <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "property" })}>+ عقار جديد</button>}</span>}</Empty>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
           {list.map((p) => {

@@ -8,20 +8,18 @@ import {
   clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, sortRequests, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Client, Request } from "@/lib/crm/types";
-import { ageDays, exportCsv, fmtStamp, relDay, today } from "@/lib/crm/util";
+import { ageDays, exportCsv, fmtStamp, num, splitList, today } from "@/lib/crm/util";
 import { Empty, Icon, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
 import { changeStage, NeedLine, NextStep, reqMenu, TempPill } from "@/components/crm/bits";
 
 /** Under the client's name: the last call (outcome + when) and the next one, so follow-up is visible here too. */
-function CallLine({ c, open }: { c: Client | undefined; open: boolean }) {
+function CallLine({ c }: { c: Client | undefined }) {
   if (!c) return null;
   const last = (c.log || []).find((l) => isCall(l));
-  const late = open && !!c.nextCall && c.nextCall < today();
   return (
     <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">
       {last ? <>آخر اتصال: <b className="font-semibold text-[var(--crm-ink-2)]">{lbl(last.type)}</b> · {ageDays(last.at)}</> : "لم يُتصل به بعد"}
-      {open && <> · القادم: <span className={late ? "font-semibold text-[var(--crm-danger)]" : ""}>{c.nextCall ? relDay(c.nextCall) : "بدون موعد"}</span></>}
     </div>
   );
 }
@@ -33,6 +31,8 @@ export default function RequestsPage() {
   const [fType, setFType] = useState("");
   const [fPurpose, setFPurpose] = useState("");
   const [fFollow, setFFollow] = useState("");
+  const [fDist, setFDist] = useState("");
+  const [fBudget, setFBudget] = useState("");
   const [stg, setStg] = useState("open");
   const [mode, setMode] = useState<"list" | "board">("list");
 
@@ -51,7 +51,10 @@ export default function RequestsPage() {
   if (fType) all = all.filter((r) => typesOf(r).includes(fType));
   if (fPurpose) all = all.filter((r) => (r.purpose || "شراء") === fPurpose);
   if (fFollow) all = all.filter((r) => followState(data, r) === fFollow);
-  const nF = [fType, fPurpose, fFollow].filter(Boolean).length;
+  if (fDist.trim()) all = all.filter((r) => splitList(r.districts).some((d) => d.includes(fDist.trim())));
+  const bmax = num(fBudget);
+  if (bmax) all = all.filter((r) => !r.budget || r.budget <= bmax);
+  const nF = [fType, fPurpose, fFollow, fDist.trim(), bmax].filter(Boolean).length;
   const cnt = (st: string) => all.filter((r) => (r.status || "جديد") === st).length;
   const nOpen = all.filter(OPEN_REQ).length;
 
@@ -67,8 +70,8 @@ export default function RequestsPage() {
     })) || toast("لا توجد بيانات للتصدير");
 
   const GRID = data.isMgr
-    ? "xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.2fr)_minmax(0,1.5fr)_130px_130px_172px]"
-    : "xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.2fr)_minmax(0,1.5fr)_130px_172px]";
+    ? "xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_130px_minmax(0,1.1fr)_120px_150px]"
+    : "xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_130px_minmax(0,1.1fr)_150px]";
 
   const row = (r: Request) => {
     const c = clientById(data, r.clientId);
@@ -83,17 +86,16 @@ export default function RequestsPage() {
             {c?.temp && <TempPill t={c.temp} />}
             {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}أُضيف الطلب {ageDays(r.createdAt)}</div>
-          <CallLine c={c} open={OPEN_REQ(r)} />
+          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <span className="num">{c.phone}</span>}</div>
         </div>
         <div className="max-xl:col-span-2 max-xl:row-start-2"><NeedLine r={r} /></div>
-        <div className="max-xl:col-span-2 max-xl:row-start-3 max-xl:rounded-lg max-xl:bg-[var(--crm-surface-2)] max-xl:px-2.5 max-xl:py-1.5"><NextStep r={r} /></div>
         <div className="max-xl:col-start-2 max-xl:row-start-1 self-start xl:self-center">
           <select className={"crm-pill w-full cursor-pointer !rounded-full !border-transparent !px-2.5 !py-1 !text-[13px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
             onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
             {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
           </select>
         </div>
+        <div className="max-xl:col-span-2 max-xl:row-start-3 max-xl:rounded-lg max-xl:bg-[var(--crm-surface-2)] max-xl:px-2.5 max-xl:py-1.5"><NextStep r={r} /><CallLine c={c} /></div>
         {data.isMgr && (
           <div className="max-xl:row-start-4">
             <select className={"crm-quiet w-full !text-[13px] " + (r.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label="المسؤول" value={r.assignee || ""}
@@ -127,7 +129,7 @@ export default function RequestsPage() {
           <NeedLine r={r} />
           <div className="rounded-lg bg-[var(--crm-surface-2)] px-2 py-1.5"><NextStep r={r} /></div>
           {data.isMgr && <div className="muted text-xs">{r.assignee ? nameOf(data, r.assignee) : "غير مسند"}</div>}
-          <CallLine c={c} open={OPEN_REQ(r)} />
+          <CallLine c={c} />
           <div className="muted text-[11.5px]">أُضيف الطلب {ageDays(r.createdAt)}</div>
         </div>
         {needsSaleInfo(r) && <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: r.status })}>أكمل بيانات البيع</button>}
@@ -151,7 +153,7 @@ export default function RequestsPage() {
   return (
     <>
       <RequestTabs />
-      <PageHeader eyebrow="المبيعات" title="الطلبات" sub="طلبات العملاء ومراحلها"
+      <PageHeader eyebrow="المبيعات" title="الطلبات" sub="سطر لكل طلب: العميل، المطلوب، المرحلة، والخطوة التالية. الأزرار تحت تفلتر بالمرحلة"
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button>} />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -174,7 +176,9 @@ export default function RequestsPage() {
           <Select value={fType} onChange={setFType} options={data.propTypes} blank="كل الأنواع" ariaLabel="النوع" />
           <Select value={fPurpose} onChange={setFPurpose} options={["شراء", "إيجار"]} blank="شراء وإيجار" ariaLabel="الطلب" />
           <Select value={fFollow} onChange={setFFollow} options={[["none", "لم يُرسل إليه عرض"], ["sent", "أُرسل إليه ولم يُحدَّد موعد"], ["visit", "لديه موعد أو تمت الزيارة"]]} blank="كل المتابعة" ariaLabel="المتابعة" />
-          {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => { setFType(""); setFPurpose(""); setFFollow(""); }}>مسح الفلاتر</button>}
+          <input className="w-[150px]" placeholder="الحي" value={fDist} onChange={(e) => setFDist(e.target.value)} />
+          <input className="w-[170px]" inputMode="decimal" placeholder="الميزانية حتى" value={fBudget} onChange={(e) => setFBudget(e.target.value)} />
+          {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => { setFType(""); setFPurpose(""); setFFollow(""); setFDist(""); setFBudget(""); }}>مسح الفلاتر</button>}
         </div>
       )}
 
@@ -192,7 +196,7 @@ export default function RequestsPage() {
       </div>
 
       {!hasAny ? (
-        <Empty big>لا توجد طلبات. اضغط &quot;+ طلب جديد&quot; لتسجيل أول طلب.</Empty>
+        <Empty big><span className="grid justify-items-center gap-3">لا توجد طلبات بعد.<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button></span></Empty>
       ) : mode === "board" && stg === "open" ? (
         <div className="overflow-x-auto pb-2">
           <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${OPEN_STAGES.length}, minmax(250px, 1fr))`, minWidth: OPEN_STAGES.length * 260 }}>
@@ -213,13 +217,12 @@ export default function RequestsPage() {
           const rs = sortRequests(data, all.filter((r) => (r.status || "جديد") === st));
           if (!rs.length) return [];
           return [
-            stg === "open" ? <div key={"g" + st} className="crm-grp"><Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill><span className="num">{rs.length}</span></div> : null,
             ...rs.map(row),
           ];
         });
         return body.length ? (
           <div className="crm-card overflow-hidden">
-            <div className={"crm-head hidden xl:grid xl:gap-3.5 " + GRID}><span>العميل</span><span>متطلبات العميل</span><span>الخطوة التالية</span><span>المرحلة</span>{data.isMgr && <span>المسؤول</span>}<span /></div>
+            <div className={"crm-head hidden xl:grid xl:gap-3.5 " + GRID}><span>العميل</span><span>المطلوب</span><span>المرحلة</span><span>الخطوة التالية</span>{data.isMgr && <span>المسؤول</span>}<span /></div>
             {body}
           </div>
         ) : <Empty>لا توجد طلبات هنا{qq || nF ? " بهذا البحث أو الفلتر" : ""}.</Empty>;
