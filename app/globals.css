@@ -234,3 +234,12 @@ body {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+
+/* Staff login page: same typeface as the public site (2026-10-22). */
+.login-font,
+.login-font .font-heading,
+.login-font h1,
+.login-font input,
+.login-font button {
+  font-family: var(--font-crm-body), system-ui, sans-serif;
+}

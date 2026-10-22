@@ -416,6 +416,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-10-22** — **Staff login page uses the site typeface.** The login screen sits outside the CRM shell, so it still used the old fonts (Darah Modern headings, Rubik body). A `.login-font` rule (`app/globals.css`, set on the page's root in `app/[locale]/admin/login/page.tsx`) gives it IBM Plex Sans Arabic like the site and the CRM. Not viewed signed-out in the browser (the local session was signed in). Affects §2b.
+
 - **2026-10-22** — **CRM uses the website's typeface.** Client: make the CRM font the same as the website. The CRM body text already used IBM Plex Sans Arabic (the site's font); its headings used Alexandria (kept from the original artifact CRM since 2026-10-10). Headings, `.font-heading` text and section titles now use IBM Plex Sans Arabic bold, like the site (`.crm` rules in `app/globals.css`); the Alexandria font and its `--font-crm-display` variable were removed from `app/[locale]/layout.tsx` (one font fewer to download). Affects §2b, §9.
 
 - **2026-10-22** — **Private reminders show on the home page.** Client asked whether «مهامي الخاصة» appear in «لوحتي»; they did not. Section 6 (المهام) now also lists the signed-in person's own private reminders due today or overdue, marked «🔒 خاصة», with a tick box (`usePrivateTodos`/`toggleTodo` extracted from `components/crm/PrivateTodos.tsx`; the `todos` collection and its owner-only rules are unchanged). They are shown only on one's own view — not while a manager looks at another employee or previews an employee's account. Checked locally with a temporary reminder, deleted afterwards. Affects §9.
