@@ -74,11 +74,9 @@ body {
   font-size: 14.5px;
   font-family: var(--font-crm-body), Tahoma, sans-serif;
 }
-/* Headings and font-heading text use the original CRM's display font; the
-   sidebar logo keeps the brand wordmark font. */
-.crm .font-heading { font-family: var(--font-crm-display), sans-serif; }
-.crm aside:not(.crm-drawer) .font-heading { font-family: var(--font-darah-modern), sans-serif; }
-.crm h1, .crm h2, .crm h3, .crm h4 { font-family: var(--font-crm-display), var(--font-crm-body), sans-serif; font-weight: 600; }
+/* Same typeface as the public website (2026-10-22): IBM Plex Sans Arabic everywhere, headings bold like the site. */
+.crm .font-heading { font-family: var(--font-crm-body), sans-serif; font-weight: 700; }
+.crm h1, .crm h2, .crm h3, .crm h4 { font-family: var(--font-crm-body), sans-serif; font-weight: 700; }
 .crm button, .crm input, .crm select, .crm textarea { font-family: inherit; }
 .crm .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
 .crm .muted { color: var(--crm-ink-3); }
@@ -151,7 +149,7 @@ body {
 .crm-field > label { font-size: 13px; color: var(--crm-ink-2); font-weight: 500; }
 .crm-field input, .crm-field select, .crm-field textarea { width: 100%; }
 .crm-hint { font-size: 12px; color: var(--crm-ink-3); }
-.crm-sec { grid-column: 1 / -1; font-family: var(--font-crm-display), sans-serif; font-size: 14px; border-bottom: 1px solid var(--crm-line); padding-bottom: 4px; margin-top: 8px; }
+.crm-sec { grid-column: 1 / -1; font-family: var(--font-crm-body), sans-serif; font-weight: 700; font-size: 14px; border-bottom: 1px solid var(--crm-line); padding-bottom: 4px; margin-top: 8px; }
 .crm-more { grid-column: 1 / -1; border: 1px solid var(--crm-line); border-radius: 12px; padding: 0 12px; }
 .crm-more > summary { cursor: pointer; padding: 11px 2px; font-weight: 600; font-size: 13.5px; color: var(--crm-ink-2); list-style: none; display: flex; justify-content: space-between; }
 .crm-more > summary::-webkit-details-marker { display: none; }
