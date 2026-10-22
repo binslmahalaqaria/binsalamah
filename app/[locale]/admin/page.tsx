@@ -1,71 +1,102 @@
 "use client";
 
 /**
- * "اليوم" — the CRM home: the staff member's auto-built daily routine,
- * monthly goal pace, attendance check-in/out, and three queues: calls due
- * (with one-tap call logging), visits to confirm or close out, and tasks.
- * Ported from the original artifact CRM's Today screen.
+ * «لوحتي» — the CRM home (client spec, 2026-10-22; replaced «اليوم» the same day): greeting and
+ * check-in/out, notices (newly assigned / returned / unassigned clients), the daily call target
+ * (10), and six sections in the order of the work: calls to new customers, follow-ups on customers
+ * with a request, offers awaiting a reply, viewings, negotiations, and tasks (overdue first); then
+ * upcoming calls and active clients with no call date. Managers see the team (or one employee via «عرض بيانات»).
  */
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
-import { GOALK, QL_OUT, REQ_TONE, SOLD_ST, TEMP_TONE, lbl } from "@/lib/crm/constants";
+import { CALL_TARGET, MISSED, PRIO, REQ_TONE, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  activeClients, actualsFor, attToday, fmtDur, calledToday, dueCalls, fmtK, goalOf, goalVals, hoursOf, lateMin, monthInfo,
-  myTasksOpen, nameOf, noDate, pace, PACE_TXT, planFor, propById, reqsOf, upcoming, visibleTasks, wantLine, workClients,
+  activityFor, attToday, calledToday, fmtDur, hoursOf, isActive, lateMin, members, missedStreak, nameOf, noDate, propById, reqsOf,
+  upcoming, visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
-import { applyUpdate, checkIO, confirmVisit, markTasksSeen, visitNoShow } from "@/lib/crm/actions";
-import type { Client } from "@/lib/crm/types";
-import {
-  addDays, ageDays, fmtVisit, hm, lateTxt, monthName, num, relDay, today, waLink, weekdayLong, ym,
-} from "@/lib/crm/util";
-import { ContactIcons, Empty, Kebab, PageHeader, Pill } from "@/components/crm/ui";
-import { TasksView } from "@/components/crm/TasksView";
-import { DaySummary } from "@/components/crm/DaySummary";
+import { applyUpdate, checkIO, markTasksSeen } from "@/lib/crm/actions";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
+import type { Client, Request, Task } from "@/lib/crm/types";
+import { addDays, ageDays, fmtVisit, hm, relDay, today, weekdayLong } from "@/lib/crm/util";
+import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
+import { TaskRow } from "@/components/crm/TaskRow";
+import { TempPill } from "@/components/crm/bits";
+import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
 
-export default function TodayPage() {
+const tempRank = (c?: Client | null) => TEMPS.indexOf((c?.temp || "دافئ") as never);
+const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
+
+function Section({ n, title, count, hint, children, open: open0 = true }: { n: number; title: string; count: number; hint?: string; children: ReactNode; open?: boolean }) {
+  const [open, setOpen] = useState(open0);
+  return (
+    <section className="crm-card mb-3 overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-4 py-3 text-start" aria-expanded={open}>
+        <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--crm-ink)] text-[13px] font-bold text-white">{n}</span>
+        <b className="font-heading text-[15.5px]">{title}</b>
+        <span className="num rounded-full bg-[var(--crm-surface-2)] px-2.5 text-[13px] font-semibold">{count}</span>
+        {hint && <span className="hidden text-[12.5px] text-[var(--crm-ink-3)] md:inline">{hint}</span>}
+        <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div className="border-t border-[var(--crm-line)]">{count ? children : <Empty>لا يوجد شيء هنا الآن.</Empty>}</div>}
+    </section>
+  );
+}
+
+export default function HomeDashboard() {
   const { data, me, loaded, openClient, openModal, setViewAs, toast, settings } = useCrm();
-  const [locating, setLocating] = useState(false);
   const router = useRouter();
-  const [seg, setSeg] = useState<"calls" | "visits" | "tasks">("calls");
-  const [callF, setCallF] = useState<"due" | "late" | "now" | "done">("due");
-  const [qlog, setQlog] = useState<string | null>(null);
-  const [qType, setQType] = useState("");
-  const [qNext, setQNext] = useState("");
-  const [qDate, setQDate] = useState("");
-  const [qNote, setQNote] = useState("");
-  const [planOpen, setPlanOpen] = useState(true);
-
+  const [busy, setBusy] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  // Opening the home page marks newly given tasks as seen (they are listed below; the sidebar badge clears).
+  const unseenTasks = data.tasks.some((x) => x.seen === false && x.assignee === data.uid);
+  useEffect(() => {
+    if (!loaded || !unseenTasks) return;
+    const tm = setTimeout(() => markTasksSeen(data).catch(() => {}), 4000);
+    return () => clearTimeout(tm);
+  }, [loaded, unseenTasks, data]);
   if (!loaded || !me) return <Empty>جارٍ تحميل البيانات…</Empty>;
 
   const t = today();
-  const due = dueCalls(data);
-  const lateL = due.filter((c) => (c.nextCall as string) < t),
-    nowL = due.filter((c) => c.nextCall === t);
-  const doneL = activeClients(data)
-    .filter((c) => calledToday(c) && !(c.nextCall && c.nextCall <= t))
-    .concat(workClients(data).filter((c) => (c.status || "نشط") !== "نشط" && calledToday(c)));
-  const total = due.length + doneL.length;
-  const pct = total ? Math.round((doneL.length / total) * 100) : 0;
-  const vis = activeClients(data).filter((c) => c.visitAt);
-  const soon = vis.filter((c) => { const d = c.visitAt!.slice(0, 10); return d >= t && d <= addDays(1); }).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
-  const pastV = vis.filter((c) => c.visitAt!.slice(0, 10) < t).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
-  const td = visibleTasks(data).filter((x) => !x.done && x.due && x.due <= t);
-  const newTasks = myTasksOpen(data).filter((x) => x.seen === false).length;
-  const fresh = data.clients.filter((c) => c.unseen && c.assignee === data.uid && !c.escalatedFrom);
-  const escL = data.clients.filter((c) => c.escalatedFrom && c.assignee === data.uid && c.unseen);
-  const unassigned = data.isMgr && !data.viewAs ? data.clients.filter((c) => !c.assignee && (c.status || "نشط") === "نشط").length : 0;
+  const team = data.isMgr && (!data.viewAs || data.viewAs === "none");
   const who = data.isMgr && data.viewAs && data.viewAs !== "none" ? data.viewAs : data.uid;
-  const teamView = data.isMgr && (!data.viewAs || data.viewAs === "none");
+  const mine = workClients(data);
+  const open = (c: Client) => reqsOf(data, c);
+  const byPrio = (a: Client, b: Client) => tempRank(a) - tempRank(b) || String(a.nextCall || "").localeCompare(String(b.nextCall || ""));
 
-  /* ---- attendance ---- */
-  /** Check in/out, verifying the location first when the office rule is on (unless this person may check in from anywhere). */
+  // 1) New customers to call: no open request yet — due today/overdue, or on the re-contact list and not tried today.
+  const newCalls = mine.filter((c) =>
+    !open(c).length && ((isActive(c) && c.nextCall && c.nextCall <= t) || (c.status === TO_CONTACT && !calledToday(c)))).sort(byPrio);
+  // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
+  const negSt = ["تفاوض", "عربون"];
+  // Each customer in one section only: offers, viewings and negotiations have their own sections below.
+  const follow = mine.filter((c) => isActive(c) && c.nextCall && c.nextCall <= t && open(c).length && !c.visitAt &&
+    ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || "")).sort(byPrio);
+  // 3) Offers sent, waiting for the customer's answer.
+  const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
+  // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
+  const mineIds = new Set(mine.map((c) => c.id));
+  const props = data.proposals.filter((p) => mineIds.has(p.clientId) && ["أُرسل", "بانتظار الرد"].includes(p.status))
+    .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && !data.proposals.some((p) => p.requestId === x.r.id))
+    .sort((a, b) => Number(!!b.c.nextCall && b.c.nextCall <= t) - Number(!!a.c.nextCall && a.c.nextCall <= t) || byPrio(a.c, b.c));
+  // 4) Viewings record (scheduled/postponed); plus visits booked before the record existed.
+  const views = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));
+  const viewings = mine.filter((c) => c.visitAt && !views.some((v) => v.clientId === c.id)).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
+  // 5) Negotiation.
+  const neg = reqsMine(negSt);
+  // 6) Tasks: overdue first, then today and undated; by priority within.
+  const prioRank = (x: Task) => -PRIO.indexOf((x.priority || "عادية") as never);
+  const tasks = visibleTasks(data).filter((x) => !x.done && (!x.due || x.due <= t))
+    .sort((a, b) => Number(!!b.due && b.due < t) - Number(!!a.due && a.due < t) || prioRank(a) - prioRank(b) || String(a.due || "").localeCompare(String(b.due || "")));
+  const overdueTasks = tasks.filter((x) => x.due && x.due < t).length;
+
+  /* ---- attendance (checks the office location first when that rule is on) ---- */
   async function doCheck(kind: "in" | "out") {
     if (locating) return;
     setLocating(true);
     try {
-      const r = await locateForAttendance(settings, !!data.staff.find((s) => s.id === data.uid)?.anyLocation);
+      const r = await locateForAttendance(settings, !!data.staff.find((x) => x.id === data.uid)?.anyLocation);
       if (!r.ok) return toast(r.msg);
       await checkIO(data.uid, kind, r.loc);
       const where = r.loc?.dist != null && settings.geoOn ? " — على بُعد " + fmtDist(r.loc.dist) + " من المكتب" : "";
@@ -77,180 +108,63 @@ export default function TodayPage() {
     }
   }
   const myAtt = attToday(data, data.uid);
-  const late = lateMin(data, myAtt, data.uid);
+  const lateBy = lateMin(data, myAtt, data.uid);
   const attBar = !myAtt ? (
     <button type="button" className="crm-btn gold" disabled={locating} onClick={() => doCheck("in")}>{locating ? "جارٍ تحديد موقعك…" : "تسجيل حضور"}</button>
   ) : !myAtt.out ? (
     <div className="flex items-center gap-2">
-      <span className="text-[13px] text-[var(--crm-ink-2)]">حضرت {hm(myAtt.in)} {late > 0 && <Pill tone="warm">متأخر {fmtDur(late)}</Pill>}</span>
+      <span className="text-[13px] text-[var(--crm-ink-2)]">حضرت {hm(myAtt.in)} {lateBy > 0 && <Pill tone="warm">متأخر {fmtDur(lateBy)}</Pill>}</span>
       <button type="button" className="crm-btn" disabled={locating} onClick={() => doCheck("out")}>{locating ? "جارٍ تحديد موقعك…" : "تسجيل انصراف"}</button>
     </div>
   ) : (
     <span className="text-[13px] text-[var(--crm-ink-2)]">{hm(myAtt.in)} – {hm(myAtt.out)} · {hoursOf(myAtt).toFixed(1)} س</span>
   );
 
-  /* ---- routine ---- */
-  const plan = planFor(data, who, hm);
-  const planDone = plan.filter((x) => x.done).length;
-  function planGo(k: string) {
-    if (who !== data.uid) return;
-    if (k === "checkin") return doCheck("in");
-    if (k === "checkout") return doCheck("out");
-    if (k === "late" || k === "calls") { setSeg("calls"); setCallF(k === "late" ? "late" : "due"); }
-    else if (k === "confirm" || k === "outcome") setSeg("visits");
-    else if (k === "tasks") { setSeg("tasks"); markTasksSeen(data); }
-    else if (k === "fresh") router.push("/admin/requests?stage=جديد");
-    else if (k === "send") router.push("/admin/requests?follow=none");
+  /* ---- notices ---- */
+  const fresh = data.clients.filter((c) => c.unseen && c.assignee === data.uid && !c.escalatedFrom);
+  const escL = data.clients.filter((c) => c.escalatedFrom && c.assignee === data.uid && c.unseen);
+  const unassigned = data.isMgr && !data.viewAs ? data.clients.filter((c) => !c.assignee && (c.status || "نشط") === "نشط").length : 0;
+  const up = upcoming(data), nd = noDate(data);
+
+  // Daily call target: calls logged today (WhatsApp messages excluded).
+  const ids = team ? members(data) : [who];
+  const doneBy = (id: string) => activityFor(data, id, t, t).calls;
+
+  async function quick(c: Client, type: string) {
+    setBusy(c.id);
+    try {
+      const nx = type === "رقم خاطئ" ? null : addDays(1);
+      await applyUpdate(data, c.id, type, nx, "", null);
+      toast(type === "رقم خاطئ" ? "نُقل إلى الأرشيف (رقم خاطئ)" : "سُجّلت المحاولة — الاتصال القادم غداً" + (missedStreak(c) + 1 >= 3 ? " · أُنشئت مهمة رسالة واتساب" : ""));
+    } catch {
+      toast("تعذّر الحفظ");
+    } finally {
+      setBusy(null);
+    }
   }
 
-  /* ---- goals ---- */
-  const month = ym();
-  const g = goalOf(data, who, month);
-  const a = actualsFor(data, who, month);
-  const mi = monthInfo(month);
-  const goalTiles = g
-    ? GOALK.filter(([k]) => num(g[k])).map(([k, , col]) => {
-        const target = num(g[k])!;
-        if (k === "calls") {
-          const v = a.callsToday;
-          return { k, label: "مكالمات اليوم", v: String(v), target: String(target), w: Math.min(100, Math.round((v / target) * 100)), st: v >= target ? "ok" : "", txt: v >= target ? "تم تحقيق هدف اليوم" : "باقي " + (target - v) };
-        }
-        const v = goalVals(a)[k];
-        const st = pace(v, target, month) || "ok";
-        return { k, label: col, v: fmtK(k, v), target: fmtK(k, target), w: Math.min(100, Math.round((v / target) * 100)), st, txt: PACE_TXT[st] };
-      })
-    : [];
-
-  /* ---- call queue ---- */
-  async function saveQuick(c: Client) {
-    if (!qType) return toast("يرجى اختيار نتيجة الاتصال");
-    const r0 = reqsOf(data, c)[0], held = r0 && SOLD_ST.includes(r0.status || "") ? r0 : null;
-    if (qType === "صرف النظر" && held && !window.confirm("لدى العميل " + (held.status === "تم البيع" ? "صفقة بيع" : "عربون") + " مسجّل. سيُلغى ويعود العقار متاحاً، ويُنقل العميل إلى الأرشيف. متابعة؟")) return;
-    const def = QL_OUT.find((x) => x[0] === qType)?.[2];
-    const nx = qNext || String(def);
-    let next: string | null = null;
-    if (nx === "date") {
-      if (!qDate) return toast("اختر التاريخ");
-      next = qDate;
-    } else if (nx !== "none") next = addDays(+nx);
-    await applyUpdate(data, c.id, qType, next, qNote.trim(), null);
-    setQlog(null);
-    toast("تم الحفظ — " + (next ? "المكالمة القادمة " + relDay(next) : "بدون موعد"));
-  }
-  const lastContact = (c: Client) => {
-    const l = (c.log || [])[0];
-    if (!l) return <span className="muted">لا يوجد تواصل سابق</span>;
-    return (
-      <>
-        <b>{lbl(l.type) || "ملاحظة"}</b> <span className="muted">· {ageDays(l.at)}</span>
-        {l.text && <div className="truncate text-[12.5px] text-[var(--crm-ink-3)]">{String(l.text).slice(0, 90)}</div>}
-      </>
-    );
-  };
-  const GRID = "md:grid-cols-[34px_minmax(0,1.5fr)_minmax(0,1.3fr)_130px_auto]";
-  const callRow = (c: Client, idx: number) => {
-    const isLate = (c.nextCall as string) < t;
-    const open = qlog === c.id;
-    const r0 = reqsOf(data, c)[0];
-    return (
-      <div key={c.id}>
-        <div className={"crm-row grid-cols-[30px_minmax(0,1fr)_auto] " + GRID + (isLate ? " late" : "") + (open ? " bg-[var(--crm-surface-2)]" : "")}>
-          <div className={"num grid h-[26px] w-[26px] place-items-center self-start rounded-full border text-xs font-bold md:self-center " + (isLate ? "border-transparent bg-[var(--crm-danger-soft)] text-[var(--crm-danger)]" : "border-[var(--crm-line)] text-[var(--crm-ink-3)]")}>{idx}</div>
-          <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <b className="font-heading text-[15.5px]">{c.name}</b>
-              <Pill tone={TEMP_TONE[c.temp || ""]}>{c.temp}</Pill>
-              {data.isMgr && c.assignee && c.assignee !== data.uid && <span className="crm-chip">{nameOf(data, c.assignee)}</span>}
-              {c.escalatedFrom && c.assignee === data.uid && <Pill tone="warm">مُعاد من {nameOf(data, c.escalatedFrom)}</Pill>}
-            </div>
-            <div className="mt-0.5 truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c) || <span className="muted">لم يُسجَّل طلبه</span>}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-[var(--crm-ink-3)]">
-              {r0 && <Pill tone={REQ_TONE[r0.status || "جديد"]}>{lbl(r0.status || "جديد")}</Pill>}
-              {c.phone && <span className="num">{c.phone}</span>}
-            </div>
-          </div>
-          <div className="col-span-2 min-w-0 text-[13px] md:col-span-1 md:col-start-auto max-md:col-start-2 max-md:row-start-2">{lastContact(c)}</div>
-          <div className="max-md:col-start-3 max-md:row-start-1 self-start md:self-center"><Pill tone={isLate ? "hot" : "accent"}>{lateTxt(c.nextCall)}</Pill></div>
-          <div className="flex items-center justify-start gap-1.5 max-md:col-span-2 max-md:col-start-2 md:justify-end">
-            <ContactIcons phone={c.phone} />
-            <button type="button" className="crm-btn sm primary" onClick={() => { setQlog(open ? null : c.id); setQType(""); setQNext(""); setQNote(""); setQDate(""); }}>{open ? "إغلاق" : "تسجيل المكالمة"}</button>
-          </div>
+  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode) => (
+    <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
+        <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
+        <div className="truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div>
+        <div className="text-xs text-[var(--crm-ink-3)]">
+          {r.sent?.length ? "أُرسل له " + r.sent.length + " عرض · " : ""}آخر تحديث {ageDays(r.updatedAt)}
+          {c.nextCall && <> · المتابعة: <span className={c.nextCall < t ? "font-semibold text-[var(--crm-danger)]" : c.nextCall === t ? "font-semibold" : ""}>{relDay(c.nextCall)}</span></>}
+          {team && r.assignee ? " · " + nameOf(data, r.assignee) : ""}
         </div>
-        {open && (
-          <div className="grid gap-3 border-t border-dashed border-[var(--crm-line)] bg-[var(--crm-surface-2)] px-4 pt-1 pb-4">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="w-full text-[13px] font-semibold text-[var(--crm-ink-2)] md:w-auto md:min-w-[110px]">نتيجة التواصل</span>
-              <div className="flex flex-wrap gap-1.5">
-                {QL_OUT.map(([k, l, d]) => (
-                  <button key={k} type="button" className={"crm-qchip" + (qType === k ? " on" : "")} onClick={() => { setQType(k); setQNext(String(d)); }}>{l}</button>
-                ))}
-                {r0 && <button type="button" className="crm-qchip" onClick={() => openModal({ kind: "visit", reqId: r0.id })}>تحديد موعد زيارة</button>}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="w-full text-[13px] font-semibold text-[var(--crm-ink-2)] md:w-auto md:min-w-[110px]">موعد الاتصال القادم</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ"], ["none", "بدون اتصال"]].map(([v, l]) => (
-                  <button key={v} type="button" className={"crm-qchip" + (qNext === v ? " on" : "")} onClick={() => setQNext(v)}>{l}</button>
-                ))}
-                {qNext === "date" && <input type="date" min={t} value={qDate} onChange={(e) => setQDate(e.target.value)} />}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <input className="crm-input min-w-[180px] flex-1" placeholder="ملاحظة سريعة (اختياري)" value={qNote}
-                onChange={(e) => setQNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveQuick(c)} />
-              <button type="button" className="crm-btn primary" disabled={!qType} onClick={() => saveQuick(c)}>حفظ</button>
-            </div>
-          </div>
-        )}
       </div>
-    );
-  };
-
-  const visitCard = (c: Client, past: boolean) => {
-    const p = propById(data, c.visitProperty);
-    const msg = "السلام عليكم " + c.name + "، نذكّرك بموعد زيارة" + (p ? " " + p.title : " العقار") + " " + fmtVisit(c.visitAt) + (p?.link ? "\nالموقع: " + p.link : "") + "\nهل نؤكد الموعد؟";
-    return (
-      <article key={c.id} className={"crm-card grid items-center gap-2.5 border-s-4 p-3.5 md:grid-cols-[minmax(0,1fr)_auto] " + (past ? "border-s-[var(--crm-danger)]" : "border-s-[var(--crm-gold)]")}>
-        <div className="grid min-w-0 cursor-pointer gap-1.5" onClick={() => openClient(c.id)}>
-          <div className="flex flex-wrap items-center gap-2">
-            <b className="font-heading text-[15.5px]">{c.name}</b>
-            {c.visitConfirmed ? <Pill tone="ok">مؤكد</Pill> : !past && <Pill tone="warm">بحاجة إلى تأكيد</Pill>}
-            <span className="ms-auto text-[12.5px] text-[var(--crm-ink-3)]">{fmtVisit(c.visitAt)}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {p && <span className="crm-chip">{p.title}</span>}
-            {data.isMgr && c.assignee && <span className="crm-chip">{nameOf(data, c.assignee)}</span>}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {past ? (
-            <>
-              <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, type: "زار العقار", propertyId: c.visitProperty || undefined })}>تمت الزيارة — تسجيل النتيجة</button>
-              <Kebab items={[{ label: "لم يحضر", onClick: async () => { await visitNoShow(data, c.id); toast("تم إلغاء الموعد، يرجى الاتصال بالعميل اليوم"); } }, { label: "ملف العميل", onClick: () => openClient(c.id) }]} />
-            </>
-          ) : (
-            <>
-              {c.phone && <a className="crm-btn sm wa" href={waLink(c.phone, msg) || "#"} target="_blank" rel="noopener">رسالة تأكيد</a>}
-              {!c.visitConfirmed && <button type="button" className="crm-btn sm primary" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد</button>}
-              <Kebab items={[c.phone ? { label: "اتصال", href: "tel:" + c.phone } : null, { label: "ملف العميل", onClick: () => openClient(c.id) }]} />
-            </>
-          )}
-        </div>
-      </article>
-    );
-  };
-
-  const list = callF === "late" ? lateL : callF === "now" ? nowL : callF === "done" ? doneL : due;
-  const up = upcoming(data),
-    nd = noDate(data);
+      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}</div>
+    </div>
+  );
 
   return (
     <>
-      <PageHeader title={(new Date().getHours() < 12 ? "☀️ صباح الخير" : "🌙 مساء الخير") + (me?.name ? "، " + me.name.trim().split(/\s+/)[0] : "")} sub={weekdayLong(new Date()) + " — اتصالاتك وزياراتك ومهامك"} action={attBar} />
+      <PageHeader title={(new Date().getHours() < 12 ? "☀️ صباح الخير" : "🌙 مساء الخير") + (me.name ? "، " + me.name.trim().split(/\s+/)[0] : "")}
+        sub={weekdayLong(new Date()) + " — كل ما عليك اليوم بالترتيب"} action={attBar} />
 
       {fresh.length > 0 && (
-        <div className="crm-card mb-2 px-3.5 py-2.5 text-sm">
+        <div className="mb-2 rounded-xl bg-[var(--crm-gold-soft)] px-3.5 py-2.5 text-sm">
           <b>{fresh.length}</b> عميل جديد انسند لك:{" "}
           {fresh.slice(0, 3).map((c, i) => <span key={c.id}>{i > 0 && "، "}<span className="link" onClick={() => openClient(c.id)}>{c.name}</span></span>)}
         </div>
@@ -268,155 +182,122 @@ export default function TodayPage() {
         </div>
       )}
 
-      {teamView && <DaySummary />}
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <div className="min-w-0">
-
-      <div className="crm-seg mb-3" role="tablist">
-        {([["calls", "المكالمات", due.length], ["visits", "الزيارات", soon.length + pastV.length], ["tasks", "المهام", td.length + newTasks]] as const).map(([k, l, n]) => (
-          <button key={k} type="button" role="tab" aria-selected={seg === k} className={seg === k ? "on" : ""} onClick={() => { setSeg(k); if (k === "tasks") markTasksSeen(data); }}>
-            {l}{n > 0 && <span className="n num">{n}</span>}
-          </button>
-        ))}
+      {/* Call target */}
+      <div className="crm-card mb-3 grid gap-2.5 px-4 py-3.5">
+        {ids.map((id) => {
+          const n = doneBy(id), pct = Math.min(100, Math.round((n / CALL_TARGET) * 100));
+          return (
+            <div key={id} className="grid gap-1.5">
+              <div className="flex items-baseline gap-2 text-sm">
+                {team && <b className="min-w-[90px]">{nameOf(data, id)}</b>}
+                <span><b className="num font-heading text-lg">{n}</b> من <b className="num font-heading text-lg">{CALL_TARGET}</b> مكالمات اليوم</span>
+                {n >= CALL_TARGET ? <Pill tone="ok">تم تحقيق الهدف</Pill> : <span className="text-[12.5px] text-[var(--crm-ink-3)]">باقي {CALL_TARGET - n}</span>}
+              </div>
+              <div className={"crm-bar " + (n >= CALL_TARGET ? "ok" : "")}><i style={{ width: pct + "%" }} /></div>
+            </div>
+          );
+        })}
+        <span className="text-[12px] text-[var(--crm-ink-3)]">تُحسب المكالمات المسجّلة فقط (رد، لم يرد، مشغول…)، ولا تُحسب رسائل الواتساب.</span>
       </div>
 
-      {seg === "calls" && (
-        <>
-          <div className="crm-card mb-3 grid gap-2.5 px-4 py-3">
-            <div className="grid gap-2">
-              <div className="text-sm"><b className="num font-heading text-lg">{doneL.length}</b> من <b className="num font-heading text-lg">{total}</b> مكالمة تمت اليوم{lateL.length > 0 && <> · <span className="text-[var(--crm-danger)]">{lateL.length} متأخرة</span></>}</div>
-              <div className="crm-bar"><i style={{ width: pct + "%" }} /></div>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {([["due", "المطلوبة", due.length], ["late", "المتأخرة", lateL.length], ["now", "موعدها اليوم", nowL.length], ["done", "تمت اليوم", doneL.length]] as const).map(([k, l, n]) => (
-                <button key={k} type="button" className={"crm-qchip" + (callF === k ? " on" : "")} onClick={() => setCallF(k)}>{l} <span className="num opacity-70">{n}</span></button>
-              ))}
-            </div>
-          </div>
-          {callF === "done" ? (
-            list.length ? (
-              <div className="crm-card overflow-hidden">
-                {list.map((c) => { const l = calledToday(c)!; return (
-                  <div key={c.id} className={"crm-row grid-cols-[30px_minmax(0,1fr)_auto] opacity-85 " + GRID}>
-                    <div className="grid h-[26px] w-[26px] place-items-center rounded-full border border-[var(--crm-line)] text-xs">✓</div>
-                    <div className="cursor-pointer" onClick={() => openClient(c.id)}><b className="font-heading">{c.name}</b><div className="text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div></div>
-                    <div className="text-[13px] max-md:hidden"><b>{lbl(l.type)}</b>{l.text && <div className="truncate text-[12.5px] text-[var(--crm-ink-3)]">{l.text}</div>}</div>
-                    <div className="max-md:hidden"><Pill tone="muted">{c.nextCall ? "القادم " + relDay(c.nextCall) : "بدون موعد"}</Pill></div>
-                    <div className="flex justify-end gap-1.5"><ContactIcons phone={c.phone} /></div>
-                  </div>
-                ); })}
-              </div>
-            ) : <Empty>لم تُسجَّل أي مكالمة اليوم بعد.</Empty>
-          ) : !list.length ? (
-            <Empty big>{due.length ? "لا توجد نتائج لهذا الفلتر." : "تم إنجاز مكالمات اليوم. شكراً لجهودك!"}</Empty>
-          ) : (
-            <div className="crm-card overflow-hidden">
-              <div className={"crm-head hidden md:grid md:gap-3 " + GRID}><span>#</span><span>العميل وطلبه</span><span>آخر تواصل</span><span>الموعد</span><span /></div>
-              {callF === "due" && lateL.length > 0 && nowL.length > 0 ? (
-                <>
-                  <div className="crm-grp late">متأخرة <span className="num">{lateL.length}</span></div>
-                  {lateL.map((c, i) => callRow(c, i + 1))}
-                  <div className="crm-grp">موعدها اليوم <span className="num">{nowL.length}</span></div>
-                  {nowL.map((c, i) => callRow(c, lateL.length + i + 1))}
-                </>
-              ) : list.map((c, i) => callRow(c, i + 1))}
-            </div>
-          )}
-          {up.length > 0 && (
-            <details className="mt-3.5">
-              <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">مكالمات الأيام القادمة <span className="num">({up.length})</span></summary>
-              <div className="crm-card mt-1.5 overflow-hidden">
-                {up.map((c) => (
-                  <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openClient(c.id)}>
-                    <span>{c.name} <span className="muted">· {wantLine(data, c)}</span></span><span className="muted">{relDay(c.nextCall)}</span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
-          {nd.length > 0 && (
-            <details className="mt-3.5">
-              <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">عملاء نشطون بدون موعد اتصال <span className="num">({nd.length})</span></summary>
-              <div className="crm-card mt-1.5 overflow-hidden">
-                {nd.map((c) => (
-                  <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openModal({ kind: "update", clientId: c.id })}>
-                    <span>{c.name}</span><span className="muted">تحديد موعد ←</span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
-        </>
-      )}
-
-      {seg === "visits" && (
-        <>
-          {soon.length > 0 && (<><div className="mt-4 mb-2 flex items-baseline gap-2.5"><h2 className="text-[15.5px]">اليوم وغداً — يرجى التأكيد مع العميل</h2><span className="num muted">{soon.length}</span></div><div className="grid gap-2.5">{soon.map((c) => visitCard(c, false))}</div></>)}
-          {pastV.length > 0 && (<><div className="mt-4 mb-2 flex items-baseline gap-2.5 text-[var(--crm-danger)]"><h2 className="text-[15.5px]">زيارات فائتة — ما النتيجة؟</h2><span className="num">{pastV.length}</span></div><div className="grid gap-2.5">{pastV.map((c) => visitCard(c, true))}</div></>)}
-          {!soon.length && !pastV.length && <Empty big>لا توجد زيارات اليوم أو غداً.</Empty>}
-        </>
-      )}
-
-      {seg === "tasks" && <TasksView />}
-        </div>
-
-        {/* Side column: the day at a glance (below the work queues on phones). */}
-        <aside className="grid content-start gap-3 sm:grid-cols-2 xl:sticky xl:top-4 xl:grid-cols-1">
-          {!teamView && <DaySummary compact />}
-          {plan.length > 0 && (
-            <div className="crm-card overflow-hidden">
-              <button type="button" className="flex w-full items-center gap-3 px-4 py-3.5 text-start" onClick={() => setPlanOpen((v) => !v)} aria-expanded={planOpen}>
-                <b className="font-heading text-[15px]">{who === data.uid ? "روتين اليوم" : "روتين " + nameOf(data, who)}</b>
-                <span className="text-[13px] whitespace-nowrap text-[var(--crm-ink-2)]"><span className="num">{planDone}</span> من <span className="num">{plan.length}</span></span>
-                <span className="crm-bar ok min-w-[60px] flex-1"><i style={{ width: Math.round((planDone / plan.length) * 100) + "%" }} /></span>
-                <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{planOpen ? "▴" : "▾"}</span>
-              </button>
-              {planOpen && (
-                <div className="grid border-t border-[#ededed]">
-                  {(["الصباح", "خلال اليوم", "آخر اليوم"] as const).map((sec) => {
-                    const xs = plan.filter((x) => x.sec === sec);
-                    if (!xs.length) return null;
-                    return (
-                      <div key={sec} className="grid content-start gap-0.5 border-t border-[#ededed] px-3 pt-2.5 pb-3 first:border-t-0">
-                        <span className="px-1.5 pb-1 text-[11.5px] font-semibold tracking-wide text-[var(--crm-gold-ink)]">{sec}</span>
-                        {xs.map((x) => (
-                          <button key={x.k} type="button" disabled={who !== data.uid} onClick={() => planGo(x.k)}
-                            className="grid grid-cols-[20px_1fr] items-start gap-x-2 rounded-lg px-1.5 py-1.5 text-start enabled:hover:bg-[var(--crm-surface-2)]">
-                            <span className={"mt-0.5 grid h-[18px] w-[18px] place-items-center rounded-[5px] border-[1.5px] text-xs font-bold " + (x.done ? "border-[var(--crm-ok)] bg-[var(--crm-ok)] text-white" : "border-[var(--crm-ink-3)]")}>{x.done ? "✓" : ""}</span>
-                            <span className={"text-sm font-medium " + (x.done ? "text-[var(--crm-ink-3)] line-through" : "")}>{x.label}</span>
-                            {x.hint && <span className={"col-start-2 text-xs " + (x.done ? "text-[var(--crm-ink-3)]" : "text-[var(--crm-ink-2)]")}>{x.hint}</span>}
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })}
+      <Section n={1} title="مكالمات العملاء الجدد" count={newCalls.length} hint="عملاء بدون طلب بعد — سجّل نتيجة كل مكالمة">
+        {newCalls.map((c) => {
+          const miss = missedStreak(c), l = lastCall(c);
+          return (
+            <div key={c.id} className="crm-row grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <b className="font-heading">{c.name}</b><TempPill t={c.temp} />
+                  {c.status === TO_CONTACT && <Pill tone="muted">للتواصل</Pill>}
+                  {miss > 0 && <Pill tone={miss >= 3 ? "hot" : "warm"}>لم يرد {miss} {miss === 1 ? "مرة" : "مرات"}</Pill>}
                 </div>
-              )}
-            </div>
-          )}
-
-          {goalTiles.length > 0 && g && (
-            <div className="crm-card grid gap-2.5 p-3.5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2.5">
-                <b className="font-heading text-[15px]">{who === data.uid ? "أهدافي" : "أهداف " + nameOf(data, who)} لشهر {monthName(month)}</b>
-                <small className="muted text-[12.5px]">المتبقي <span className="num">{mi.left}</span> يوماً</small>
+                <div className="text-xs text-[var(--crm-ink-3)]">
+                  <span className="num">{c.phone}</span> · {c.source || "—"} · سُجّل {ageDays(c.createdAt)}
+                  {l ? <> · آخر محاولة: {lbl(l.type)} {ageDays(l.at)}</> : " · لم يُتصل به بعد"}
+                  {c.nextCall && <> · الموعد: <span className={c.nextCall < t ? "text-[var(--crm-danger)]" : ""}>{relDay(c.nextCall)}</span></>}
+                  {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
+                </div>
               </div>
-              {g.note && <div className="border-s-2 border-[var(--crm-gold)] ps-2.5 text-[13px] text-[var(--crm-ink-2)]">{g.note}</div>}
-              <div className="grid grid-cols-2 gap-2.5">
-                {goalTiles.map((x) => (
-                  <div key={x.k} className="grid gap-1.5 rounded-xl border border-[#ededed] bg-[var(--crm-surface-2)] px-3 py-2.5">
-                    <span className="text-[12.5px] text-[var(--crm-ink-2)]">{x.label}</span>
-                    <span className="num font-heading text-xl">{x.v} <small className="text-[13px] text-[var(--crm-ink-3)]">/ {x.target}</small></span>
-                    <div className={"crm-bar " + x.st}><i style={{ width: x.w + "%" }} /></div>
-                    <span className={"text-[11.5px] font-semibold " + (x.st === "ok" ? "text-[var(--crm-ok)]" : x.st === "warn" ? "text-[var(--crm-warn)]" : x.st === "bad" ? "text-[var(--crm-danger)]" : "text-[var(--crm-ink-3)]")}>{x.txt}</span>
-                  </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <ContactIcons phone={c.phone} />
+                <button type="button" className="crm-btn sm primary" disabled={busy === c.id} onClick={() => openModal({ kind: "update", clientId: c.id, type: "اتصلت عليه" })}>رد</button>
+                {MISSED.map((x) => (
+                  <button key={x} type="button" className="crm-btn sm" disabled={busy === c.id} onClick={() => quick(c, x)}>{lbl(x)}</button>
                 ))}
+                <button type="button" className="crm-btn sm danger" disabled={busy === c.id} onClick={() => quick(c, "رقم خاطئ")}>رقم خاطئ</button>
+                <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "request", preset: { clientId: c.id } })}>+ طلب</button>
               </div>
             </div>
-          )}
-        </aside>
-      </div>
+          );
+        })}
+      </Section>
+
+      <Section n={2} title="متابعات مجدولة" count={follow.length} hint="عملاء لهم طلب وحان موعد متابعتهم">
+        {follow.map((c) => {
+          const r = open(c)[0];
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>);
+        })}
+      </Section>
+
+      <Section n={3} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="أُرسلت لهم عقارات — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
+        {props.map((p) => <ProposalRow key={p.id} p={p} />)}
+        {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
+      </Section>
+
+      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="أكّد الموعد قبلها، وسجّل النتيجة بعدها">
+        {views.map((v) => <ViewingRow key={v.id} v={v} />)}
+        {viewings.map((c) => {
+          const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
+          return (
+            <div key={c.id} className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (past ? "late" : "")}>
+              <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
+                <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b>
+                  {past ? <Pill tone="hot">فات موعدها — سجّل النتيجة</Pill> : c.visitConfirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}</div>
+                <div className="text-xs text-[var(--crm-ink-3)]">{fmtVisit(c.visitAt)}{p ? " · " + p.title : ""}{team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}</div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ContactIcons phone={c.phone} />
+                {past && <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, type: "زار العقار", propertyId: c.visitProperty || undefined })}>تسجيل النتيجة</button>}
+              </div>
+            </div>
+          );
+        })}
+      </Section>
+
+      <Section n={5} title="عملاء في التفاوض" count={neg.length} hint="العملاء الجادون حتى إتمام البيع">
+        {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
+      </Section>
+
+      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length} hint="المتأخرة أولاً، ثم مهام اليوم">
+        {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
+      </Section>
+
+      {up.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">مكالمات الأيام القادمة <span className="num">({up.length})</span></summary>
+          <div className="crm-card mt-1.5 overflow-hidden">
+            {up.map((c) => (
+              <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openClient(c.id)}>
+                <span>{c.name} <span className="muted">· {wantLine(data, c)}</span></span><span className="muted">{relDay(c.nextCall)}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {nd.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">عملاء نشطون بدون موعد اتصال <span className="num">({nd.length})</span></summary>
+          <div className="crm-card mt-1.5 overflow-hidden">
+            {nd.map((c) => (
+              <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openModal({ kind: "update", clientId: c.id })}>
+                <span>{c.name}</span><span className="muted">تحديد موعد ←</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <p className="crm-hint mt-2">العملاء الذين لم يردوا على 3 مكالمات تُنشأ لهم مهمة «رسالة واتساب»، وإن لم يردوا خلال 48 ساعة يُنقلون إلى «العملاء ← لا يوجد رد».</p>
     </>
   );
 }

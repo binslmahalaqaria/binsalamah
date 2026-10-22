@@ -59,11 +59,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   // Re-contact list ("للتواصل", a tab of العملاء): each person's own remaining clients (managers see the totals on the page).
   const toContact = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
   const groups: [string, NavItem[]][] = [
-    ["", [
-      { href: "/admin", k: "today", label: "اليوم", badge: due + newTasks },
-      // Trial (2026-10-22): the employee dashboard from the client's spec, side by side with «اليوم».
-      { href: "/admin/my", k: "tasks", label: "لوحتي (تجريبي)" },
-    ]],
+    ["", [{ href: "/admin", k: "today", label: "لوحتي", badge: due + newTasks }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/search", "/admin/proposals", "/admin/viewings"] },
       { href: "/admin/clients", k: "clients", label: "العملاء", badge: toContact, also: ["/admin/contact"] },
