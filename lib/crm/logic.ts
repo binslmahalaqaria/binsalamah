@@ -144,15 +144,6 @@ export function dueCalls(d: CrmData) {
         TEMPS.indexOf(a.temp as never) - TEMPS.indexOf(b.temp as never)
     );
 }
-export function upcoming(d: CrmData) {
-  const t = today(),
-    lim = addDays(7);
-  return activeClients(d)
-    .filter((c) => c.nextCall && c.nextCall > t && c.nextCall <= lim)
-    .sort((a, b) => (a.nextCall as string).localeCompare(b.nextCall as string));
-}
-export const noDate = (d: CrmData) => activeClients(d).filter((c) => !c.nextCall);
-
 /* ---------- requests ---------- */
 export function reqsOf(d: CrmData, c: Client) {
   return d.requests

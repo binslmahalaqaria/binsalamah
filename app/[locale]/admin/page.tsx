@@ -5,15 +5,16 @@
  * check-in/out, notices (newly assigned / returned / unassigned clients), the daily call target
  * (10), and six sections in the order of the work: calls to new customers, follow-ups on customers
  * with a request, offers awaiting a reply, viewings, negotiations, and tasks (overdue first); then
- * upcoming calls and active clients with no call date. Managers see the team (or one employee via «عرض بيانات»).
+ * Today only (client 2026-10-22): each section lists what is due today or overdue — everything else (all offers,
+ * all viewings, the full pipeline, history) lives in «الطلبات» and its tabs. Managers see the team (or one employee).
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { CALL_TARGET, MISSED, PRIO, REQ_TONE, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  activityFor, attToday, calledToday, fmtDur, hoursOf, isActive, lateMin, members, missedStreak, nameOf, noDate, propById, reqsOf,
-  upcoming, visibleTasks, wantLine, workClients,
+  activityFor, attToday, calledToday, fmtDur, hoursOf, isActive, lateMin, members, missedStreak, nameOf, propById, reqsOf,
+  visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
 import { applyUpdate, checkIO, markTasksSeen } from "@/lib/crm/actions";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
@@ -64,30 +65,37 @@ export default function HomeDashboard() {
   const open = (c: Client) => reqsOf(data, c);
   const byPrio = (a: Client, b: Client) => tempRank(a) - tempRank(b) || String(a.nextCall || "").localeCompare(String(b.nextCall || ""));
 
-  // 1) New customers to call: no open request yet — due today/overdue, or on the re-contact list and not tried today.
+  const due = (c: Client) => !!c.nextCall && c.nextCall <= t;
+  const tomorrow = addDays(1);
+  // 1) New customers to call: no open request yet — call due today/overdue, or a new number not tried today.
   const newCalls = mine.filter((c) =>
-    !open(c).length && ((isActive(c) && c.nextCall && c.nextCall <= t) || (c.status === TO_CONTACT && !calledToday(c)))).sort(byPrio);
+    !open(c).length && ((isActive(c) && due(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
   // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
   const negSt = ["تفاوض", "عربون"];
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
-  const follow = mine.filter((c) => isActive(c) && c.nextCall && c.nextCall <= t && open(c).length && !c.visitAt &&
+  const follow = mine.filter((c) => isActive(c) && due(c) && open(c).length && !c.visitAt &&
     ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || "")).sort(byPrio);
-  // 3) Offers sent, waiting for the customer's answer.
+  // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
   const mineIds = new Set(mine.map((c) => c.id));
-  const props = data.proposals.filter((p) => mineIds.has(p.clientId) && ["أُرسل", "بانتظار الرد"].includes(p.status))
-    .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
-  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && !data.proposals.some((p) => p.requestId === x.r.id))
-    .sort((a, b) => Number(!!b.c.nextCall && b.c.nextCall <= t) - Number(!!a.c.nextCall && a.c.nextCall <= t) || byPrio(a.c, b.c));
-  // 4) Viewings record (scheduled/postponed); plus visits booked before the record existed.
-  const views = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));
-  const viewings = mine.filter((c) => c.visitAt && !views.some((v) => v.clientId === c.id)).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
-  // 5) Negotiation.
-  const neg = reqsMine(negSt);
-  // 6) Tasks: overdue first, then today and undated; by priority within.
+  const clientById = new Map(mine.map((c) => [c.id, c]));
+  const props = data.proposals.filter((p) => {
+    const c = clientById.get(p.clientId);
+    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
+  }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
+    .sort((a, b) => byPrio(a.c, b.c));
+  // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
+  const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
+  const allViews = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));
+  const views = allViews.filter((v) => soon(v.at));
+  const viewings = mine.filter((c) => soon(c.visitAt) && !allViews.some((v) => v.clientId === c.id)).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
+  // 5) Negotiation / deposit: follow-up due today.
+  const neg = reqsMine(negSt).filter((x) => due(x.c));
+  // 6) Tasks due today or overdue (plus new undated ones until seen); overdue first, by priority within.
   const prioRank = (x: Task) => -PRIO.indexOf((x.priority || "عادية") as never);
-  const tasks = visibleTasks(data).filter((x) => !x.done && (!x.due || x.due <= t))
+  const tasks = visibleTasks(data).filter((x) => !x.done && (x.due ? x.due <= t : x.seen === false))
     .sort((a, b) => Number(!!b.due && b.due < t) - Number(!!a.due && a.due < t) || prioRank(a) - prioRank(b) || String(a.due || "").localeCompare(String(b.due || "")));
   const overdueTasks = tasks.filter((x) => x.due && x.due < t).length;
 
@@ -124,7 +132,6 @@ export default function HomeDashboard() {
   const fresh = data.clients.filter((c) => c.unseen && c.assignee === data.uid && !c.escalatedFrom);
   const escL = data.clients.filter((c) => c.escalatedFrom && c.assignee === data.uid && c.unseen);
   const unassigned = data.isMgr && !data.viewAs ? data.clients.filter((c) => !c.assignee && (c.status || "نشط") === "نشط").length : 0;
-  const up = upcoming(data), nd = noDate(data);
 
   // Daily call target: calls logged today (WhatsApp messages excluded).
   const ids = team ? members(data) : [who];
@@ -239,12 +246,12 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={3} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="أُرسلت لهم عقارات — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
+      <Section n={3} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="أكّد الموعد قبلها، وسجّل النتيجة بعدها">
+      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="اليوم وبكرة وما فات موعده — أكّد الموعد، وسجّل النتيجة بعده">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
@@ -264,38 +271,13 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={5} title="عملاء في التفاوض" count={neg.length} hint="العملاء الجادون حتى إتمام البيع">
+      <Section n={5} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length} hint="المتأخرة أولاً، ثم مهام اليوم">
+      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
       </Section>
-
-      {up.length > 0 && (
-        <details className="mt-1">
-          <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">مكالمات الأيام القادمة <span className="num">({up.length})</span></summary>
-          <div className="crm-card mt-1.5 overflow-hidden">
-            {up.map((c) => (
-              <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openClient(c.id)}>
-                <span>{c.name} <span className="muted">· {wantLine(data, c)}</span></span><span className="muted">{relDay(c.nextCall)}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-      {nd.length > 0 && (
-        <details className="mt-1">
-          <summary className="cursor-pointer px-0.5 py-2 font-heading text-[var(--crm-ink-2)]">عملاء نشطون بدون موعد اتصال <span className="num">({nd.length})</span></summary>
-          <div className="crm-card mt-1.5 overflow-hidden">
-            {nd.map((c) => (
-              <div key={c.id} className="flex cursor-pointer justify-between gap-2.5 border-b border-[var(--crm-line)] px-3 py-2.5 last:border-0 hover:bg-[var(--crm-surface-2)]" onClick={() => openModal({ kind: "update", clientId: c.id })}>
-                <span>{c.name}</span><span className="muted">تحديد موعد ←</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
 
       <p className="crm-hint mt-2">العملاء الذين لم يردوا على 3 مكالمات تُنشأ لهم مهمة «رسالة واتساب»، وإن لم يردوا خلال 48 ساعة يُنقلون إلى «العملاء ← لا يوجد رد».</p>
     </>
