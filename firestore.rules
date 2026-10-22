@@ -91,6 +91,13 @@ service cloud.firestore {
     match /phones/{n} {
       allow read, create, delete: if isActiveStaff();
     }
+    // Offers sent to customers and property viewings (CRM journey, trial 2026-10-22).
+    match /proposals/{id} {
+      allow read, write: if isActiveStaff();
+    }
+    match /viewings/{id} {
+      allow read, write: if isActiveStaff();
+    }
     match /properties/{id} {
       allow read, write: if isActiveStaff();
     }
