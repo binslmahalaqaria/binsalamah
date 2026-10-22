@@ -5,16 +5,14 @@
  * (client 2026-10-21: no two sections for the same thing under different names).
  */
 import { useCrm } from "@/lib/crm/store";
-import { NO_RESP, TO_CONTACT } from "@/lib/crm/constants";
+import { NO_RESP } from "@/lib/crm/constants";
 import { SubTabs } from "./ui";
 
-/** العملاء: all clients / the re-contact list. */
+/** العملاء: all clients / those who did not answer (the numbers list is its own section, «الأرقام»). */
 export function ClientTabs() {
   const { data } = useCrm();
-  const mine = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
   return <SubTabs tabs={[
     { href: "/admin/clients", label: "كل العملاء" },
-    { href: "/admin/contact", label: "للتواصل", badge: mine, show: data.isMgr || mine > 0 },
     { href: "/admin/noresponse", label: "لا يوجد رد", badge: data.clients.filter((c) => c.status === NO_RESP && (data.isMgr || c.assignee === data.uid)).length || undefined },
   ]} />;
 }

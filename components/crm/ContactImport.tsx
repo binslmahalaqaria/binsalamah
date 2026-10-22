@@ -97,8 +97,7 @@ export function ContactImport({ onClose }: { onClose: () => void }) {
   const [manual, setManual] = useState<Incoming[]>(() => Array.from({ length: 3 }, () => ({ name: "", phone: "", types: [], districts: "", budget: null, notes: "" })));
   const [file, setFile] = useState<{ name: string; list: Incoming[]; skipped: number } | null>(null);
   const [reading, setReading] = useState(false);
-  // A manager spreads the numbers over the team (round-robin, one employee, or later); an employee adds numbers for themselves.
-  const [assign, setAssign] = useState<string>(data.isMgr ? "rr" : data.uid);
+  const [assign, setAssign] = useState<string>("rr");
   const [source, setSource] = useState<string>(data.sources.includes("واتساب") ? "واتساب" : "");
   const [busy, setBusy] = useState(false);
 
@@ -259,15 +258,11 @@ export function ContactImport({ onClose }: { onClose: () => void }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="crm-field">
           <label>التوزيع على الموظفين</label>
-          {data.isMgr ? (
-            <select value={assign} onChange={(e) => setAssign(e.target.value)}>
-              <option value="rr">تلقائي بالدور ({order.length} موظف)</option>
-              <option value="none">بدون إسناد (أوزّعهم لاحقاً)</option>
-              {members(data).map((id) => <option key={id} value={id}>كلهم إلى {nameOf(data, id)}</option>)}
-            </select>
-          ) : (
-            <select value={data.uid} disabled><option value={data.uid}>لي أنا</option></select>
-          )}
+          <select value={assign} onChange={(e) => setAssign(e.target.value)}>
+            <option value="rr">تلقائي بالدور ({order.length} موظف)</option>
+            <option value="none">بدون إسناد (أوزّعهم لاحقاً)</option>
+            {members(data).map((id) => <option key={id} value={id}>كلهم إلى {nameOf(data, id)}</option>)}
+          </select>
         </div>
         <div className="crm-field">
           <label>المصدر</label>

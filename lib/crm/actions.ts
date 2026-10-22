@@ -226,23 +226,6 @@ export async function confirmVisit(d: CrmData, id: string) {
   );
 }
 
-export async function visitNoShow(d: CrmData, id: string) {
-  const c = clientById(d, id);
-  if (!c) return;
-  await write(
-    "clients",
-    id,
-    {
-      visitAt: null,
-      visitConfirmed: false,
-      nextCall: today(),
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "ما حضر", text: "لم يحضر موعد الزيارة " + fmtVisit(c.visitAt) }),
-      updatedAt: nowStamp(),
-    },
-    "update"
-  );
-}
-
 /** Sets (or clears) a visit for the request's client, and moves the request to "معاينة". */
 export async function saveVisit(d: CrmData, reqId: string, at: string | null, propId: string | null, note: string) {
   const r = d.requests.find((x) => x.id === reqId);

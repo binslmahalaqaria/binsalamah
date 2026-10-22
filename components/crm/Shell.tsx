@@ -56,13 +56,14 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const unread = chat.filter((m) => m.by !== data.uid && (!myStaff?.chatSeen || m.at > myStaff.chatSeen)).length
     + dms.filter((m) => m.to === data.uid && !m.read).length;
 
-  // Re-contact list ("للتواصل", a tab of العملاء): each person's own remaining clients (managers see the totals on the page).
-  const toContact = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
+  // «الأرقام» (managers): numbers added and not contacted yet; employees work their own in «مكالمات العملاء الجدد».
+  const toContact = data.clients.filter((c) => c.status === TO_CONTACT).length;
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "لوحتي", badge: due + newTasks }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/search", "/admin/proposals", "/admin/viewings"] },
-      { href: "/admin/clients", k: "clients", label: "العملاء", badge: toContact, also: ["/admin/contact"] },
+      { href: "/admin/clients", k: "clients", label: "العملاء" },
+      ...(data.isMgr ? [{ href: "/admin/contact", k: "phone", label: "الأرقام", badge: toContact }] : []),
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),
       ...(data.isMgr || can(data, "recordDeals") ? [{ href: "/admin/invoices", k: "leads", label: "الفواتير" }] : []),
     ]],

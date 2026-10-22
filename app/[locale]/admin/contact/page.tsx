@@ -12,21 +12,19 @@ import { useState } from "react";
 import { doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
-import { TO_CONTACT, lbl } from "@/lib/crm/constants";
+import { TO_CONTACT } from "@/lib/crm/constants";
 import { can, members, nameOf, visibleClients } from "@/lib/crm/logic";
-import { applyUpdate, applyUpdate0, assignClient } from "@/lib/crm/actions";
+import { assignClient } from "@/lib/crm/actions";
 import { assertWritable } from "@/lib/crm/preview";
 import type { Client } from "@/lib/crm/types";
 import { fmtStamp, nowStamp } from "@/lib/crm/util";
 import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
-import { SendRequestButton, WaChatButton } from "@/components/crm/WaButtons";
-import { ClientTabs } from "@/components/crm/PageTabs";
 import { ContactImport, exportContactList } from "@/components/crm/ContactImport";
 
 const PAGE = 60;
 const noAnswers = (c: Client) => (c.log || []).filter((e) => e.type === "ما رد").length;
 export default function ContactPage() {
-  const { data, loaded, openModal, openClient, toast } = useCrm();
+  const { data, loaded, openClient, toast } = useCrm();
   const [q, setQ] = useState("");
   const [who, setWho] = useState("");
   const [show, setShow] = useState<"all" | "fresh" | "noanswer">("all");
@@ -35,6 +33,7 @@ export default function ContactPage() {
   const [adding, setAdding] = useState(false);
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
+  if (!data.isMgr) return <Empty>هذه الصفحة مخصصة للمدراء والمالك. أرقامك الجديدة تجدها في «لوحتي ← مكالمات العملاء الجدد».</Empty>;
 
   const all = visibleClients(data).filter((c) => c.status === TO_CONTACT);
   const qq = q.trim();
@@ -48,23 +47,6 @@ export default function ContactPage() {
   list = list.sort((a, b) => noAnswers(a) - noAnswers(b) || (a.lastUpdateAt || a.createdAt || "").localeCompare(b.lastUpdateAt || b.createdAt || ""));
   const unassigned = all.filter((c) => !c.assignee);
   const perEmp = members(data).map((id) => ({ id, n: all.filter((c) => c.assignee === id).length })).filter((x) => x.n);
-
-  async function act(c: Client, kind: "noanswer" | "no" | "wrong") {
-    setBusy(c.id);
-    try {
-      if (kind === "noanswer") {
-        await applyUpdate0(data, c.id, "ما رد", null, "محاولة تواصل " + (noAnswers(c) + 1), null);
-        toast("سُجّلت محاولة — يبقى في القائمة");
-      } else {
-        await applyUpdate(data, c.id, "صرف النظر", null, kind === "wrong" ? "رقم خاطئ" : "غير مهتم — من قائمة التواصل", null);
-        toast("نُقل إلى الأرشيف (غير مهتم)");
-      }
-    } catch {
-      toast("تعذّر الحفظ");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   /** Spread the unassigned clients over the round-robin order (or all employees), continuing after rr.last. */
   async function spread() {
@@ -93,7 +75,6 @@ export default function ContactPage() {
 
   const row = (c: Client) => {
     const n = noAnswers(c);
-    const off = busy === c.id;
     return (
       <article key={c.id} className="crm-card grid gap-2.5 p-3.5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="min-w-0">
@@ -114,13 +95,6 @@ export default function ContactPage() {
             </select>
           )}
           <ContactIcons phone={c.phone} />
-          <WaChatButton phone={c.phone} />
-          <SendRequestButton c={c} />
-          <button type="button" className="crm-btn sm primary" disabled={off}
-            onClick={() => openModal({ kind: "request", preset: { clientId: c.id, assignee: c.assignee || data.uid, source: c.source || null } })}>✅ مهتم — سجّل طلبه</button>
-          <button type="button" className="crm-btn sm" disabled={off} onClick={() => act(c, "noanswer")}>📵 لم يرد</button>
-          <button type="button" className="crm-btn sm" disabled={off} onClick={() => act(c, "no")}>❌ غير مهتم</button>
-          <button type="button" className="crm-btn ghost sm" disabled={off} onClick={() => act(c, "wrong")} title="يُنقل إلى الأرشيف">رقم خاطئ</button>
         </div>
       </article>
     );
@@ -128,8 +102,7 @@ export default function ContactPage() {
 
   return (
     <>
-      <ClientTabs />
-      <PageHeader title="للتواصل" sub="عملاء يجب التواصل معهم: المهتم سجّل طلبه فينتقل إلى الطلبات، وغير المهتم يُنقل إلى الأرشيف"
+      <PageHeader title="الأرقام" sub="أرقام جديدة لم يُتصل بها بعد: أضفها ووزّعها على الفريق، ويتصل بها كل موظف من «لوحتي»"
         action={
           <div className="flex flex-wrap gap-2">
             {can(data, "export") && (
@@ -184,7 +157,7 @@ export default function ContactPage() {
       ) : (
         <Empty>{all.length ? "لا توجد نتائج." : "لا يوجد عملاء للتواصل حالياً. " + (data.isMgr ? "عند استيراد العملاء القدامى يظهرون هنا ليتواصل معهم الفريق." : "")}</Empty>
       )}
-      <p className="crm-hint mt-3">«{lbl(TO_CONTACT)}» لا يظهرون في قائمة العملاء ولا في مكالمات اليوم حتى يُسجَّل طلبهم. غير المهتمين تجدهم في العملاء ← الأرشيف.</p>
+      <p className="crm-hint mt-3">يتصل كل موظف بأرقامه من «لوحتي ← مكالمات العملاء الجدد» ويسجّل النتيجة هناك. هذه الصفحة للإضافة والتوزيع والمتابعة فقط. غير المهتمين تجدهم في العملاء ← الأرشيف.</p>
     </>
   );
 }
