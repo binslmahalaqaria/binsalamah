@@ -19,6 +19,8 @@ export interface LogEntry {
 
 export interface Client {
   id: string;
+  /** When the fourth-attempt WhatsApp message was sent; 48 h without a reply → «لا يوجد رد». */
+  waSentAt?: string | null;
   name: string;
   phone: string | null;
   source: string | null;
@@ -154,6 +156,8 @@ export interface Request extends Demand {
 
 export interface Task {
   id: string;
+  /** "wa4": the WhatsApp message after three unanswered calls (created automatically). */
+  kind?: string | null;
   title: string;
   assignee: string | null;
   due: string | null;
@@ -343,6 +347,47 @@ export interface Invoice {
   cancelledBy?: string | null;
   issuedBy?: string | null;
   createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A status change kept on offers and viewings (who, when, what). */
+export interface StageEvent { at: string; by: string | null; status: string; note?: string | null }
+
+/** A property sent to a customer for one of their requests (collection "proposals", trial 2026-10-22). */
+export interface Proposal {
+  id: string;
+  requestId: string;
+  clientId: string;
+  propertyId: string;
+  unit?: string | null;
+  price?: number | null;
+  sentAt: string;
+  by: string | null;
+  assignee: string | null;
+  /** أُرسل · بانتظار الرد · مهتم · غير مناسب · تم تحديد معاينة · تمت المعاينة */
+  status: string;
+  feedback?: string | null;
+  history: StageEvent[];
+  updatedAt: string;
+}
+
+/** A property viewing (collection "viewings", trial 2026-10-22). */
+export interface Viewing {
+  id: string;
+  requestId: string | null;
+  clientId: string;
+  propertyId: string | null;
+  /** Local datetime "YYYY-MM-DDTHH:mm". */
+  at: string;
+  /** مجدولة · تمت · مؤجلة · ملغاة */
+  status: string;
+  feedback?: string | null;
+  /** Follow-up date after the viewing. */
+  followUp?: string | null;
+  assignee: string | null;
+  by: string | null;
+  history: StageEvent[];
   createdAt: string;
   updatedAt: string;
 }

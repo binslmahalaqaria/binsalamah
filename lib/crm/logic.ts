@@ -6,15 +6,18 @@
  * test and reason about — no Firestore access here (see actions.ts).
  */
 import {
-  FLOOR_TYPES, isCall, OPEN_STAGES, PSTATUS, REQ, SENT_T, SOLD_ST, TEMPS, PRIO,
+  FLOOR_TYPES, isCall, MISSED, OPEN_STAGES, PSTATUS, REQ, SENT_T, SOLD_ST, TEMPS, PRIO,
 } from "./constants";
 import type {
-  AttendanceDay, Client, Demand, Goal, HrFile, PayrollRow, Property, Request, Task, Unit,
+  AttendanceDay, Client, Demand, Goal, HrFile, PayrollRow, Property, Proposal, Request, Task, Unit, Viewing,
 } from "./types";
 import { addDays, dayDiff, iso, localDay, moneyFull, num, splitList, today, ym } from "./util";
 import type { Staff } from "@/lib/types";
 
 export interface CrmData {
+  /** Offers sent (trial) and viewings (trial). */
+  proposals: Proposal[];
+  viewings: Viewing[];
   clients: Client[];
   props: Property[];
   requests: Request[];
@@ -85,6 +88,18 @@ export const clientById = (d: CrmData, id: string | null | undefined) => (id ? d
 export const propById = (d: CrmData, id: string | null | undefined) => (id ? d.props.find((p) => p.id === id) : undefined);
 export const typesOf = (c: Demand) => (Array.isArray(c.propTypes) ? c.propTypes : []);
 export const isActive = (c: Client) => (c.status || "نشط") === "نشط";
+/** Unanswered calls in a row, newest first (stops at the first answered call; non-call entries are skipped). */
+export function missedStreak(c: Client) {
+  let n = 0;
+  for (const l of c.log || []) {
+    if (!isCall(l)) continue;
+    if (MISSED.includes(l.type)) n++;
+    else break;
+  }
+  return n;
+}
+/** An answered call after `at`? */
+export const answeredSince = (c: Client, at: string) => (c.log || []).some((l) => l.at > at && isCall(l) && !MISSED.includes(l.type));
 export const OPEN_REQ = (r: Request) => !["تم البيع", "ملغي"].includes(r.status || "جديد");
 export const comm = (r: { price?: number | null; commissionPct?: number | null }) =>
   ((num(r.price) || 0) * (num(r.commissionPct) ?? 2.5)) / 100;

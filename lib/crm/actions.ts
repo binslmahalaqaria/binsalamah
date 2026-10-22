@@ -11,11 +11,11 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
-import { CALL_T, REQ, SOLD_ST, UPD, UPD_STAGE } from "./constants";
+import { CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
 import {
-  clientById, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
+  answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
-import type { AttendanceDay, Client, LogEntry, Request, Unit } from "./types";
+import type { AttendanceDay, Client, LogEntry, Proposal, Request, Unit, Viewing } from "./types";
 import { syncWebOffer } from "./web-sync";
 import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
@@ -134,13 +134,62 @@ export async function applyUpdate0(d: CrmData, id: string, type: string, next: s
     unseen: false,
   };
   if (u?.status) patch.status = u.status;
+  // A «لا يوجد رد» client who answers later is active again, with everything kept.
+  else if (c.status === NO_RESP && entry.call && !MISSED.includes(type)) { patch.status = "نشط"; patch.waSentAt = null; }
   if (type === "زار العقار" || u?.status) {
     patch.visitAt = null;
     patch.visitConfirmed = false;
   }
   if (propertyId && !c.interestIn) patch.interestIn = propertyId;
   await write("clients", id, patch, "update");
+  // Third unanswered call in a row → a task to send a WhatsApp message as the fourth attempt (once).
+  if (MISSED.includes(type) && missedStreak(c) + 1 >= 3 && !c.waSentAt &&
+      !d.tasks.some((x) => x.kind === "wa4" && x.clientId === id && !x.done)) {
+    await write("tasks", null, {
+      kind: "wa4", title: "إرسال رسالة واتساب (المحاولة الرابعة) — لم يرد على 3 مكالمات", assignee: c.assignee || d.uid,
+      due: today(), priority: "مهمة", clientId: id, propertyId: null, notes: null, done: false, seen: c.assignee === d.uid,
+      createdBy: d.uid, createdAt: nowStamp(), updatedAt: nowStamp(),
+    });
+  }
   return true;
+}
+
+/** The fourth attempt: WhatsApp message sent. Not a call; 48 h without a reply moves the client to «لا يوجد رد». */
+export async function markWaSent(d: CrmData, clientId: string) {
+  const c = clientById(d, clientId);
+  if (!c) return;
+  const at = nowStamp();
+  await write("clients", c.id, {
+    waSentAt: at, nextCall: addDays(2), updatedAt: at,
+    log: pushLog(c, { at, byId: d.uid, type: WA_LOG, text: "المحاولة الرابعة: رسالة واتساب بعد 3 مكالمات لم يُرد عليها", call: false }),
+  }, "update");
+  for (const x of d.tasks.filter((x) => x.kind === "wa4" && x.clientId === c.id && !x.done))
+    await write("tasks", x.id, { done: true, doneAt: at, doneBy: d.uid, updatedAt: at }, "update");
+}
+
+/** Clients 48 h past the WhatsApp message with no answered call since → «لا يوجد رد» (runs in staff browsers). */
+export async function runNoResponse(d: CrmData, done: Set<string>) {
+  const cut = new Date(Date.now() - 48 * 3600e3).toISOString();
+  const mine = (c: Client) => d.isMgr || c.assignee === d.uid;
+  for (const c of d.clients) {
+    if (!c.waSentAt || c.waSentAt > cut || done.has(c.id) || !mine(c)) continue;
+    if (![ "نشط", TO_CONTACT ].includes(c.status || "نشط") || answeredSince(c, c.waSentAt)) continue;
+    done.add(c.id);
+    await write("clients", c.id, {
+      status: NO_RESP, nextCall: null, updatedAt: nowStamp(),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "نقل إلى لا يوجد رد", text: "لم يرد خلال 48 ساعة من رسالة الواتساب", call: false }),
+    }, "update");
+  }
+}
+
+/** Brings a «لا يوجد رد» client back to the active list, calling today. */
+export async function reactivateClient(d: CrmData, clientId: string) {
+  const c = clientById(d, clientId);
+  if (!c) return;
+  await write("clients", c.id, {
+    status: "نشط", waSentAt: null, nextCall: today(), updatedAt: nowStamp(),
+    log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "إعادة تفعيل", text: "أُعيد من قائمة لا يوجد رد", call: false }),
+  }, "update");
 }
 
 export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; reqId?: string } = {}) {
@@ -324,6 +373,7 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   if (r.clientId) await applyUpdate(d, r.clientId, "تم إرسال التفاصيل", addDays(3), "", pid, { call: false });
   const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
   const sent = [...new Set((r.sent || []).concat(pid))];
+  await recordProposal(d, r, pid);
   await write("requests", reqId, { sent, updatedAt: nowStamp(), ...(early ? { status: "أرسلنا خيارات" } : {}) }, "update");
 }
 
@@ -457,4 +507,92 @@ export async function deleteRequest(d: CrmData, r: Request) {
   await remove("requests", r.id);
   if (SOLD_ST.includes(r.status) && r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
   return true;
+}
+
+/* ---------- offers and viewings (trial 2026-10-22) ---------- */
+const ev = (d: CrmData, status: string, note?: string | null) => ({ at: nowStamp(), by: d.uid || null, status, note: note || null });
+const pTitle = (d: CrmData, pid: string | null | undefined) => propById(d, pid)?.title || "عقار";
+
+/** Every property sent to a customer becomes an offer (once per request + property; re-sending refreshes it). */
+export async function recordProposal(d: CrmData, r: Request, pid: string, unit?: string | null) {
+  const old = d.proposals.find((x) => x.requestId === r.id && x.propertyId === pid && (x.unit || null) === (unit || null));
+  if (old) {
+    await write("proposals", old.id, { sentAt: nowStamp(), status: "أُرسل", history: [...(old.history || []), ev(d, "أُرسل", "أُعيد الإرسال")], updatedAt: nowStamp() }, "update");
+    return old.id;
+  }
+  const p = propById(d, pid);
+  return write("proposals", null, {
+    requestId: r.id, clientId: r.clientId, propertyId: pid, unit: unit || null, price: p?.price ?? null,
+    sentAt: nowStamp(), by: d.uid || null, assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null,
+    status: "أُرسل", feedback: null, history: [ev(d, "أُرسل")], updatedAt: nowStamp(),
+  });
+}
+
+/** Back to the property search list (even from a later stage) unless a deal is recorded. */
+async function backToSearch(d: CrmData, requestId: string | null | undefined) {
+  const r = d.requests.find((x) => x.id === requestId);
+  if (r && OPEN_REQ(r) && !SOLD_ST.includes(r.status || "")) await write("requests", r.id, { status: "جاري البحث", updatedAt: nowStamp() }, "update");
+}
+
+/** Changes an offer's status; «غير مناسب» returns the request to the search list when no other offer is still open. */
+export async function setProposalStatus(d: CrmData, p: Proposal, status: string, feedback?: string) {
+  await write("proposals", p.id, {
+    status, ...(feedback !== undefined ? { feedback: feedback || null } : {}),
+    history: [...(p.history || []), ev(d, status, feedback)], updatedAt: nowStamp(),
+  }, "update");
+  const c = clientById(d, p.clientId);
+  if (c && ["مهتم", "غير مناسب"].includes(status))
+    await write("clients", c.id, {
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: pTitle(d, p.propertyId) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId, call: false }),
+      ...(status === "مهتم" ? { interestIn: p.propertyId } : {}), updatedAt: nowStamp(),
+    }, "update");
+  if (status === "غير مناسب" && !d.proposals.some((x) => x.requestId === p.requestId && x.id !== p.id && PROP_OPEN.includes(x.status)))
+    await backToSearch(d, p.requestId);
+}
+
+/** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «معاينة», the offer linked. */
+export async function scheduleViewing(d: CrmData, reqId: string, at: string, propId: string | null, note: string) {
+  const r = d.requests.find((x) => x.id === reqId);
+  if (!r) return false;
+  await write("viewings", null, {
+    requestId: r.id, clientId: r.clientId, propertyId: propId, at, status: "مجدولة", feedback: null, followUp: null,
+    assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null, by: d.uid || null,
+    history: [ev(d, "مجدولة", note)], createdAt: nowStamp(), updatedAt: nowStamp(),
+  });
+  await saveVisit(d, r.id, at, propId, note);
+  const p = propId && d.proposals.find((x) => x.requestId === r.id && x.propertyId === propId);
+  if (p && p.status !== "تم تحديد معاينة") await setProposalStatus(d, p, "تم تحديد معاينة");
+  return true;
+}
+
+/** Postpones a viewing to a new time (status «مؤجلة»; still upcoming). */
+export async function postponeViewing(d: CrmData, v: Viewing, at: string, note: string) {
+  await write("viewings", v.id, { at, status: "مؤجلة", history: [...(v.history || []), ev(d, "مؤجلة", note || "إلى " + fmtVisit(at))], updatedAt: nowStamp() }, "update");
+  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, "تأجيل المعاينة" + (note ? ": " + note : ""));
+}
+
+/** Cancels a viewing (kept in the record as «ملغاة»). */
+export async function cancelViewing(d: CrmData, v: Viewing, note: string) {
+  await write("viewings", v.id, { status: "ملغاة", history: [...(v.history || []), ev(d, "ملغاة", note)], updatedAt: nowStamp() }, "update");
+  if (v.requestId) await saveVisit(d, v.requestId, null, null, note);
+}
+
+/**
+ * Records how a viewing went. Interested → negotiation; unsuitable → the offer «غير مناسب» and the request
+ * back to the search list; thinking → just a follow-up. Always schedules the post-viewing follow-up call.
+ */
+export async function viewingResult(d: CrmData, v: Viewing, result: "interested" | "unsuitable" | "thinking", feedback: string, followUp: string | null) {
+  await write("viewings", v.id, {
+    status: "تمت", feedback: feedback || null, followUp, updatedAt: nowStamp(),
+    history: [...(v.history || []), ev(d, "تمت", { interested: "مهتم", unsuitable: "غير مناسب", thinking: "يفكر" }[result] + (feedback ? " — " + feedback : ""))],
+  }, "update");
+  await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
+  const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
+  if (result === "interested") {
+    if (p) await write("proposals", p.id, { status: "تمت المعاينة", history: [...(p.history || []), ev(d, "تمت المعاينة", "مهتم")], updatedAt: nowStamp() }, "update");
+    if (v.requestId) await advanceReq(d, v.clientId, "تفاوض", v.requestId);
+  } else if (result === "unsuitable") {
+    if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد المعاينة");
+    else await backToSearch(d, v.requestId);
+  } else if (p) await write("proposals", p.id, { status: "تمت المعاينة", history: [...(p.history || []), ev(d, "تمت المعاينة", "يفكر")], updatedAt: nowStamp() }, "update");
 }

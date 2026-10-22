@@ -3,9 +3,15 @@
 import { useCrm } from "@/lib/crm/store";
 import { PRIO_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
-import { toggleTask } from "@/lib/crm/actions";
+import { markWaSent, toggleTask } from "@/lib/crm/actions";
 import type { Task } from "@/lib/crm/types";
-import { lateTxt, today } from "@/lib/crm/util";
+import { lateTxt, today, waLink } from "@/lib/crm/util";
+
+/** Ready-made fourth-attempt message (after three unanswered calls). */
+export const waFourthMsg = (name: string, staff: string) =>
+  ["السلام عليكم " + (name || "") + "،",
+    "معك " + staff + " من بن سلمه العقارية. حاولنا التواصل معك بخصوص طلبك العقاري ولم نتمكن من الوصول إليك.",
+    "نرجو إفادتنا بالوقت المناسب للاتصال، أو الرد هنا بما تحتاجه وسنخدمك مباشرة."].join("\n");
 import { Chip, Pill } from "./ui";
 
 export function TaskRow({ t }: { t: Task }) {
@@ -33,6 +39,11 @@ export function TaskRow({ t }: { t: Task }) {
           {t.createdBy && t.createdBy !== t.assignee && <Chip>من {nameOf(data, t.createdBy)}</Chip>}
         </div>
       </div>
+      {t.kind === "wa4" && !t.done && c?.phone && (
+        // Opens WhatsApp with the ready message and records the fourth attempt (48 h to reply, else «لا يوجد رد»).
+        <a className="crm-btn sm wa shrink-0" href={waLink(c.phone, waFourthMsg(c.name, nameOf(data, data.uid))) || "#"} target="_blank" rel="noopener"
+          onClick={() => { markWaSent(data, c.id).then(() => toast("سُجّلت رسالة الواتساب — إن لم يرد خلال 48 ساعة يُنقل إلى «لا يوجد رد»")); }}>📲 أرسل الرسالة</a>
+      )}
     </div>
   );
 }

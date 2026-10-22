@@ -5,7 +5,7 @@
  * (client 2026-10-21: no two sections for the same thing under different names).
  */
 import { useCrm } from "@/lib/crm/store";
-import { TO_CONTACT } from "@/lib/crm/constants";
+import { NO_RESP, TO_CONTACT } from "@/lib/crm/constants";
 import { SubTabs } from "./ui";
 
 /** العملاء: all clients / the re-contact list. */
@@ -15,6 +15,7 @@ export function ClientTabs() {
   return <SubTabs tabs={[
     { href: "/admin/clients", label: "كل العملاء" },
     { href: "/admin/contact", label: "للتواصل", badge: mine, show: data.isMgr || mine > 0 },
+    { href: "/admin/noresponse", label: "لا يوجد رد", badge: data.clients.filter((c) => c.status === NO_RESP && (data.isMgr || c.assignee === data.uid)).length || undefined },
   ]} />;
 }
 
@@ -33,6 +34,10 @@ export function RequestTabs() {
   const { previewAs } = useCrm();
   return <SubTabs tabs={[
     { href: "/admin/requests", label: "الطلبات" },
+    // Trial 2026-10-22: the customer journey after the request.
+    { href: "/admin/search", label: "قائمة البحث" },
+    { href: "/admin/proposals", label: "العروض" },
+    { href: "/admin/viewings", label: "المعاينات" },
     { href: "/admin/leads", label: "نماذج الموقع", show: !previewAs },
   ]} />;
 }

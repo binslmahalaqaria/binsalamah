@@ -3,7 +3,7 @@
 /** "العملاء" — client list with search, filters, assignment, and quick actions. */
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { CSTATUS, PAY, TEMPS, TO_CONTACT, UPD, lbl } from "@/lib/crm/constants";
+import { CSTATUS, NO_RESP, PAY, TEMPS, TO_CONTACT, UPD, lbl } from "@/lib/crm/constants";
 import {
   demandOf, matchesFor, members, nameOf, propById, reqsOf, typesOf, visibleClients, wantLine, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
@@ -36,7 +36,7 @@ export default function ClientsPage() {
   // "للتواصل" clients live on their own page and "غير مهتم" ones are the archive; both show only when that status is picked.
   const archived = list.filter((c) => c.status === "غير مهتم").length;
   if (F.status) list = list.filter((c) => (c.status || "نشط") === F.status);
-  else list = list.filter((c) => c.status !== TO_CONTACT && c.status !== "غير مهتم");
+  else list = list.filter((c) => c.status !== TO_CONTACT && c.status !== "غير مهتم" && c.status !== NO_RESP);
   if (F.temp) list = list.filter((c) => c.temp === F.temp);
   if (F.purpose) list = list.filter((c) => (demandOf(data, c).purpose || "شراء") === F.purpose);
   if (F.type) list = list.filter((c) => typesOf(demandOf(data, c)).includes(F.type));

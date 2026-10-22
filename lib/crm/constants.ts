@@ -10,7 +10,22 @@ import { RIYADH_DISTRICTS } from "@/lib/districts";
 export const TEMPS = ["ساخن", "دافئ", "بارد"] as const;
 /** Client status for the re-contact list ("للتواصل"): the team still has to call them and record a request or archive them. */
 export const TO_CONTACT = "للتواصل";
-export const CSTATUS = ["نشط", TO_CONTACT, "مغلق", "غير مهتم"] as const;
+/** No reply after three missed calls and a WhatsApp message (48 h) — its own list; reactivated without losing data. */
+export const NO_RESP = "لا يوجد رد";
+export const CSTATUS = ["نشط", TO_CONTACT, "مغلق", "غير مهتم", NO_RESP] as const;
+/** Unanswered call outcomes (count toward the three attempts before the WhatsApp message). */
+export const MISSED = ["ما رد", "مشغول"];
+/** The fourth contact attempt (not a call; excluded from the daily call target). */
+export const WA_LOG = "رسالة واتساب";
+/** Minimum calls per employee per day. */
+export const CALL_TARGET = 10;
+/** Offer statuses (proposals). Still open = waiting on the customer. */
+export const PROP_ST = ["أُرسل", "بانتظار الرد", "مهتم", "غير مناسب", "تم تحديد معاينة", "تمت المعاينة"] as const;
+export const PROP_OPEN = ["أُرسل", "بانتظار الرد", "مهتم", "تم تحديد معاينة"];
+export const PROP_TONE: Record<string, Tone> = { "أُرسل": "muted", "بانتظار الرد": "warm", "مهتم": "ok", "غير مناسب": "hot", "تم تحديد معاينة": "accent", "تمت المعاينة": "ok" };
+/** Viewing statuses. */
+export const VIEW_ST = ["مجدولة", "تمت", "مؤجلة", "ملغاة"] as const;
+export const VIEW_TONE: Record<string, Tone> = { "مجدولة": "accent", "تمت": "ok", "مؤجلة": "warm", "ملغاة": "muted" };
 export const PTYPES = ["فيلا", "تاون هاوس", "دور", "شقة", "أرض", "عمارة", "استراحة", "تجاري"] as const;
 export const SOURCES = ["واتساب", "سناب", "تيك توك", "إعلان عقار", "إحالة", "اتصال", "الموقع", "أخرى"] as const;
 export const PAY = ["كاش", "بنك", "بنك + كاش"] as const;
@@ -47,6 +62,8 @@ export const DISTRICTS = [...CRM_DISTRICTS, ...RIYADH_DISTRICTS.filter((d) => !C
 export const UPD: { k: string; n: number | "none"; status?: string }[] = [
   { k: "اتصلت عليه", n: 3 },
   { k: "ما رد", n: 1 },
+  { k: "مشغول", n: 1 },
+  { k: "رقم خاطئ", n: "none", status: "غير مهتم" },
   { k: "استفسر", n: 3 },
   { k: "تم إرسال الموقع", n: 3 },
   { k: "تم إرسال التفاصيل", n: 3 },
@@ -62,6 +79,8 @@ export const UPD: { k: string; n: number | "none"; status?: string }[] = [
 export const QL_OUT: [string, string, number | "none"][] = [
   ["اتصلت عليه", "تم الاتصال", 3],
   ["ما رد", "لم يرد", 1],
+  ["مشغول", "مشغول", 1],
+  ["رقم خاطئ", "رقم خاطئ", "none"],
   ["استفسر", "استفسار", 3],
   ["تم إرسال الموقع", "تم إرسال الموقع", 3],
   ["تم إرسال التفاصيل", "تم إرسال التفاصيل", 3],
@@ -78,6 +97,7 @@ export const UPD_STAGE: Record<string, string> = {
   "زار العقار": "معاينة",
   "تفاوض": "تفاوض",
   "صرف النظر": "ملغي",
+  "رقم خاطئ": "ملغي",
   "تم الإغلاق": "تم البيع",
 };
 
@@ -111,7 +131,7 @@ export const SENT_T = ["تم إرسال الموقع", "تم إرسال التف
  * count as calls (client 2026-10-21) — recording a deposit/sale, a visit, a confirmation, a transfer or
  * a property sent from the matching screen is not a call.
  */
-export const CALL_T = ["اتصلت عليه", "ما رد", "استفسر", "تم إرسال الموقع", "تم إرسال التفاصيل", "سجّل اهتمام", "صرف النظر", "تفاوض"];
+export const CALL_T = ["اتصلت عليه", "ما رد", "مشغول", "رقم خاطئ", "استفسر", "تم إرسال الموقع", "تم إرسال التفاصيل", "سجّل اهتمام", "صرف النظر", "تفاوض"];
 /** Is this log entry a call? New entries carry `call`; older ones are judged by their type. */
 export const isCall = (l: { type: string; call?: boolean }) => l.call ?? CALL_T.includes(l.type);
 export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل", "إلغاء صفقة"];

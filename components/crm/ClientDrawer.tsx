@@ -12,6 +12,7 @@ import { SendRequestButton, WaChatButton } from "./WaButtons";
 import { DealBox, DemandChips, JourneyBox, Stepper } from "./bits";
 import { SOLD_ST, TEMPS, lbl } from "@/lib/crm/constants";
 import { TaskRow } from "./TaskRow";
+import { ProposalRow, ViewingRow } from "./Journey";
 
 export function ClientDrawer() {
   const { data, drawer, closeClient, openModal, toast } = useCrm();
@@ -146,6 +147,19 @@ export function ClientDrawer() {
                         {propById(data, r.propertyId)?.title || ""}{r.unit ? " · " + r.unit : ""} · <b className="text-[var(--crm-gold-ink)]">{money(r.price)}</b>
                       </div>
                     ) : null}
+                    {/* Offers and viewings for this request (trial 2026-10-22). */}
+                    {data.proposals.some((p) => p.requestId === r.id) && (
+                      <details className="crm-more !col-span-1" open={open}>
+                        <summary>العروض المرسلة ({data.proposals.filter((p) => p.requestId === r.id).length})</summary>
+                        <div className="-mx-3 border-t border-[var(--crm-line)]">{data.proposals.filter((p) => p.requestId === r.id).map((p) => <ProposalRow key={p.id} p={p} showClient={false} />)}</div>
+                      </details>
+                    )}
+                    {data.viewings.some((v) => v.requestId === r.id) && (
+                      <details className="crm-more !col-span-1" open={open}>
+                        <summary>المعاينات ({data.viewings.filter((v) => v.requestId === r.id).length})</summary>
+                        <div className="-mx-3 border-t border-[var(--crm-line)]">{data.viewings.filter((v) => v.requestId === r.id).map((v) => <ViewingRow key={v.id} v={v} showClient={false} />)}</div>
+                      </details>
+                    )}
                   </div>
                 );
               })

@@ -14,7 +14,7 @@ import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
 import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
 import { TO_CONTACT } from "@/lib/crm/constants";
-import { runEscalation } from "@/lib/crm/actions";
+import { runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
@@ -59,9 +59,13 @@ export function CrmShell({ children }: { children: ReactNode }) {
   // Re-contact list ("للتواصل", a tab of العملاء): each person's own remaining clients (managers see the totals on the page).
   const toContact = data.clients.filter((c) => c.status === TO_CONTACT && c.assignee === data.uid).length;
   const groups: [string, NavItem[]][] = [
-    ["", [{ href: "/admin", k: "today", label: "اليوم", badge: due + newTasks }]],
+    ["", [
+      { href: "/admin", k: "today", label: "اليوم", badge: due + newTasks },
+      // Trial (2026-10-22): the employee dashboard from the client's spec, side by side with «اليوم».
+      { href: "/admin/my", k: "tasks", label: "لوحتي (تجريبي)" },
+    ]],
     ["المبيعات", [
-      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads"] },
+      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/search", "/admin/proposals", "/admin/viewings"] },
       { href: "/admin/clients", k: "clients", label: "العملاء", badge: toContact, also: ["/admin/contact"] },
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),
       ...(data.isMgr || can(data, "recordDeals") ? [{ href: "/admin/invoices", k: "leads", label: "الفواتير" }] : []),
@@ -92,6 +96,14 @@ export function CrmShell({ children }: { children: ReactNode }) {
     const t = setTimeout(() => runEscalation(data, mgr, settings.escalateDays || 2, escDone.current).catch(() => {}), 5000);
     return () => clearTimeout(t);
   }, [loaded, data, settings]);
+
+  // 48 h after the fourth-attempt WhatsApp with no reply → «لا يوجد رد» (each person's own clients; managers all).
+  const noRespDone = useRef(new Set<string>());
+  useEffect(() => {
+    if (!loaded || previewAs) return;
+    const t = setTimeout(() => runNoResponse(data, noRespDone.current).catch(() => {}), 6000);
+    return () => clearTimeout(t);
+  }, [loaded, data, previewAs]);
 
   useEffect(() => setMoreOpen(false), [pathname]);
 

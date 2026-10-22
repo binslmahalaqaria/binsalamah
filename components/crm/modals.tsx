@@ -9,7 +9,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  applyUpdate, cancelSale, deleteAttendance, reqSent, saveAttendance, saveClose, saveVisit, transferRequest, write,
+  applyUpdate, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { HrFile } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -26,7 +26,8 @@ export function ModalHost() {
     case "property": return <PropertyForm key={modal.id || "new"} id={modal.id} />;
     case "task": return <TaskForm key={modal.id || "new"} id={modal.id} preset={modal.preset} />;
     case "update": return <UpdateModal key={modal.clientId} clientId={modal.clientId} type={modal.type} propertyId={modal.propertyId} reqId={modal.reqId} />;
-    case "visit": return <VisitModal reqId={modal.reqId} />;
+    case "visit": return <VisitModal reqId={modal.reqId} propertyId={modal.propertyId} viewingId={modal.viewingId} />;
+    case "viewResult": return <ViewResultModal viewingId={modal.viewingId} />;
     case "close": return <CloseModal reqId={modal.reqId} to={modal.to} />;
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
     case "reqMatches": return <ReqMatchesModal reqId={modal.reqId} />;
@@ -88,42 +89,77 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
 }
 
 /* ---------- visit appointment ---------- */
-function VisitModal({ reqId }: { reqId: string }) {
+function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyId?: string; viewingId?: string }) {
   const { data, closeModal, toast } = useCrm();
   const r = data.requests.find((x) => x.id === reqId);
   const c = r && clientById(data, r.clientId);
+  // Postponing an existing viewing (trial 2026-10-22) or booking a new one.
+  const v = viewingId ? data.viewings.find((x) => x.id === viewingId) : undefined;
   const ms = useMemo(() => (r ? data.props.filter((p) => match(r, p)) : []), [data.props, r]);
   const sentProp = r?.sent?.length ? r.sent[r.sent.length - 1] : "";
-  const [at, setAt] = useState(c?.visitAt || "");
-  const [pid, setPid] = useState(c?.visitProperty || sentProp || ms[0]?.id || "");
+  const [at, setAt] = useState(v?.at || c?.visitAt || "");
+  const [pid, setPid] = useState(v?.propertyId || propertyId || c?.visitProperty || sentProp || ms[0]?.id || "");
   const [note, setNote] = useState("");
   if (!r || !c) return null;
   return (
-    <ModalFrame title={"موعد زيارة: " + c.name} onClose={closeModal} width={480}
+    <ModalFrame title={(v ? "تأجيل المعاينة: " : "موعد معاينة: ") + c.name} onClose={closeModal} width={480}
       footer={
         <>
           <div className="flex gap-2">
             <button type="button" className="crm-btn primary" onClick={async () => {
               if (!at) return toast("حدد التاريخ والوقت");
-              await saveVisit(data, r.id, at, pid || null, note.trim());
-              toast("تم حفظ الموعد " + fmtVisit(at));
+              if (v) await postponeViewing(data, v, at, note.trim());
+              else await scheduleViewing(data, r.id, at, pid || null, note.trim());
+              toast((v ? "أُجّلت المعاينة إلى " : "تم حفظ موعد المعاينة ") + fmtVisit(at));
               closeModal();
-            }}>حفظ الموعد</button>
+            }}>{v ? "حفظ الموعد الجديد" : "حفظ الموعد"}</button>
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
-          {c.visitAt && (
-            <button type="button" className="crm-btn danger" onClick={async () => { await saveVisit(data, r.id, null, null, ""); toast("تم إلغاء الموعد"); closeModal(); }}>إلغاء الموعد</button>
+          {v && (
+            <button type="button" className="crm-btn danger" onClick={async () => { await cancelViewing(data, v, note.trim()); toast("أُلغيت المعاينة"); closeModal(); }}>إلغاء المعاينة</button>
           )}
         </>
       }>
       <div className="grid gap-3">
         <Field label="التاريخ والوقت"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
-        <Field label="العقار">
-          <Select value={pid} onChange={setPid} options={data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string])} blank="—" />
-        </Field>
-        <Field label="ملاحظة (اختياري)"><input value={note} placeholder="مثال: سيحضر مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
+        {!v && (
+          <Field label="العقار">
+            <Select value={pid} onChange={setPid} options={data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string])} blank="—" />
+          </Field>
+        )}
+        <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} placeholder={v ? "مثال: العميل مسافر" : "مثال: سيحضر مع زوجته"} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      <p className="crm-hint mt-2">قبل الموعد بيوم يظهر في شاشة &quot;اليوم&quot; لتأكيده مع العميل، وينتقل الطلب إلى مرحلة &quot;معاينة&quot;.</p>
+      <p className="crm-hint mt-2">تُحفظ في سجل المعاينات، وقبل الموعد بيوم تظهر في لوحتك لتأكيدها مع العميل، وينتقل الطلب إلى مرحلة &quot;معاينة&quot;.</p>
+    </ModalFrame>
+  );
+}
+
+/* ---------- viewing result (trial 2026-10-22) ---------- */
+function ViewResultModal({ viewingId }: { viewingId: string }) {
+  const { data, closeModal, toast } = useCrm();
+  const v = data.viewings.find((x) => x.id === viewingId);
+  const [res, setRes] = useState<"interested" | "unsuitable" | "thinking" | "">("");
+  const [fb, setFb] = useState("");
+  const [next, setNext] = useState("1");
+  if (!v) return null;
+  const c = clientById(data, v.clientId), p = propById(data, v.propertyId);
+  return (
+    <ModalFrame title={"نتيجة المعاينة: " + (c?.name || "")} onClose={closeModal} width={520}
+      footer={<div className="flex gap-2">
+        <button type="button" className="crm-btn primary" onClick={async () => {
+          if (!res) return toast("اختر رأي العميل");
+          await viewingResult(data, v, res, fb.trim(), next === "none" ? null : addDays(+next));
+          toast(res === "interested" ? "انتقل الطلب إلى التفاوض" : res === "unsuitable" ? "عاد الطلب إلى قائمة البحث" : "سُجّلت النتيجة وموعد المتابعة");
+          closeModal();
+        }}>حفظ</button>
+        <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
+      </div>}>
+      <p className="m-0 mb-2 text-[13.5px]">{p?.title || "—"} · {fmtVisit(v.at)}</p>
+      <div className="crm-sec !mt-0 mb-2">رأي العميل</div>
+      <RadioChips options={[["interested", "مهتم — ننتقل للتفاوض"], ["thinking", "يفكر"], ["unsuitable", "غير مناسب — نبحث عن غيره"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
+      <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
+      <div className="crm-sec mb-2">متابعة بعد المعاينة</div>
+      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
     </ModalFrame>
   );
 }

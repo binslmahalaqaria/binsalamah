@@ -18,7 +18,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import type { Staff } from "@/lib/types";
 import type {
-  AttendanceDay, ChatMsg, Client, DirectMsg, Invoice, CrmSettings, Goal, HrFile, PayrollRow, Property, Request, Task,
+  AttendanceDay, ChatMsg, Client, DirectMsg, Invoice, CrmSettings, Goal, HrFile, PayrollRow, Property, Proposal, Request, Task, Viewing,
 } from "./types";
 import type { CrmData, RoundRobin } from "./logic";
 import { nowStamp } from "./util";
@@ -31,12 +31,13 @@ export type Modal =
   | { kind: "property"; id?: string }
   | { kind: "task"; id?: string; preset?: Partial<Task> }
   | { kind: "update"; clientId: string; type?: string; propertyId?: string; reqId?: string }
-  | { kind: "visit"; reqId: string }
+  | { kind: "visit"; reqId: string; propertyId?: string; viewingId?: string }
   | { kind: "close"; reqId: string; to: string }
   | { kind: "cancel"; reqId: string; to?: string }
   | { kind: "reqMatches"; reqId: string }
   | { kind: "propReqs"; propId: string }
   | { kind: "transfer"; reqId: string }
+  | { kind: "viewResult"; viewingId: string }
   | { kind: "goal"; uid: string; month: string }
   | { kind: "hr"; uid: string }
   | { kind: "attEdit"; uid: string; date: string };
@@ -105,6 +106,9 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [dmBlocked, setDmBlocked] = useState(false);
   const [dmRetry, setDmRetry] = useState(0);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [viewings, setViewings] = useState<Viewing[]>([]);
+  const [jrRetry, setJrRetry] = useState(0);
   const [invRetry, setInvRetry] = useState(0);
   const [hr, setHr] = useState<HrFile[]>([]);
   const [payroll, setPayroll] = useState<PayrollRow[]>([]);
@@ -202,6 +206,18 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     return () => { un(); if (t) clearTimeout(t); };
   }, [realUid, realMe?.active, invRetry]);
 
+  // Offers and viewings (trial): retried like invoices if the rules are not published yet.
+  useEffect(() => {
+    if (!realUid || !realMe?.active) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const retry = () => { if (!t) t = setTimeout(() => setJrRetry((n) => n + 1), 15000); };
+    const subs = [
+      onSnapshot(collection(db, "proposals"), (s) => setProposals(s.docs.map((d) => withId<Proposal>(d)).sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)))), retry),
+      onSnapshot(collection(db, "viewings"), (s) => setViewings(s.docs.map((d) => withId<Viewing>(d)).sort((a, b) => String(a.at).localeCompare(String(b.at)))), retry),
+    ];
+    return () => { subs.forEach((u) => u()); if (t) clearTimeout(t); };
+  }, [realUid, realMe?.active, jrRetry]);
+
   // Admin-only collections.
   useEffect(() => {
     if (!realUid || !realAdmin) return;
@@ -246,8 +262,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   useEffect(() => setPreviewMode(!!target), [target]);
 
   const data: CrmData = useMemo(
-    () => ({ clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "", propTypes, sources, rr }),
-    [clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs, propTypes, sources, rr]
+    () => ({ proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "", propTypes, sources, rr }),
+    [proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs, propTypes, sources, rr]
   );
 
   const toast = useCallback((msg: string) => {
