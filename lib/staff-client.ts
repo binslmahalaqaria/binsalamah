@@ -97,18 +97,18 @@ export async function createStaffAccount(input: {
   return { uid };
 }
 
-/** Deletes a staff member for good: the `staff` doc and their login in Firebase Auth (via /api/staff, owner only). */
+/**
+ * Deletes a staff member for good: their Firebase login (so the email is free again) and their `staff` doc.
+ * Done by the Cloud Function «staffDelete» (europe-west1, set up 2026-10-24 from public/setup/staff-login-fn.sh),
+ * which accepts only an active owner's ID token — no service-account key anywhere.
+ */
+const STAFF_DELETE_URL = "https://europe-west1-binsalamah-34cb1.cloudfunctions.net/staffDelete";
 export async function deleteStaffAccount(id: string): Promise<void> {
   const token = await auth.currentUser?.getIdToken();
   if (!token) throw new Error("سجّل الدخول من جديد ثم أعد المحاولة.");
-  const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ uid: id }) });
+  const res = await fetch(STAFF_DELETE_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ uid: id }) });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const m = String(data.error || "");
-    throw new Error(/service account|credential|GOOGLE_APPLICATION|ENOENT|client_email|private_key|JSON/i.test(m)
-      ? "الحذف الكامل يحتاج مفتاح خدمة Firebase على الخادم (FIREBASE_SERVICE_ACCOUNT_KEY في Vercel)."
-      : m || "تعذّر الحذف.");
-  }
+  if (!res.ok) throw new Error(res.status === 403 ? "الحذف للمالك فقط." : String(data.error || "") || "تعذّر الحذف.");
 }
 
 /**
