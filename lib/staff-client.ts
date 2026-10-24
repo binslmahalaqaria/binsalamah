@@ -1,6 +1,6 @@
-import { collection, doc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, updateDoc, setDoc, serverTimestamp, query, orderBy, Timestamp } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
-import { createUserWithEmailAndPassword, getAuth, inMemoryPersistence, sendPasswordResetEmail, setPersistence, signOut, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword, inMemoryPersistence, sendPasswordResetEmail, setPersistence, signOut, updateProfile } from "firebase/auth";
 import app, { auth, db } from "./firebase";
 import type { Staff, StaffRole } from "./types";
 
@@ -56,15 +56,30 @@ export async function createStaffAccount(input: {
   const side = getApps().find((a) => a.name === "staff-create") || initializeApp(app.options, "staff-create");
   const sideAuth = getAuth(side);
   await setPersistence(sideAuth, inMemoryPersistence);
-  let uid: string;
+  let uid = "";
   try {
     const cred = await createUserWithEmailAndPassword(sideAuth, input.email, input.password);
     uid = cred.user.uid;
     await updateProfile(cred.user, { displayName: input.name }).catch(() => {});
   } catch (err) {
-    const code = (err as { code?: string }).code || "";
+    let code = (err as { code?: string }).code || "";
+    // The login of a removed employee still exists in Firebase Auth (the app cannot delete other people's logins):
+    // adding the same email again with that account's password re-links it instead of failing.
+    if (code === "auth/email-already-in-use") {
+      try {
+        const cred = await signInWithEmailAndPassword(sideAuth, input.email, input.password);
+        uid = cred.user.uid;
+        await updateProfile(cred.user, { displayName: input.name }).catch(() => {});
+        if ((await getDoc(doc(db, COLLECTION, uid))).exists()) throw new Error("هذا الموظف موجود في القائمة بالفعل.");
+        code = "";
+      } catch (e2) {
+        if (e2 instanceof Error && !(e2 as { code?: string }).code) throw e2;
+        code = "auth/email-already-in-use";
+      }
+    }
+    if (!code) { /* re-linked */ } else
     throw new Error(
-      code === "auth/email-already-in-use" ? "هذا البريد مسجّل مسبقاً بحساب آخر."
+      code === "auth/email-already-in-use" ? "هذا البريد له حساب دخول قديم بكلمة مرور مختلفة. اكتب كلمة مروره القديمة، أو احذفه من Firebase ← Authentication ← Users ثم أعد الإضافة."
       : code === "auth/invalid-email" ? "صيغة البريد الإلكتروني غير صحيحة."
       : code === "auth/weak-password" ? "كلمة المرور ضعيفة، يجب ألا تقل عن 6 أحرف."
       : "تعذّر إنشاء الحساب (" + (code || "unknown") + ")."
