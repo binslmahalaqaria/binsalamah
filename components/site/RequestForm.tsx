@@ -137,7 +137,7 @@ export function RequestForm({ districts }: { districts: string[] }) {
                     </label>
                   )}
                 </div>
-                {riyadh && <ZonePicker zone={zone} selected={picked} districts={districts} onZone={setZone} onChange={setPicked} />}
+                {riyadh && <ZonePicker noAll zone={zone || RIYADH_ZONES[0].id} selected={picked} districts={districts} onZone={setZone} onChange={setPicked} />}
               </div>
             </div>
 

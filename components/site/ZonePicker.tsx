@@ -10,9 +10,11 @@
 import { useLocale, useTranslations } from "next-intl";
 import { DISTRICTS, RIYADH_ZONES, districtsIn } from "@/lib/districts";
 
-export function ZonePicker({ zone, selected, districts, onZone, onChange }: {
+export function ZonePicker({ zone, selected, districts, onZone, onChange, noAll }: {
   zone: string; selected: string[]; districts: string[];
   onZone: (z: string) => void; onChange: (picked: string[]) => void;
+  /** Hide the «كل الجهات» tab (request form: a real area must be chosen). */
+  noAll?: boolean;
 }) {
   const t = useTranslations("Site");
   const ar = useLocale() === "ar";
@@ -40,7 +42,7 @@ export function ZonePicker({ zone, selected, districts, onZone, onChange }: {
         </div>
       )}
       <div className="flex gap-1 overflow-x-auto border-b border-navy/10 [scrollbar-width:none]">
-        <button type="button" className={tab(!zone)} onClick={() => onZone("")}>{t("anyZone")}</button>
+        {!noAll && <button type="button" className={tab(!zone)} onClick={() => onZone("")}>{t("anyZone")}</button>}
         {RIYADH_ZONES.map((z) => {
           const n = selected.filter((d) => z.districts.includes(d)).length;
           return (

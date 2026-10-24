@@ -21,7 +21,7 @@ import {
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage } from "@/lib/upload-image";
-import { zoneOf } from "@/lib/districts";
+import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
 
 type F = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v));
@@ -202,6 +202,11 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   });
   const [busy, setBusy] = useState(false);
   const dists = useMemo(() => allDistricts(data, DISTRICTS), [data]);
+  // Districts offered are those of the chosen zones (any district can still be typed in).
+  const zoneDists = useMemo(() => {
+    const zs = RIYADH_ZONES.filter((z) => f.zones.includes(z.ar));
+    return dists.filter((d) => zs.some((z) => z.districts.includes(districtKey(d))));
+  }, [dists, f.zones]);
   // The chosen client's active owner, if any: a new request follows it (one client, one employee).
   const ownerNow = !rec && f.clientId ? (() => { const a = clientById(data, f.clientId)?.assignee; return a && data.staff.some((x) => x.id === a && x.active) ? a : null; })() : null;
   // A client saved from a bare number has the number as their name: ask for the real name here.
@@ -213,8 +218,10 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
 
   async function save() {
     if (nameless && !f.clientName.trim()) return toast("اكتب اسم العميل — محفوظ بالرقم فقط");
-    // No zone picker (client 2026-10-24): the districts are chosen directly; the zone is worked out from them.
-    if (!f.districts.length) return toast("اختر حيّاً واحداً على الأقل");
+    if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
+    // Every chosen zone needs at least one district in it (client 2026-10-24).
+    const noDist = f.zones.filter((z) => !f.districts.some((d) => zoneOf(d)?.ar === z));
+    if (noDist.length) return toast("حدّد حيّاً واحداً على الأقل في: " + noDist.join("، "));
     setBusy(true);
     try {
       // One client, one employee: a new request for an existing client follows the client's active owner — the
@@ -230,7 +237,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         else pick = owner;
       }
       const demand = {
-        purpose: f.purpose, propTypes: f.propTypes, zones: zonesFor(undefined, f.districts), districts: f.districts.join("، ") || null, budget: num(f.budget),
+        purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: num(f.budget),
         payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), bedroomsMin: num(f.bedroomsMin),
         floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
@@ -349,8 +356,16 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
           <MultiCheck options={withCurrent(REQ_TYPES.map(([v]) => v), f.propTypes)} labels={Object.fromEntries(REQ_TYPES)} value={f.propTypes} onChange={(v) => set("propTypes", v)} />
         </Field>
         {needsFloor(f.propTypes) && <Field label="الدور المطلوب" full><MultiCheck options={FLOORS} value={f.floors} onChange={(v) => set("floors", v)} /></Field>}
-        <Field label="الأحياء *" full hint="اكتب اسم الحي واختره — الجهة (شمال، شرق…) تُحسب تلقائياً من الأحياء">
-          <DistrictPicker all={dists} value={f.districts} onChange={(v) => set("districts", v)} />
+        <Field label="الجهة *" full>
+          <MultiCheck options={RIYADH_ZONES.map((z) => z.ar)} value={f.zones} onChange={(v) => {
+            set("zones", v);
+            // Drop districts that no longer belong to a chosen zone (typed-in districts outside the list stay).
+            set("districts", f.districts.filter((d) => { const z = zoneOf(d); return !z || v.includes(z.ar); }));
+          }} />
+        </Field>
+        <Field label="الأحياء" full>
+          {f.zones.length ? <DistrictPicker all={zoneDists} value={f.districts} onChange={(v) => set("districts", v)} />
+            : <span className="crm-hint">اختر الجهة أولاً لتظهر أحياؤها</span>}
         </Field>
         <Field label="طريقة الدفع"><Select value={f.payment} onChange={(v) => set("payment", v)} options={PAY} blank="—" /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
