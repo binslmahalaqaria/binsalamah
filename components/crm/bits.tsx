@@ -208,6 +208,8 @@ export function reqMenu(data: CrmData, r: Request, open: (m: Modal) => void): Ke
   const sold = SOLD_ST.includes(r.status);
   const deals = can(data, "recordDeals");
   const items: (KebabItem | false)[] = [
+    // First: edit every detail of the request (type, purpose, zone, districts, budget, payment, owner, notes…).
+    { label: "✎ تعديل تفاصيل الطلب", onClick: () => open({ kind: "request", id: r.id }) },
     { label: "تم إرسال الموقع", onClick: () => open({ kind: "update", clientId: r.clientId, reqId: r.id, type: "تم إرسال الموقع", propertyId: data.props.find((p) => match(r, p))?.id }) },
     !!c && { label: "تسجيل تحديث", onClick: () => open({ kind: "update", clientId: c.id, reqId: r.id }) },
     deals && !sold && { label: "تسجيل عربون", onClick: () => open({ kind: "close", reqId: r.id, to: "عربون" }) },
@@ -216,7 +218,6 @@ export function reqMenu(data: CrmData, r: Request, open: (m: Modal) => void): Ke
     deals && sold && { label: "إلغاء " + (r.status === "تم البيع" ? "البيع" : "العربون"), onClick: () => open({ kind: "cancel", reqId: r.id }) },
     data.isMgr && { label: "⇄ تحويل الطلب لموظف آخر", onClick: () => open({ kind: "transfer", reqId: r.id }) },
     !!c?.phone && { label: "واتساب", href: waLink(c.phone) || undefined },
-    { label: "تعديل الطلب", onClick: () => open({ kind: "request", id: r.id }) },
     { label: "🗑 حذف الطلب", onClick: () => { deleteRequest(data, r); } },
   ];
   return items.filter(Boolean) as KebabItem[];
