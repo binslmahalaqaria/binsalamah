@@ -239,7 +239,7 @@ export default function AdminStaffPage() {
                       >
                         <Icon path={ICONS.key} className="h-4 w-4" />
                       </button>
-                      <button
+                      {s.id !== user?.uid && <button
                         onClick={async () => {
                           if (s.active) {
                             if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته المفتوحة على بقية الفريق بالتساوي. متابعة؟")) return;
@@ -262,7 +262,7 @@ export default function AdminStaffPage() {
                       >
                         <Icon path={ICONS.power} className="h-3.5 w-3.5" />
                         {s.active ? "تجميد" : "تفعيل"}
-                      </button>
+                      </button>}
                       {s.id !== user?.uid && (
                         <button
                           onClick={async () => {
