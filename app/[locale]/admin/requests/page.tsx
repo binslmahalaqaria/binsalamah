@@ -71,8 +71,10 @@ export default function RequestsPage() {
     })) || toast("لا توجد بيانات للتصدير");
 
   // One row per request, one column per fact (client 2026-10-24): client · mobile · type · zone · districts · owner · last update · when.
-  // The stage is changed from the pill under the name, so the last column is just «matches» + ⋮ and always fits.
-  const GRID = "grid-cols-[minmax(140px,1.2fr)_105px_minmax(70px,0.7fr)_minmax(80px,0.8fr)_minmax(100px,1.1fr)_110px_minmax(130px,1.4fr)_100px_76px]";
+  // Wide screens: a table with a header. Narrower screens: the same facts as a card, each with its label above it,
+  // and ⋮ in the corner — nothing is cut off and nothing needs sideways scrolling.
+  const GRID = "xl:grid-cols-[minmax(130px,1.2fr)_100px_minmax(60px,0.7fr)_minmax(75px,0.8fr)_minmax(90px,1.1fr)_100px_minmax(120px,1.4fr)_90px_70px]";
+  const L = (t: string) => <span className="mb-0.5 block text-[11px] text-[var(--crm-ink-3)] xl:hidden">{t}</span>;
 
   const row = (r: Request) => {
     const c = clientById(data, r.clientId);
@@ -83,22 +85,22 @@ export default function RequestsPage() {
     const last = (c?.log || [])[0];
     const late = !!c?.nextCall && c.nextCall < today() && OPEN_REQ(r);
     return (
-      <div key={r.id} className={"crm-row gap-3 " + GRID + (late ? " late" : "")}>
-        <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, r.id)}>
+      <div key={r.id} className={"crm-row relative grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 " + GRID + (late ? " late" : "")}>
+        <div className="col-span-2 min-w-0 cursor-pointer pe-24 sm:col-span-4 xl:col-span-1 xl:pe-0" onClick={() => c && openClient(c.id, r.id)}>
           <b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
-          <div className="mt-0.5 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-            <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !px-2 !py-0.5 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
+          <div className="mt-1 flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !py-0.5 !ps-2.5 !pe-6 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
               onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
               {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
             </select>
             {r.awaitingUpdate && OPEN_REQ(r) && <Pill tone="hot">بانتظار تحديث الموظف</Pill>}
           </div>
         </div>
-        <div className="num self-center text-[13.5px]">{c?.phone || "—"}</div>
-        <div className="self-center text-[13.5px]">{typesOf(r).join("، ") || "—"}</div>
-        <div className="self-center text-[13.5px]">{zones.join("، ") || "—"}</div>
-        <div className="min-w-0 self-center text-[13px] text-[var(--crm-ink-2)]" title={ds.join("، ")}>{ds.length ? ds.slice(0, 4).join("، ") + (ds.length > 4 ? " +" + (ds.length - 4) : "") : "—"}</div>
-        <div className="self-center">
+        <div className="min-w-0 self-center text-[13.5px]">{L("الجوال")}<span className="num">{c?.phone || "—"}</span></div>
+        <div className="min-w-0 self-center text-[13.5px]">{L("نوع العقار")}{typesOf(r).join("، ") || "—"}</div>
+        <div className="min-w-0 self-center text-[13.5px]">{L("المنطقة")}{zones.join("، ") || "—"}</div>
+        <div className="min-w-0 self-center text-[13px] text-[var(--crm-ink-2)]" title={ds.join("، ")}>{L("الأحياء")}{ds.length ? ds.slice(0, 4).join("، ") + (ds.length > 4 ? " +" + (ds.length - 4) : "") : "—"}</div>
+        <div className="min-w-0 self-center">{L("المسؤول")}
           {data.isMgr ? (
             <select className={"crm-quiet w-full !text-[13px] " + (r.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label="المسؤول" value={r.assignee || ""}
               onChange={async (e) => { const x = await assignClient(data, r.clientId, e.target.value || null, r.id); toast(x.name ? "تم الإسناد إلى " + x.name : "أصبح غير مسند"); }}>
@@ -107,11 +109,11 @@ export default function RequestsPage() {
             </select>
           ) : <span className="text-[13.5px]">{r.assignee ? nameOf(data, r.assignee) : "غير مسند"}</span>}
         </div>
-        <div className="min-w-0 self-center text-[13px]">
+        <div className="min-w-0 self-center text-[13px]">{L("آخر تحديث")}
           {last ? <><b className="font-semibold">{lbl(last.type)}</b>{last.text ? <span className="block truncate text-[var(--crm-ink-3)]" title={last.text}>{last.text}</span> : null}</> : <span className="text-[var(--crm-ink-3)]">لا يوجد تحديث</span>}
         </div>
-        <div className="self-center text-[12.5px] text-[var(--crm-ink-2)]">{last ? <>{ageDays(last.at)}<span className="block text-[11.5px] text-[var(--crm-ink-3)]">{fmtStamp(last.at)}</span></> : "—"}</div>
-        <div className="sticky left-0 flex items-center justify-end gap-1 self-center bg-inherit">
+        <div className="min-w-0 self-center text-[12.5px] text-[var(--crm-ink-2)]">{L("متى")}{last ? <>{ageDays(last.at)}<span className="block text-[11.5px] text-[var(--crm-ink-3)]">{fmtStamp(last.at)}</span></> : "—"}</div>
+        <div className="absolute left-3 top-3 flex items-center justify-end gap-1 xl:static xl:self-center">
           {needsSaleInfo(r) ? (
             <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: st })}>البيع</button>
           ) : mc ? (
@@ -225,8 +227,8 @@ export default function RequestsPage() {
           ];
         });
         return body.length ? (
-          <div className="crm-card overflow-x-auto"><div className="min-w-[1010px]">
-            <div className={"crm-head grid gap-3 " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
+          <div className="crm-card overflow-hidden"><div>
+            <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
             {body}
           </div>
           </div>
