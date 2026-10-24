@@ -39,30 +39,35 @@ export function TransferClients({ onClose }: { onClose: () => void }) {
   // Oldest assignments first, so the receiver gets the ones waiting longest.
   const moving = [...pool].sort((a, b) => String(a.assignedAt || a.createdAt).localeCompare(String(b.assignedAt || b.createdAt))).slice(0, n);
   const ids = new Set(moving.map((c) => c.id));
-  const reqs = withReqs ? data.requests.filter((r) => r.clientId && ids.has(r.clientId) && (OPEN_STAGES as readonly string[]).includes(r.status || "جديد") && r.assignee !== to) : [];
-  const tasks = withTasks ? data.tasks.filter((t) => !t.done && t.clientId && ids.has(t.clientId) && t.assignee !== to) : [];
+  // «to» = RR: spread the clients equally over the other active employees (a request and its tasks follow the client).
+  const RR = "__rr";
+  const team = members(data).filter((id) => id !== from);
+  const dest = new Map<string, string>(moving.map((c, i) => [c.id, to === RR ? team[i % Math.max(1, team.length)] : to]));
+  const reqs = withReqs ? data.requests.filter((r) => r.clientId && ids.has(r.clientId) && (OPEN_STAGES as readonly string[]).includes(r.status || "جديد") && r.assignee !== dest.get(r.clientId)) : [];
+  const tasks = withTasks ? data.tasks.filter((t) => !t.done && t.clientId && ids.has(t.clientId) && t.assignee !== dest.get(t.clientId)) : [];
 
   async function run() {
     assertWritable();
     if (!from || !to || from === to) return toast("اختر موظفاً للتحويل منه وموظفاً آخر للتحويل إليه");
     if (!moving.length) return toast("لا يوجد عملاء بهذه الاختيارات");
+    if (to === RR && !team.length) return toast("لا يوجد موظفون آخرون للتوزيع عليهم");
     setBusy(true);
     try {
       const at = nowStamp();
       const ops: [string, string, Record<string, unknown>][] = [
         ...moving.map((c) => ["clients", c.id, {
-          assignee: to, assignedAt: at, assignedBy: data.uid, unseen: to !== data.uid, escalatedFrom: null, updatedAt: at,
-          log: [{ at, byId: data.uid, type: "تحويل", text: "حُوّل من " + nameOf(data, c.assignee) + " إلى " + nameOf(data, to) }, ...(c.log || [])].slice(0, 80),
+          assignee: dest.get(c.id), assignedAt: at, assignedBy: data.uid, unseen: dest.get(c.id) !== data.uid, escalatedFrom: null, updatedAt: at,
+          log: [{ at, byId: data.uid, type: "تحويل", text: "حُوّل من " + nameOf(data, c.assignee) + " إلى " + nameOf(data, dest.get(c.id)) }, ...(c.log || [])].slice(0, 80),
         }] as [string, string, Record<string, unknown>]),
-        ...reqs.map((r) => ["requests", r.id, { assignee: to, updatedAt: at }] as [string, string, Record<string, unknown>]),
-        ...tasks.map((t) => ["tasks", t.id, { assignee: to, seen: to === data.uid, updatedAt: at }] as [string, string, Record<string, unknown>]),
+        ...reqs.map((r) => ["requests", r.id, { assignee: dest.get(r.clientId), updatedAt: at }] as [string, string, Record<string, unknown>]),
+        ...tasks.map((t) => ["tasks", t.id, { assignee: dest.get(t.clientId!), seen: dest.get(t.clientId!) === data.uid, updatedAt: at }] as [string, string, Record<string, unknown>]),
       ];
       for (let k = 0; k < ops.length; k += 400) {
         const b = writeBatch(db);
         ops.slice(k, k + 400).forEach(([col, id, patch]) => b.update(doc(db, col, id), patch));
         await b.commit();
       }
-      toast("حُوّل " + moving.length + " عميل إلى " + nameOf(data, to) + (reqs.length ? " مع " + reqs.length + " طلب" : "") + (tasks.length ? " و" + tasks.length + " مهمة" : ""));
+      toast("حُوّل " + moving.length + " عميل إلى " + (to === RR ? "الفريق بالتساوي" : nameOf(data, to)) + (reqs.length ? " مع " + reqs.length + " طلب" : "") + (tasks.length ? " و" + tasks.length + " مهمة" : ""));
       onClose();
     } catch {
       toast("تعذّر التحويل، يرجى المحاولة مجدداً");
@@ -91,6 +96,7 @@ export function TransferClients({ onClose }: { onClose: () => void }) {
           <label>إلى</label>
           <select value={to} onChange={(e) => setTo(e.target.value)}>
             <option value="">— اختر —</option>
+            <option value={RR}>توزيع بالتساوي على الفريق</option>
             {people.filter((id) => id !== from).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
           </select>
         </div>
@@ -114,7 +120,7 @@ export function TransferClients({ onClose }: { onClose: () => void }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="crm-btn primary" disabled={busy || !from || !to || !moving.length} onClick={run}>
-          {busy ? "جارٍ التحويل…" : "تحويل " + moving.length + " عميل" + (to ? " إلى " + nameOf(data, to) : "")}
+          {busy ? "جارٍ التحويل…" : "تحويل " + moving.length + " عميل" + (to ? " إلى " + (to === RR ? "الفريق بالتساوي" : nameOf(data, to)) : "")}
         </button>
         {from && to && moving.length > 0 && <span className="crm-hint">{reqs.length ? reqs.length + " طلب" : "بدون طلبات"} · {tasks.length ? tasks.length + " مهمة" : "بدون مهام"} — يُسجَّل التحويل في سجل كل عميل، ويظهر للمستلم كعميل جديد.</span>}
       </div>
