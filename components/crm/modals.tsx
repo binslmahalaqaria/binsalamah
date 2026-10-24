@@ -100,14 +100,17 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
   const [at, setAt] = useState(v?.at || c?.visitAt || "");
   const [pid, setPid] = useState(v?.propertyId || propertyId || c?.visitProperty || sentProp || ms[0]?.id || "");
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
   if (!r || !c) return null;
   return (
     <ModalFrame title={(v ? "تأجيل المعاينة: " : "موعد معاينة: ") + c.name} onClose={closeModal} width={480}
       footer={
         <>
           <div className="flex gap-2">
-            <button type="button" className="crm-btn primary" onClick={async () => {
+            <button type="button" className="crm-btn primary" disabled={saving} onClick={async () => {
               if (!at) return toast("حدد التاريخ والوقت");
+              if (saving) return;
+              setSaving(true);
               if (v) await postponeViewing(data, v, at, note.trim());
               else await scheduleViewing(data, r.id, at, pid || null, note.trim());
               toast((v ? "أُجّلت المعاينة إلى " : "تم حفظ موعد المعاينة ") + fmtVisit(at));
@@ -129,7 +132,7 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
         )}
         <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} placeholder={v ? "مثال: العميل مسافر" : "مثال: سيحضر مع زوجته"} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      <p className="crm-hint mt-2">تُحفظ في سجل المعاينات، وقبل الموعد بيوم تظهر في لوحتك لتأكيدها مع العميل، وينتقل الطلب إلى مرحلة &quot;معاينة&quot;.</p>
+      <p className="crm-hint mt-2">تُحفظ في سجل المعاينات، وقبل الموعد بيوم تظهر في لوحتك لتأكيدها مع العميل.</p>
     </ModalFrame>
   );
 }
