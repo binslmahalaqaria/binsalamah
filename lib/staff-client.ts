@@ -97,6 +97,20 @@ export async function createStaffAccount(input: {
   return { uid };
 }
 
+/** Deletes a staff member for good: the `staff` doc and their login in Firebase Auth (via /api/staff, owner only). */
+export async function deleteStaffAccount(id: string): Promise<void> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error("سجّل الدخول من جديد ثم أعد المحاولة.");
+  const res = await fetch("/api/staff", { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ uid: id }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const m = String(data.error || "");
+    throw new Error(/service account|credential|GOOGLE_APPLICATION|ENOENT|client_email|private_key|JSON/i.test(m)
+      ? "الحذف الكامل يحتاج مفتاح خدمة Firebase على الخادم (FIREBASE_SERVICE_ACCOUNT_KEY في Vercel)."
+      : m || "تعذّر الحذف.");
+  }
+}
+
 /**
  * Emails the staff member a Firebase link to choose a new password (passwords are never
  * readable, so this is how a forgotten one is replaced). The email is in Arabic.

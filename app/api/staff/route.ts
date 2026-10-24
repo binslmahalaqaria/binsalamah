@@ -121,6 +121,42 @@ async function createFirebaseUser(input: {
   return data.localId as string;
 }
 
+/** Deletes the Firebase Auth user (so the email is free again) via the Identity Platform REST API. */
+async function deleteFirebaseUser(uid: string): Promise<void> {
+  const accessToken = await getGoogleAccessToken(["https://www.googleapis.com/auth/identitytoolkit"]);
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ localId: uid }),
+  });
+  const data = await res.json().catch(() => ({}));
+  // USER_NOT_FOUND = already gone from Auth: still remove the staff doc.
+  if (!res.ok && data.error?.message !== "USER_NOT_FOUND") throw new Error(data.error?.message ?? "Failed to delete the login");
+}
+
+/** Removes a staff member completely: their login (email) in Firebase Auth and their `staff` doc. Admin only. */
+export async function DELETE(req: NextRequest) {
+  const authHeader = req.headers.get("authorization") ?? "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
+  if (!idToken) return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+  let callerUid: string;
+  try { callerUid = await verifyFirebaseIdToken(idToken); } catch { return NextResponse.json({ error: "Invalid auth token" }, { status: 401 }); }
+  const db = getFirestore(adminApp);
+  const callerDoc = await db.collection("staff").doc(callerUid).get();
+  if (!callerDoc.exists || callerDoc.data()?.role !== "admin" || !callerDoc.data()?.active) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const body = await req.json().catch(() => null);
+  const uid = body?.uid;
+  if (typeof uid !== "string" || !uid) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  if (uid === callerUid) return NextResponse.json({ error: "لا يمكنك حذف حسابك أنت" }, { status: 400 });
+  try {
+    await deleteFirebaseUser(uid);
+    await db.collection("staff").doc(uid).delete();
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to delete staff" }, { status: 400 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization") ?? "";
   const idToken = authHeader.startsWith("Bearer ")

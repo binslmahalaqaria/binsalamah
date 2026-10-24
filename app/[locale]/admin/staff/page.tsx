@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
-import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink } from "@/lib/staff-client";
+import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink, deleteStaffAccount } from "@/lib/staff-client";
 import type { Staff, StaffRole } from "@/lib/types";
 
 function Icon({ path, className }: { path: string; className?: string }) {
@@ -26,6 +26,7 @@ const ICONS = {
   plus: "M12 5v14M5 12h14",
   lock: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6-4V8a6 6 0 1 0-12 0v3m-1 0h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z",
   power: "M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0",
+  trash: "M4 7h16M10 11v6m4-6v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3",
   key: "M15.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM12 11v10m0-4h3m-3 2.5h2",
 };
 
@@ -57,6 +58,7 @@ export default function AdminStaffPage() {
   const [resetMsg, setResetMsg] = useState<{ id: string; text: string } | null>(null);
   /** Two clicks: the first asks to confirm, the second emails the reset link. */
   const [resetAsk, setResetAsk] = useState<string | null>(null);
+  const [delAsk, setDelAsk] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function reload() {
@@ -246,6 +248,21 @@ export default function AdminStaffPage() {
                       >
                         <Icon path={ICONS.power} className="h-4 w-4" />
                       </button>
+                      {s.id !== user?.uid && (
+                        <button
+                          onClick={async () => {
+                            if (delAsk !== s.id) { setDelAsk(s.id); setResetMsg({ id: s.id, text: "اضغط مرة أخرى للحذف النهائي: يُحذف الموظف وإيميله من النظام ومن Firebase" }); return; }
+                            setDelAsk(null);
+                            try { await deleteStaffAccount(s.id); setResetMsg(null); reload(); }
+                            catch (e) { setResetMsg({ id: s.id, text: e instanceof Error ? e.message : "تعذّر الحذف." }); }
+                          }}
+                          title="حذف الموظف نهائياً"
+                          aria-label="حذف الموظف نهائياً"
+                          className={"flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-red-50 hover:text-red-600 " + (delAsk === s.id ? "bg-red-50 text-red-600" : "text-navy/50")}
+                        >
+                          <Icon path={ICONS.trash} className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
