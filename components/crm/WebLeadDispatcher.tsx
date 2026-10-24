@@ -72,7 +72,10 @@ export function WebLeadDispatcher() {
     const active = d.staff.filter((s) => s.active);
     // Rotation: the order set in Settings (التوزيع التلقائي), else every active sales employee.
     const order = (d.rr.order || []).filter((id) => active.some((s) => s.id === id));
-    const team = order.length ? order : active.filter((s) => s.role === "sales").sort((a, b) => (a.created_at || 0) - (b.created_at || 0)).map((s) => s.id);
+    const byAge = (x: typeof active) => x.sort((a, b) => (a.created_at || 0) - (b.created_at || 0)).map((s) => s.id);
+    const sales = byAge(active.filter((s) => s.role === "sales"));
+    // No sales team yet: the request goes to the manager/owner so it never sits unassigned and out of sight.
+    const team = order.length ? order : sales.length ? sales : byAge(active.filter((s) => s.role === "admin" || s.role === "manager"));
     const phone = intl(l.phone);
     const existing = phone ? d.clients.find((c) => intl(c.phone) === phone) : undefined;
     const keep = existing?.assignee && active.some((s) => s.id === existing.assignee) ? existing.assignee : null;

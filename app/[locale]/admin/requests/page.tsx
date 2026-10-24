@@ -87,7 +87,7 @@ export default function RequestsPage() {
             <TempPill t={c?.temp} />
             {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <span className="num">{c.phone}</span>}</div>
+          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}سُجّل {fmtStamp(r.createdAt)}</div>
         </div>
         <div className="max-xl:col-span-2 max-xl:row-start-2"><NeedLine r={r} /></div>
         <div className="max-xl:col-start-2 max-xl:row-start-1 self-start xl:self-center">
@@ -131,7 +131,7 @@ export default function RequestsPage() {
           <div className="rounded-lg bg-[var(--crm-surface-2)] px-2 py-1.5"><NextStep r={r} /></div>
           {data.isMgr && <div className="muted text-xs">{r.assignee ? nameOf(data, r.assignee) : "غير مسند"}</div>}
           <CallLine c={c} />
-          <div className="muted text-[11.5px]">أُضيف الطلب {ageDays(r.createdAt)}</div>
+          <div className="muted text-[11.5px]">سُجّل {fmtStamp(r.createdAt)}</div>
         </div>
         {needsSaleInfo(r) && <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: r.status })}>أكمل بيانات البيع</button>}
         <div className="grid grid-cols-[30px_1fr_auto_30px] items-center gap-1.5 border-t border-[var(--crm-line)] pt-2">
