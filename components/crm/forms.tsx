@@ -69,7 +69,7 @@ function MemberSelect({ value, onChange, lock, auto, owner }: { value: string | 
     <>
       <select value={value || ""} disabled={lock} onChange={(e) => onChange(e.target.value)}>
         {auto && owner && <option value={AUTO}>مسؤول العميل: {nameOf(data, owner)}</option>}
-        {auto && !owner && upNext && <option value={AUTO}>تلقائي بالدور (التالي: {nameOf(data, upNext)})</option>}
+        {auto && !owner && <option value={AUTO}>{upNext ? "تلقائي بالدور (التالي: " + nameOf(data, upNext) + ")" : "تلقائي بالدور"}</option>}
         {data.isMgr && <option value="">غير مسند</option>}
         {members(data).map((id) => (
           <option key={id} value={id}>{nameOf(data, id)}{id === data.uid ? " (أنا)" : ""}</option>
@@ -196,7 +196,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     temp: s(presetClient?.temp || ""),
     requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
     source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes), clientName: "",
-    status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && presetClient?.assignee ? presetClient.assignee : !rec && data.isMgr && data.rr.on ? AUTO : data.uid)),
+    status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && presetClient?.assignee ? presetClient.assignee : !rec && data.isMgr ? AUTO : data.uid)),
     propertyId: s(base.propertyId), unit: s(base.unit), price: s(base.price), commissionPct: s(base.commissionPct ?? 2.5),
   });
   const [busy, setBusy] = useState(false);
@@ -225,8 +225,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       const owner0 = !rec && f.clientId ? clientById(data, f.clientId)?.assignee || null : null;
       const owner = owner0 && data.staff.some((x) => x.id === owner0 && x.active) ? owner0 : null;
       const autoTo = data.isMgr && f.assignee === AUTO && !owner ? await nextAssignee(data) : null;
-      if (f.assignee === AUTO && !owner && !autoTo) return toast("لا يوجد موظفون نشطون في التوزيع التلقائي — اختر المسؤول يدوياً");
-      let pick = data.isMgr ? (f.assignee === AUTO ? owner || autoTo : f.assignee || null) : rec ? rec.assignee : data.uid;
+      let pick = data.isMgr ? (f.assignee === AUTO ? owner || autoTo || data.uid || null : f.assignee || null) : rec ? rec.assignee : data.uid;
       // Choosing someone else for an existing client's new request moves the client (and their open requests) too — ask first.
       let moveClient = false;
       if (!rec && owner && data.isMgr && pick && pick !== owner) {
@@ -379,7 +378,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         </More>
         <Sec>المرحلة والمسؤول</Sec>
         <Field label="المرحلة"><Select value={f.status} onChange={(v) => set("status", v)} options={REQ.filter((v) => can(data, "recordDeals") || !SOLD_ST.includes(v) || v === rec?.status).map((v) => [v, lbl(v)] as [string, string])} /></Field>
-        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr && (data.rr.on || !!ownerNow)} owner={ownerNow} /></Field>
+        <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr} owner={ownerNow} /></Field>
         <More title="بيانات البيع (عند العربون أو البيع)" open={!!f.propertyId}>
           <Field label="العقار"><Select value={f.propertyId} onChange={(v) => set("propertyId", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
           <Field label="الوحدة">

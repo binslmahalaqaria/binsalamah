@@ -476,11 +476,13 @@ export async function nextAssignee(d: CrmData): Promise<string | null> {
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const rr = (snap.exists() ? snap.data().rr : null) as { on?: boolean; order?: string[]; last?: string | null } | null;
-    const order = (rr?.order || []).filter((id) => d.staff.some((s) => s.id === id && s.active));
-    if (!rr?.on || !order.length) return null;
-    const i = rr.last ? order.indexOf(rr.last) : -1;
+    // The order set in Settings; without one, every active sales employee in turn (same as website requests).
+    const set = (rr?.order || []).filter((id) => d.staff.some((s) => s.id === id && s.active));
+    const order = set.length ? set : d.staff.filter((s) => s.active && s.role === "sales").sort((a, b) => (a.created_at || 0) - (b.created_at || 0)).map((s) => s.id);
+    if (!order.length) return null;
+    const i = rr?.last ? order.indexOf(rr.last) : -1;
     const next = order[(i + 1) % order.length];
-    tx.set(ref, { rr: { ...rr, last: next } }, { merge: true });
+    tx.set(ref, { rr: { on: false, order: [], ...(rr || {}), last: next } }, { merge: true });
     return next;
   });
 }
