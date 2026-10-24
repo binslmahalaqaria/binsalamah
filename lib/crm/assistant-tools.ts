@@ -392,7 +392,7 @@ export function buildTools(): Tool[] {
             }
             cid = await createClient({
               name: str(i.new_client_name), phone: i.new_client_phone ? str(i.new_client_phone) : null, status: "نشط",
-              temp: p.priority === "عاجلة" ? "ساخن" : "دافئ", nextCall: today(), log: [], source: i.source || null, assignee: m || d.uid,
+              temp: null, nextCall: today(), log: [], source: i.source || null, assignee: m || d.uid,
               notes: null, visitAt: null, createdAt: nowStamp(), ...p,
             });
             ctx.act("أضاف عميل: " + str(i.new_client_name), "client", cid);

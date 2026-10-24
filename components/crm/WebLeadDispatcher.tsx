@@ -98,7 +98,7 @@ export function WebLeadDispatcher() {
         clientId = cref.id;
         claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
-          name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: "دافئ", status: "نشط",
+          name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: null, status: "نشط",
           nextCall: today(), source: "الموقع", assignee: to, assignedAt: now, unseen: !!to,
           log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }],
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),

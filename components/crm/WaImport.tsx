@@ -73,7 +73,7 @@ export function WaImport({ sources, onClose }: { sources: WaSource[]; onClose: (
           batch.set(ref, {
             name: c.name || localPhone(c.phone), phone: localPhone(c.phone), source,
             assignee: who, assignedAt: who ? nowStamp() : null, assignedBy: who ? data.uid : null, unseen: !!who && who !== data.uid,
-            temp: "دافئ", status: "نشط", nextCall: call === "today" ? today() : null, visitAt: null, visitProperty: null, visitConfirmed: false,
+            temp: null, status: "نشط", nextCall: call === "today" ? today() : null, visitAt: null, visitProperty: null, visitConfirmed: false,
             notes: c.last ? "آخر رسالة على واتساب (" + d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear() + "): " + c.last.slice(0, 500) : null,
             log: [], createdAt: nowStamp(), updatedAt: nowStamp(),
           });

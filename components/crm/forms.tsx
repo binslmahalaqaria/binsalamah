@@ -89,7 +89,7 @@ export function ClientForm({ id }: { id?: string }) {
   const { f, set } = useForm({
     name: s(rec?.name), phone: s(rec?.phone), source: s(rec?.source),
     assignee: rec ? s(rec.assignee) : data.isMgr && data.viewAs && data.viewAs !== "none" ? data.viewAs : data.uid,
-    temp: rec?.temp || "دافئ", status: rec?.status || "نشط", nextCall: rec ? s(rec.nextCall) : today(),
+    temp: rec?.temp || "", status: rec?.status || "نشط", nextCall: rec ? s(rec.nextCall) : today(),
     visitAt: s(rec?.visitAt), visitProperty: s(rec?.visitProperty), notes: s(rec?.notes),
   });
   const [busy, setBusy] = useState(false);
@@ -105,7 +105,7 @@ export function ClientForm({ id }: { id?: string }) {
       const body: Partial<Client> = {
         name: f.name.trim(), phone: f.phone.trim() || null, source: f.source || null,
         assignee: data.isMgr ? f.assignee || null : rec ? rec.assignee : data.uid,
-        temp: f.temp, status: f.status, nextCall: f.nextCall || null,
+        temp: f.temp || null, status: f.status, nextCall: f.nextCall || null,
         visitAt: f.visitAt || null, visitProperty: f.visitProperty || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
       };
       if (body.assignee && body.assignee !== rec?.assignee) {
@@ -161,7 +161,7 @@ export function ClientForm({ id }: { id?: string }) {
         <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={withCurrent(data.sources, [f.source])} blank="—" /></Field>
         <Field label="المسؤول عن العميل"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} /></Field>
         <Sec>المتابعة</Sec>
-        <Field label="درجة الاهتمام"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} /></Field>
+        <Field label="درجة الاهتمام"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} blank="لم يُحدد" /></Field>
         <Field label="الحالة"><Select value={f.status} onChange={(v) => set("status", v)} options={CSTATUS} /></Field>
         <Field label="موعد الاتصال القادم"><input type="date" value={f.nextCall} onChange={(e) => set("nextCall", e.target.value)} /></Field>
         <Field label="ملاحظات عن العميل" full hint="متطلبات العميل (نوع العقار، الحي، الميزانية…) تُسجَّل في طلبه.">
@@ -193,7 +193,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     zones: zonesFor(base.zones ?? presetClient?.zones, splitList(base.districts ?? presetClient?.districts)),
     payment: s(base.payment ?? presetClient?.payment), priority: base.priority || "عادية",
     // The client's interest level (ساخن/دافئ/بارد) lives on the client; set here too so it is at hand with the request.
-    temp: s(presetClient?.temp || "دافئ"),
+    temp: s(presetClient?.temp || ""),
     requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
     source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes), clientName: "",
     status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && presetClient?.assignee ? presetClient.assignee : !rec && data.isMgr && data.rr.on ? AUTO : data.uid)),
@@ -267,7 +267,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         const dup = f.newPhone && findDup(data, f.newPhone);
         if (dup) return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
         body.clientId = await createClient({
-          name: f.newName.trim(), phone: f.newPhone.trim() || null, temp: f.temp || "دافئ", status: "نشط",
+          name: f.newName.trim(), phone: f.newPhone.trim() || null, temp: f.temp || null, status: "نشط",
           nextCall: today(), log: [], source: body.source || null, assignee: body.assignee || data.uid,
           createdAt: nowStamp(), updatedAt: nowStamp(), ...demand,
         });
@@ -278,7 +278,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
           ? { status: "نشط", nextCall: cc.nextCall || today(), lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
               log: [{ at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه", call: true }, ...(cc.log || [])].slice(0, 80) }
           : {};
-        await write("clients", body.clientId, { ...demand, ...revive, temp: f.temp || cc?.temp || "دافئ", updatedAt: nowStamp() }, "update");
+        await write("clients", body.clientId, { ...demand, ...revive, temp: f.temp || cc?.temp || null, updatedAt: nowStamp() }, "update");
       } else if (f.temp && f.temp !== clientById(data, body.clientId)?.temp) {
         await write("clients", body.clientId, { temp: f.temp, updatedAt: nowStamp() }, "update");
       }
@@ -366,7 +366,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         </Field>
         <Field label="طريقة الدفع"><Select value={f.payment} onChange={(v) => set("payment", v)} options={PAY} blank="—" /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
-        <Field label="درجة اهتمام العميل"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} /></Field>
+        <Field label="درجة اهتمام العميل"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} blank="لم يُحدد" /></Field>
         <Field label="تفاصيل الطلب" full>
           <textarea rows={3} value={f.requirements} placeholder="مثال: واجهة شمالية، قريب من المدارس، جاهز للسكن…" onChange={(e) => set("requirements", e.target.value)} />
         </Field>

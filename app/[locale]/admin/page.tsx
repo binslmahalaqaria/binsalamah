@@ -26,7 +26,7 @@ import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
 
-const tempRank = (c?: Client | null) => TEMPS.indexOf((c?.temp || "دافئ") as never);
+const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
 
 function Section({ n, title, count, hint, children, open: open0 = true }: { n: number; title: string; count: number; hint?: string; children: ReactNode; open?: boolean }) {

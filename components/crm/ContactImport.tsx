@@ -165,7 +165,7 @@ export function ContactImport({ onClose }: { onClose: () => void }) {
           claimPhone(batch, r.phone, ref.id);
           batch.set(ref, {
             // Number only (client's choice): the employee records the name and request when they call.
-            name: r.phone, phone: r.phone, source: source || null, status: TO_CONTACT, temp: "دافئ",
+            name: r.phone, phone: r.phone, source: source || null, status: TO_CONTACT, temp: null,
             assignee: who, assignedAt: who ? nowStamp() : null, assignedBy: who ? data.uid : null, unseen: !!who && who !== data.uid,
             nextCall: null, visitAt: null, visitProperty: null, visitConfirmed: false, notes: null,
             log: [], createdAt: nowStamp(), updatedAt: nowStamp(),

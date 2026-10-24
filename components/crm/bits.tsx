@@ -43,7 +43,7 @@ export function ClientChips({ c }: { c: Client }) {
   );
 }
 
-export const TempPill = ({ t }: { t: string | null | undefined }) => <Pill tone={TEMP_TONE[t || ""] || "muted"}>{t}</Pill>;
+export const TempPill = ({ t }: { t: string | null | undefined }) => <Pill tone={TEMP_TONE[t || ""] || "muted"}>{t || "لم يُحدد"}</Pill>;
 export const UpdPill = ({ c }: { c: Client }) => (c.lastUpdate ? <Pill tone={UPD_TONE[c.lastUpdate] || "muted"}>{lbl(c.lastUpdate)}</Pill> : null);
 export const StagePill = ({ s }: { s: string | null | undefined }) => <Pill tone={REQ_TONE[s || "جديد"]}>{lbl(s || "جديد")}</Pill>;
 

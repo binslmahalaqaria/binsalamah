@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { can, clientById, journey, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
-import { confirmVisit, deleteRequest, postpone, write } from "@/lib/crm/actions";
+import { confirmVisit, deleteRequest, postpone, setTemp, write } from "@/lib/crm/actions";
 import { isPreview } from "@/lib/crm/preview";
 import { fmtStamp, fmtVisit, money, nowStamp, relDay, today } from "@/lib/crm/util";
 import { Chip, ContactIcons, Empty, Icon, Kebab, Pill } from "./ui";
@@ -54,8 +54,9 @@ export function ClientDrawer() {
               <h2 className="mb-1 text-[19px]">{c.name}</h2>
               <div className="flex flex-wrap gap-1.5">
                 {/* Interest level: one tap to change (ساخن / دافئ / بارد). */}
-                <select aria-label="درجة الاهتمام" className="crm-quiet !py-0 !text-[12.5px] font-semibold" value={c.temp || "دافئ"}
-                  onChange={async (e) => { await write("clients", c.id, { temp: e.target.value, updatedAt: nowStamp() }, "update"); toast("درجة الاهتمام: " + e.target.value); }}>
+                <select aria-label="درجة الاهتمام" className="crm-quiet !py-0 !text-[12.5px] font-semibold" value={c.temp || ""}
+                  onChange={async (e) => { await setTemp(data, c, e.target.value); toast("درجة الاهتمام: " + (e.target.value || "لم يُحدد")); }}>
+                  <option value="">لم يُحدد</option>
                   {TEMPS.map((x) => <option key={x}>{x}</option>)}
                 </select>
                 <Pill tone={(c.status || "نشط") === "نشط" ? "ok" : "muted"}>{c.status || "نشط"}</Pill>

@@ -141,7 +141,7 @@ export function dueCalls(d: CrmData) {
     .sort(
       (a, b) =>
         (a.nextCall as string).localeCompare(b.nextCall as string) ||
-        TEMPS.indexOf(a.temp as never) - TEMPS.indexOf(b.temp as never)
+        (TEMPS.indexOf(a.temp as never) < 0 ? 9 : TEMPS.indexOf(a.temp as never)) - (TEMPS.indexOf(b.temp as never) < 0 ? 9 : TEMPS.indexOf(b.temp as never))
     );
 }
 /* ---------- requests ---------- */

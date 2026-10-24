@@ -348,6 +348,11 @@ export async function cancelSale(d: CrmData, reqId: string, to: string, note: st
 }
 
 /** Changes a request's stage directly (callers route deposit/sale/cancel through the modals first). */
+/** Interest level (ساخن / دافئ / بارد) is set by hand only; the change is logged with who and when. */
+export async function setTemp(d: CrmData, c: Client, to: string) {
+  await write("clients", c.id, { temp: to || null, updatedAt: nowStamp(), log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "درجة الاهتمام", text: (c.temp || "لم يُحدد") + " ← " + (to || "لم يُحدد"), call: false }) }, "update");
+}
+
 export async function setReqStage(reqId: string, to: string, d?: CrmData) {
   await write("requests", reqId, { status: to, updatedAt: nowStamp() }, "update");
   // An explicit stage change is kept in the client's log (who, when, from → to).
@@ -374,7 +379,10 @@ export async function assignClient(d: CrmData, cid: string | null, uid: string |
   if (c)
     await write(
       "clients", c.id,
-      { assignee: uid, assignedAt: nowStamp(), assignedBy: d.uid, unseen: !!uid && uid !== d.uid, escalatedFrom: null, updatedAt: nowStamp() },
+      {
+        assignee: uid, assignedAt: nowStamp(), assignedBy: d.uid, unseen: !!uid && uid !== d.uid, escalatedFrom: null, updatedAt: nowStamp(),
+        ...(c.assignee !== uid ? { log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "إسناد", text: "الإسناد: " + (uid ? nameOf(d, uid) : "بدون مسؤول"), call: false }) } : {}),
+      },
       "update"
     );
   const rs = d.requests.filter((r) => (c ? r.clientId === c.id && OPEN_REQ(r) : false) || r.id === reqId);
