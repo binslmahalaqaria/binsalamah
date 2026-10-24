@@ -2,6 +2,7 @@
 # One-time setup (2026-10-24): an HTTPS Cloud Function the CRM calls when the owner deletes a staff member.
 # It checks the caller is an active owner, then deletes the person's Firebase login and staff doc.
 # (Firestore triggers can't run in me-central2, so this is called directly instead.) Run in Cloud Shell.
+main() {
 set -e
 P=binsalamah-34cb1
 FN_R=europe-west1
@@ -46,3 +47,6 @@ gcloud functions deploy staffDelete --gen2 --runtime=nodejs22 --region=$FN_R --s
   --entry-point=staffDelete --trigger-http --allow-unauthenticated --quiet
 echo ">> URL: $(gcloud functions describe staffDelete --region=$FN_R --gen2 --format='value(serviceConfig.uri)')"
 echo ">> DONE-STAFF-FN"
+}
+# Wrapped in main() so commands that read stdin cannot swallow the rest of this script under curl | bash.
+main "$@" </dev/null
