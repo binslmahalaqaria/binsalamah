@@ -110,9 +110,17 @@ export function WebLeadDispatcher() {
         // The log is newest-first; an existing client without an (active) owner gets the request's employee too.
         tx.update(doc(db, "clients", clientId), {
           updatedAt: now, nextCall: today(), status: "نشط",
-          log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }, ...(existing!.log || [])].slice(0, 80),
+          log: [{ at: now, byId: null, type: "طلب من الموقع", text: note + (p.isRequest && l.message ? " — " + l.message.replace("طلب عقاري من الموقع | ", "") : "") }, ...(existing!.log || [])].slice(0, 80),
           ...(!keep && to ? { assignee: to, assignedAt: now, unseen: true } : {}),
         });
+      }
+      // The same customer sending the form again (same number, a request still open): no second request —
+      // the open one is flagged «بانتظار تحديث الموظف» again and the new message is kept in the client's log.
+      const openReq = existing ? d.requests.find((r) => r.clientId === existing.id && !["تم البيع", "ملغي"].includes(r.status || "جديد")) : undefined;
+      if (openReq) {
+        tx.update(doc(db, "requests", openReq.id), { awaitingUpdate: true, updatedAt: now, ...(!openReq.assignee && to ? { assignee: to } : {}) });
+        tx.update(leadRef, { dispatched: { at: now, clientId, requestId: openReq.id, to: openReq.assignee || to, repeat: true }, assigned_to: openReq.assignee || to });
+        return;
       }
       const rref = doc(collection(db, "requests"));
       tx.set(rref, {
