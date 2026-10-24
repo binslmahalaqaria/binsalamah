@@ -71,7 +71,8 @@ export default function RequestsPage() {
     })) || toast("لا توجد بيانات للتصدير");
 
   // One row per request, one column per fact (client 2026-10-24): client · mobile · type · zone · districts · owner · last update · when.
-  const GRID = "grid-cols-[minmax(150px,1.3fr)_120px_minmax(90px,0.8fr)_minmax(90px,0.8fr)_minmax(120px,1.2fr)_120px_minmax(150px,1.5fr)_110px_150px]";
+  // The stage is changed from the pill under the name, so the last column is just «matches» + ⋮ and always fits.
+  const GRID = "grid-cols-[minmax(140px,1.2fr)_105px_minmax(70px,0.7fr)_minmax(80px,0.8fr)_minmax(100px,1.1fr)_110px_minmax(130px,1.4fr)_100px_76px]";
 
   const row = (r: Request) => {
     const c = clientById(data, r.clientId);
@@ -85,8 +86,11 @@ export default function RequestsPage() {
       <div key={r.id} className={"crm-row gap-3 " + GRID + (late ? " late" : "")}>
         <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, r.id)}>
           <b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
-          <div className="mt-0.5 flex flex-wrap gap-1">
-            <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>
+          <div className="mt-0.5 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+            <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !px-2 !py-0.5 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
+              onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
+              {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
+            </select>
             {r.awaitingUpdate && OPEN_REQ(r) && <Pill tone="hot">بانتظار تحديث الموظف</Pill>}
           </div>
         </div>
@@ -107,11 +111,7 @@ export default function RequestsPage() {
           {last ? <><b className="font-semibold">{lbl(last.type)}</b>{last.text ? <span className="block truncate text-[var(--crm-ink-3)]" title={last.text}>{last.text}</span> : null}</> : <span className="text-[var(--crm-ink-3)]">لا يوجد تحديث</span>}
         </div>
         <div className="self-center text-[12.5px] text-[var(--crm-ink-2)]">{last ? <>{ageDays(last.at)}<span className="block text-[11.5px] text-[var(--crm-ink-3)]">{fmtStamp(last.at)}</span></> : "—"}</div>
-        <div className="flex items-center justify-end gap-1.5 self-center">
-          <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !px-2 !py-1 !text-[12.5px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
-            onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
-            {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
-          </select>
+        <div className="sticky left-0 flex items-center justify-end gap-1 self-center bg-inherit">
           {needsSaleInfo(r) ? (
             <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: st })}>البيع</button>
           ) : mc ? (
@@ -225,7 +225,7 @@ export default function RequestsPage() {
           ];
         });
         return body.length ? (
-          <div className="crm-card overflow-x-auto"><div className="min-w-[1180px]">
+          <div className="crm-card overflow-x-auto"><div className="min-w-[1010px]">
             <div className={"crm-head grid gap-3 " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
             {body}
           </div>
