@@ -7,6 +7,7 @@
  * link a client. Unread private messages are counted per colleague.
  */
 import { useEffect, useRef, useState } from "react";
+import { clock } from "@/lib/crm/util";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, isMgrId, members, nameOf, visibleClients } from "@/lib/crm/logic";
 import { markDmRead, sendChat, sendDm, write } from "@/lib/crm/actions";
@@ -109,7 +110,7 @@ export default function ChatPage() {
                     <div className="break-words whitespace-pre-wrap">{m.text}</div>
                     {c && <button type="button" className="crm-btn ghost sm !px-0" onClick={() => openClient(c.id)}>العميل: {c.name}</button>}
                     <div className="num mt-0.5 text-end text-[11px] text-[var(--crm-ink-3)]">
-                      {String(tm.getHours()).padStart(2, "0")}:{String(tm.getMinutes()).padStart(2, "0")}
+                      {clock(tm)}
                       {mine && peer !== CHANNEL && <span className={m.read ? "text-[#53bdeb]" : ""}> {m.read ? "✓✓ قُرئت" : "✓"}</span>}
                     </div>
                   </div>

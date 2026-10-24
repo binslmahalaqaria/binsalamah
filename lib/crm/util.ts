@@ -83,7 +83,12 @@ export function ageDays(s: string | null | undefined) {
 export function fmtStamp(s: string | null | undefined) {
   if (!s) return "";
   const d = new Date(s);
-  return iso(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return iso(d) + " " + clock(d);
+}
+/** 12-hour clock with ص / م (client 2026-10-24), e.g. "4:26 م". */
+export function clock(d: Date) {
+  const h = d.getHours();
+  return (h % 12 || 12) + ":" + String(d.getMinutes()).padStart(2, "0") + " " + (h < 12 ? "ص" : "م");
 }
 
 const AR_DATE = "ar-SA-u-ca-gregory-nu-latn";

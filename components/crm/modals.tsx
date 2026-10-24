@@ -2,6 +2,7 @@
 
 /** Action modals for the sales CRM, plus the host that renders whichever one is open. */
 import { useMemo, useState } from "react";
+import { clock } from "@/lib/crm/util";
 import { useCrm } from "@/lib/crm/store";
 import { useRouter } from "@/i18n/navigation";
 import { CONTRACT, GOALK, REQ_TONE, SOLD_ST, UPD, lbl } from "@/lib/crm/constants";
@@ -482,7 +483,7 @@ function HrModal({ uid }: { uid: string }) {
 function AttEditModal({ uid, date }: { uid: string; date: string }) {
   const { data, closeModal, toast } = useCrm();
   const r = date ? (data.att[uid] || []).find((x) => x.id === date) : undefined;
-  const t = (v: string | null | undefined) => { if (!v) return ""; const d = new Date(v); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const t = (v: string | null | undefined) => (v ? clock(new Date(v)) : "");
   const [d, setD] = useState(date || today());
   const [i, setI] = useState(t(r?.in));
   const [o, setO] = useState(t(r?.out));
