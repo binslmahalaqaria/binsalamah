@@ -268,14 +268,14 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         if (dup) return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
         body.clientId = await createClient({
           name: f.newName.trim(), phone: f.newPhone.trim() || null, temp: f.temp || null, status: "نشط",
-          nextCall: today(), log: [], source: body.source || null, assignee: body.assignee || data.uid,
+          nextCall: null, log: [], source: body.source || null, assignee: body.assignee || data.uid,
           createdAt: nowStamp(), updatedAt: nowStamp(), ...demand,
         });
       } else if (!rec) {
         const cc = clientById(data, body.clientId);
         // Recording a request for a client from "للتواصل" (or the archive) makes them an active client again.
         const revive = cc && (cc.status === TO_CONTACT || cc.status === "غير مهتم")
-          ? { status: "نشط", nextCall: cc.nextCall || today(), lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
+          ? { status: "نشط", nextCall: cc.nextCall || null, lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
               log: [{ at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه", call: true }, ...(cc.log || [])].slice(0, 80) }
           : {};
         await write("clients", body.clientId, { ...demand, ...revive, temp: f.temp || cc?.temp || null, updatedAt: nowStamp() }, "update");

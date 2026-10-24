@@ -137,7 +137,7 @@ export function NextStep({ r }: { r: Request }) {
   else if (j.visit) main = <span className={cls(j.visit.ok ? "ok" : "warn")}>معاينة {fmtVisit(j.visit.at)}{j.visit.ok ? " ✓ مؤكدة" : " · بحاجة إلى تأكيد"}</span>;
   else if (j.visited) main = <span className={cls("ok")}>زار العقار {ageDays(j.visited.at)}</span>;
   else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد معاينة</span>;
-  else main = <span className={cls("muted")}>لم يُرسل إليه أي عرض بعد</span>;
+  else main = <span className={cls("warn")}>أرسل له خيارات مناسبة</span>;
   const late = c?.nextCall && c.nextCall < today();
   return (
     <div className="grid min-w-0 gap-0.5 text-[13px]">

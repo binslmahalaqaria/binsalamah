@@ -19,7 +19,7 @@ import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
 import { isPreview } from "@/lib/crm/preview";
-import { intl, nowStamp, today } from "@/lib/crm/util";
+import { intl, nowStamp } from "@/lib/crm/util";
 import { PTYPES } from "@/lib/crm/constants";
 
 interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; assigned_to?: string | null; dispatched?: unknown }
@@ -102,14 +102,14 @@ export function WebLeadDispatcher() {
         claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
           name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: null, status: "نشط",
-          nextCall: today(), source: "الموقع الإلكتروني", assignee: to, assignedAt: now, unseen: !!to,
+          nextCall: null, source: "الموقع الإلكتروني", assignee: to, assignedAt: now, unseen: !!to,
           log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }],
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
         });
       } else {
         // The log is newest-first; an existing client without an (active) owner gets the request's employee too.
         tx.update(doc(db, "clients", clientId), {
-          updatedAt: now, nextCall: today(), status: "نشط",
+          updatedAt: now, status: "نشط",
           log: [{ at: now, byId: null, type: "طلب من الموقع", text: note + (p.isRequest && l.message ? " — " + l.message.replace("طلب عقاري من الموقع | ", "") : "") }, ...(existing!.log || [])].slice(0, 80),
           ...(!keep && to ? { assignee: to, assignedAt: now, unseen: true } : {}),
         });

@@ -77,7 +77,10 @@ export default function HomeDashboard() {
   // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
   const negSt = ["تفاوض", "عربون"];
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
-  const follow = mine.filter((c) => isActive(c) && due(c) && open(c).length && !c.visitAt &&
+  // New requests have no call date (client 2026-10-24): they show here until options are sent; the follow-up
+  // call is set when options go out.
+  const needsOptions = (c: Client) => !c.nextCall && ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد");
+  const follow = mine.filter((c) => isActive(c) && open(c).length && (due(c) || needsOptions(c)) && !c.visitAt &&
     ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || "")).sort(byPrio);
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
@@ -244,7 +247,7 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={2} title="متابعات مجدولة" count={follow.length} hint="عملاء لهم طلب وحان موعد متابعتهم">
+      <Section n={2} title="طلبات تحتاج متابعة" count={follow.length} hint="طلبات جديدة: ابحث وأرسل لها خيارات — ومتابعات حان موعدها">
         {follow.map((c) => {
           const r = open(c)[0];
           return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>);
