@@ -204,6 +204,9 @@ export default function AdminStaffPage() {
                     <select
                       className="rounded-lg border border-navy/15 bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
                       value={s.role}
+                      // Your own role can't be changed here (an owner who becomes «sales» would lock themselves out of the owner tools).
+                      disabled={s.id === user?.uid}
+                      title={s.id === user?.uid ? "لا يمكنك تغيير دورك أنت" : undefined}
                       onChange={async (e) => {
                         await setStaffRole(s.id, e.target.value as StaffRole);
                         reload();
