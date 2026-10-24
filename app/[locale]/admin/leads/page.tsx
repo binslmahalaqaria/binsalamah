@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { listLeads } from "@/lib/leads";
 import { useCrm } from "@/lib/crm/store";
 import { REQ_TONE, lbl } from "@/lib/crm/constants";
-import { clientById, nameOf } from "@/lib/crm/logic";
+import { clientById, members, nameOf } from "@/lib/crm/logic";
+import { assignClient } from "@/lib/crm/actions";
 import { ageDays, fmtStamp } from "@/lib/crm/util";
 import { Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
@@ -27,7 +28,7 @@ function summary(message: string | null) {
 }
 
 export default function WebFormsPage() {
-  const { data, openClient } = useCrm();
+  const { data, openClient, toast } = useCrm();
   const [leads, setLeads] = useState<WebLead[] | null>(null);
   useEffect(() => { listLeads().then((l) => setLeads(l as WebLead[])).catch(() => setLeads([])); }, []);
 
@@ -38,7 +39,7 @@ export default function WebFormsPage() {
       <PageHeader title="نماذج الموقع" sub="ما أرسله الزوار من «سجّل طلبك» في الموقع. كل نموذج يصير طلباً في «الطلبات» تلقائياً — اضغط عليه لفتح ملف العميل." />
       {leads === null ? <Empty>جارٍ التحميل…</Empty> : !leads.length ? <Empty>لم يصل أي نموذج من الموقع بعد.</Empty> : (
         <div className="crm-card overflow-hidden">
-          <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>ما طلبه</span><span>أُرسل</span><span>المسؤول</span><span>الطلب في النظام</span></div>
+          <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>ما طلبه</span><span>تاريخ الإرسال</span><span>المسؤول</span><span>الطلب في النظام</span></div>
           {leads.map((l) => {
             const reqId = l.dispatched?.requestId;
             const r = reqId ? data.requests.find((x) => x.id === reqId) : undefined;
@@ -53,7 +54,16 @@ export default function WebFormsPage() {
                 </div>
                 <div className="col-span-2 min-w-0 text-[13px] text-[var(--crm-ink-2)] xl:col-span-1">{summary(l.message)}</div>
                 <div className="text-[12.5px] text-[var(--crm-ink-2)]">{ageDays(new Date(l.created_at).toISOString())}<span className="block text-[11.5px] text-[var(--crm-ink-3)]">{fmtStamp(new Date(l.created_at).toISOString())}</span></div>
-                <div className="text-[13px]">{r?.assignee || l.assigned_to ? nameOf(data, (r?.assignee || l.assigned_to)!) : <span className="text-[var(--crm-warn)]">غير مسند</span>}</div>
+                {/* Assigned automatically on arrival; a manager can still pick someone else here. */}
+                <div className="text-[13px]" onClick={(e) => e.stopPropagation()}>
+                  {data.isMgr && r ? (
+                    <select className={"crm-quiet w-full !text-[13px] " + (r.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label="المسؤول" value={r.assignee || ""}
+                      onChange={async (e) => { const x = await assignClient(data, r.clientId, e.target.value || null, r.id); toast(x.name ? "تم الإسناد إلى " + x.name : "أصبح غير مسند"); }}>
+                      <option value="">غير مسند</option>
+                      {members(data).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
+                    </select>
+                  ) : r?.assignee || l.assigned_to ? nameOf(data, (r?.assignee || l.assigned_to)!) : <span className="text-[var(--crm-warn)]">غير مسند</span>}
+                </div>
                 <div className="col-span-2 flex flex-wrap items-center gap-1 xl:col-span-1">
                   {r ? <>
                     <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>

@@ -88,6 +88,7 @@ export default function RequestsPage() {
       <div key={r.id} className={"crm-row relative grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 " + GRID + (late ? " late" : "")}>
         <div className="col-span-2 min-w-0 cursor-pointer pe-24 sm:col-span-4 xl:col-span-1 xl:pe-0" onClick={() => c && openClient(c.id, r.id)}>
           <b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+          <div className="text-[11.5px] text-[var(--crm-ink-3)]">سُجّل الطلب {fmtStamp(r.createdAt)}{r.source ? " · " + r.source : ""}</div>
           <div className="mt-1 flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !py-0.5 !ps-2.5 !pe-6 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
               onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
