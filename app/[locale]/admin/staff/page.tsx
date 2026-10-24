@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink, deleteStaffAccount } from "@/lib/staff-client";
+import { redistributeFrom } from "@/lib/crm/redistribute";
 import type { Staff, StaffRole } from "@/lib/types";
 
 function Icon({ path, className }: { path: string; className?: string }) {
@@ -240,7 +241,14 @@ export default function AdminStaffPage() {
                       </button>
                       <button
                         onClick={async () => {
-                          await setStaffActive(s.id, !s.active);
+                          if (s.active) {
+                            if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته ومهامه المفتوحة على بقية الفريق بالتساوي. متابعة؟")) return;
+                            await setStaffActive(s.id, false);
+                            try {
+                              const r = await redistributeFrom(s.id, user?.uid ?? null);
+                              setResetMsg({ id: s.id, text: r ? "✓ جُمّد، ووُزّع " + r.clients + " عميل و" + r.requests + " طلب و" + r.tasks + " مهمة على: " + r.to.join("، ") : "جُمّد. لا يوجد موظفون آخرون لتوزيع عملائه عليهم — أضف موظفين ثم حوّل عملاءه من صفحة العملاء." });
+                            } catch { setResetMsg({ id: s.id, text: "جُمّد الحساب، لكن تعذّر توزيع العملاء. حوّلهم من صفحة العملاء ← تحويل عملاء." }); }
+                          } else await setStaffActive(s.id, true);
                           reload();
                         }}
                         title={s.active ? t("deactivate") : t("activate")}
