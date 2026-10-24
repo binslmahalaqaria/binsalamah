@@ -56,10 +56,10 @@ export function TransferClients({ onClose }: { onClose: () => void }) {
       const at = nowStamp();
       const ops: [string, string, Record<string, unknown>][] = [
         ...moving.map((c) => ["clients", c.id, {
-          assignee: dest.get(c.id), assignedAt: at, assignedBy: data.uid, unseen: dest.get(c.id) !== data.uid, escalatedFrom: null, updatedAt: at,
+          assignee: dest.get(c.id), assignedAt: at, assignedBy: data.uid, unseen: dest.get(c.id) !== data.uid, escalatedFrom: null, updatedAt: at, freezeFrom: null,
           log: [{ at, byId: data.uid, type: "تحويل", text: "حُوّل من " + nameOf(data, c.assignee) + " إلى " + nameOf(data, dest.get(c.id)) }, ...(c.log || [])].slice(0, 80),
         }] as [string, string, Record<string, unknown>]),
-        ...reqs.map((r) => ["requests", r.id, { assignee: dest.get(r.clientId), updatedAt: at }] as [string, string, Record<string, unknown>]),
+        ...reqs.map((r) => ["requests", r.id, { assignee: dest.get(r.clientId), updatedAt: at, freezeFrom: null }] as [string, string, Record<string, unknown>]),
         ...tasks.map((t) => ["tasks", t.id, { assignee: dest.get(t.clientId!), seen: dest.get(t.clientId!) === data.uid, updatedAt: at }] as [string, string, Record<string, unknown>]),
       ];
       for (let k = 0; k < ops.length; k += 400) {

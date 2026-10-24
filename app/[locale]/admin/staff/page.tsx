@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink, deleteStaffAccount } from "@/lib/staff-client";
-import { redistributeFrom } from "@/lib/crm/redistribute";
+import { redistributeFrom, restoreTo } from "@/lib/crm/redistribute";
 import type { Staff, StaffRole } from "@/lib/types";
 
 function Icon({ path, className }: { path: string; className?: string }) {
@@ -248,13 +248,20 @@ export default function AdminStaffPage() {
                               const r = await redistributeFrom(s.id, user?.uid ?? null);
                               setResetMsg({ id: s.id, text: r ? "✓ جُمّد، ووُزّع " + r.clients + " عميل و" + r.requests + " طلب مفتوح على: " + r.to.join("، ") : "جُمّد. لا يوجد موظفون آخرون لتوزيع عملائه عليهم — أضف موظفين ثم حوّل عملاءه من صفحة العملاء." });
                             } catch { setResetMsg({ id: s.id, text: "جُمّد الحساب، لكن تعذّر توزيع العملاء. حوّلهم من صفحة العملاء ← تحويل عملاء." }); }
-                          } else await setStaffActive(s.id, true);
+                          } else {
+                            await setStaffActive(s.id, true);
+                            try {
+                              const r = await restoreTo(s.id, user?.uid ?? null);
+                              setResetMsg({ id: s.id, text: r.clients || r.requests ? "✓ فُعّل، وأُعيد إليه " + r.clients + " عميل و" + r.requests + " طلب مفتوح" : "✓ فُعّل الحساب" });
+                            } catch { setResetMsg({ id: s.id, text: "فُعّل الحساب، لكن تعذّر إرجاع عملائه. حوّلهم من صفحة العملاء ← تحويل عملاء." }); }
+                          }
                           reload();
                         }}
-                        title={s.active ? t("deactivate") : t("activate")}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-navy/50 transition-colors hover:bg-navy/5 hover:text-navy"
+                        title={s.active ? "تجميد الحساب: يوقف الدخول ويوزّع عملاءه وطلباته" : "تفعيل الحساب: يعود له ما وُزّع منه"}
+                        className={"flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-medium transition-colors " + (s.active ? "text-navy/60 hover:bg-navy/5 hover:text-navy" : "bg-gold/20 text-navy hover:bg-gold/30")}
                       >
-                        <Icon path={ICONS.power} className="h-4 w-4" />
+                        <Icon path={ICONS.power} className="h-3.5 w-3.5" />
+                        {s.active ? "تجميد" : "تفعيل"}
                       </button>
                       {s.id !== user?.uid && (
                         <button

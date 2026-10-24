@@ -380,13 +380,13 @@ export async function assignClient(d: CrmData, cid: string | null, uid: string |
     await write(
       "clients", c.id,
       {
-        assignee: uid, assignedAt: nowStamp(), assignedBy: d.uid, unseen: !!uid && uid !== d.uid, escalatedFrom: null, updatedAt: nowStamp(),
+        assignee: uid, assignedAt: nowStamp(), assignedBy: d.uid, unseen: !!uid && uid !== d.uid, escalatedFrom: null, updatedAt: nowStamp(), freezeFrom: null,
         ...(c.assignee !== uid ? { log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "إسناد", text: "الإسناد: " + (uid ? nameOf(d, uid) : "بدون مسؤول"), call: false }) } : {}),
       },
       "update"
     );
   const rs = d.requests.filter((r) => (c ? r.clientId === c.id && OPEN_REQ(r) : false) || r.id === reqId);
-  for (const r of rs) if (r.assignee !== uid) await write("requests", r.id, { assignee: uid, updatedAt: nowStamp() }, "update");
+  for (const r of rs) if (r.assignee !== uid) await write("requests", r.id, { assignee: uid, updatedAt: nowStamp(), freezeFrom: null }, "update");
   return { n: rs.length, name: uid ? nameOf(d, uid) : null };
 }
 
