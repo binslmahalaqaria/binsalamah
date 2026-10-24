@@ -93,7 +93,6 @@ export default function RequestsPage() {
               onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
               {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
             </select>
-            {r.awaitingUpdate && OPEN_REQ(r) && <Pill tone="hot">بانتظار تحديث الموظف</Pill>}
           </div>
         </div>
         <div className="min-w-0 self-center text-[13.5px]">{L("الجوال")}<span className="num">{c?.phone || "—"}</span></div>

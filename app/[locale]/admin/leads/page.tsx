@@ -57,7 +57,6 @@ export default function WebFormsPage() {
                 <div className="col-span-2 flex flex-wrap items-center gap-1 xl:col-span-1">
                   {r ? <>
                     <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>
-                    {r.awaitingUpdate && <Pill tone="hot">بانتظار التحديث</Pill>}
                   </> : reqId ? <span className="text-xs text-[var(--crm-ink-3)]">الطلب محذوف</span>
                     : <span className="text-xs text-[var(--crm-warn)]">يُنشأ طلبه خلال لحظات</span>}
                 </div>
