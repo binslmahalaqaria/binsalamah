@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { listLeads, createManualLead } from "@/lib/leads";
+import { listStaff } from "@/lib/staff-client";
 import { RequestTabs } from "@/components/crm/PageTabs";
-import type { Lead, LeadStatus } from "@/lib/types";
+import type { Lead, LeadStatus, Staff } from "@/lib/types";
 
 function Icon({ path, className }: { path: string; className?: string }) {
   return (
@@ -51,11 +52,18 @@ export default function AdminLeadsPage() {
   const tStatus = useTranslations("LeadStatus");
   const tSource = useTranslations("LeadSource");
   const [leads, setLeads] = useState<Lead[] | null>(null);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const staffById = useMemo(() => {
+    const map = new Map<string, string>();
+    staff.forEach((s) => map.set(s.id, s.name));
+    return map;
+  }, [staff]);
 
   async function reload() {
     setLeads(await listLeads());
@@ -63,6 +71,7 @@ export default function AdminLeadsPage() {
 
   useEffect(() => {
     reload();
+    listStaff().then(setStaff);
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
@@ -165,6 +174,7 @@ export default function AdminLeadsPage() {
                 <th className="px-5 py-3 text-start font-medium">{t("colCustomer")}</th>
                 <th className="px-3 py-3 text-start font-medium">{t("colSource")}</th>
                 <th className="px-3 py-3 text-start font-medium">{t("colStatus")}</th>
+                <th className="px-5 py-3 text-start font-medium">{t("colAssigned")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-navy/5">
@@ -191,6 +201,9 @@ export default function AdminLeadsPage() {
                     >
                       {tStatus(l.status)}
                     </span>
+                  </td>
+                  <td className="px-5 py-3 text-navy/70">
+                    {l.assigned_to ? staffById.get(l.assigned_to) ?? "—" : t("unassigned")}
                   </td>
                 </tr>
               ))}

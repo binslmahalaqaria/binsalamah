@@ -99,7 +99,7 @@ export function WebLeadDispatcher() {
         claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
           name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: null, status: "نشط",
-          nextCall: today(), source: "الموقع", assignee: to, assignedAt: now, unseen: !!to,
+          nextCall: today(), source: "الموقع الإلكتروني", assignee: to, assignedAt: now, unseen: !!to,
           log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }],
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
         });
@@ -113,7 +113,7 @@ export function WebLeadDispatcher() {
       }
       const rref = doc(collection(db, "requests"));
       tx.set(rref, {
-        clientId, status: "جديد", priority: "عادية", source: "الموقع", assignee: to, awaitingUpdate: true,
+        clientId, status: "جديد", priority: "عادية", source: "الموقع الإلكتروني", assignee: to, awaitingUpdate: true,
         ...(p.isRequest ? demand : { purpose: "شراء", propTypes: [], districts: null, budget: null }),
         requirements: p.isRequest ? p.requirements : l.message || null,
         notes: "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
