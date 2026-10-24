@@ -1,4 +1,5 @@
 "use client";
+import { createPortal } from "react-dom";
 
 /** Small shared building blocks for the sales CRM screens. */
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -122,7 +123,8 @@ export function Kebab({ items }: { items: (KebabItem | null | false | undefined)
         }}>
         <Icon k="more" size={18} />
       </button>
-      {pos && (
+      {/* Portalled to the CRM root (keeps its colours/fonts): inside a sticky/overflow table cell the next rows would paint over it. */}
+      {pos && typeof document !== "undefined" && createPortal(
         <div ref={menu} className="crm-kebab" role="menu" style={{ left: pos.left, top: pos.top }}>
           {list.map((it, i) =>
             it.href ? (
@@ -133,7 +135,8 @@ export function Kebab({ items }: { items: (KebabItem | null | false | undefined)
               </button>
             )
           )}
-        </div>
+        </div>,
+        (btn.current?.closest(".crm") as HTMLElement | null) || document.body
       )}
     </>
   );
