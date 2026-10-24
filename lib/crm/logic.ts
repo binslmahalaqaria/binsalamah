@@ -366,8 +366,13 @@ export function journey(d: CrmData, r: Request): Journey {
     : (r.sent || []).length
       ? { at: r.updatedAt, prop: propById(d, r.sent![r.sent!.length - 1]) }
       : null;
-  const visit = c?.visitAt
-    ? { at: c.visitAt, ok: !!c.visitConfirmed, prop: propById(d, c.visitProperty), past: c.visitAt.slice(0, 10) < today() }
+  // The visit belongs to THIS request: its open viewing. The client-level date (old data, before viewings existed)
+  // counts only when the client has no viewing records and this is their only open request.
+  const vw = d.viewings.filter((v) => v.requestId === r.id && ["مجدولة", "مؤجلة"].includes(v.status)).sort((x, y) => x.at.localeCompare(y.at))[0];
+  const legacy = !vw && c?.visitAt && !d.viewings.some((v) => v.clientId === r.clientId) && d.requests.filter((x) => x.clientId === r.clientId && OPEN_REQ(x)).length === 1;
+  const vat = vw ? vw.at : legacy ? c!.visitAt : null;
+  const visit = vat
+    ? { at: vat, ok: !!c?.visitConfirmed && c?.visitAt === vat, prop: propById(d, vw ? vw.propertyId : c!.visitProperty), past: vat.slice(0, 10) < today() }
     : null;
   const vl = log.find((l) => l.type === "زار العقار" && String(l.at) >= since);
   return { c, sent, visit, visited: vl ? { at: vl.at } : null };
