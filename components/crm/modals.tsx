@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { clock } from "@/lib/crm/util";
 import { useCrm } from "@/lib/crm/store";
 import { useRouter } from "@/i18n/navigation";
-import { CONTRACT, GOALK, REQ_TONE, SOLD_ST, UPD, lbl } from "@/lib/crm/constants";
+import { CALL_AFTER, CONTRACT, GOALK, REQ_TONE, SOLD_ST, UPD, lbl } from "@/lib/crm/constants";
 import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
@@ -48,7 +48,10 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const { data, closeModal, toast, openModal } = useCrm();
   const c = clientById(data, clientId);
   const [type, setType] = useState(t0 || "");
-  const [next, setNext] = useState(t0 ? String(UPD.find((u) => u.k === t0)?.n ?? 3) : "3");
+  // A customer with a request gets a call date only after options are sent or a visit; a new number keeps the usual retry.
+  const hasReq = !!c && data.requests.some((r) => r.clientId === c.id && !["تم البيع", "ملغي"].includes(r.status || "جديد"));
+  const defNext = (k: string) => (hasReq && !CALL_AFTER.includes(k) ? "none" : String(UPD.find((u) => u.k === k)?.n ?? (hasReq ? "none" : 3)));
+  const [next, setNext] = useState(t0 ? defNext(t0) : hasReq ? "none" : "3");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [prop, setProp] = useState(p0 || c?.interestIn || "");
@@ -75,7 +78,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={save}>حفظ التحديث</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
-      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(String(UPD.find((x) => x.k === v)?.n ?? 3)); }} />
+      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في معاينتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>

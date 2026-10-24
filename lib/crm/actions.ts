@@ -340,7 +340,7 @@ export async function cancelSale(d: CrmData, reqId: string, to: string, note: st
     if (c && c.status === "مغلق") await write("clients", c.id, { status: "نشط" }, "update");
     // Logged as a deal cancellation, not as a call (it used to count as «تم الاتصال» in the call figures).
     await applyUpdate0(
-      d, r.clientId, "إلغاء صفقة", addDays(1),
+      d, r.clientId, "إلغاء صفقة", null,
       "إلغاء " + (was === "تم البيع" ? "البيع" : "العربون") + (note ? ": " + note : ""), r.propertyId || null
     );
   }

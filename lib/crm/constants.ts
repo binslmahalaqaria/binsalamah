@@ -60,6 +60,13 @@ const CRM_DISTRICTS = [
 const norm = (d: string) => d.replace(/[إأآ]/g, "ا").replace(/s+/g, " ").trim();
 export const DISTRICTS = [...CRM_DISTRICTS, ...RIYADH_DISTRICTS.filter((d) => !CRM_DISTRICTS.some((c) => norm(c) === norm(d)))];
 
+/**
+ * Updates that schedule a follow-up call for a customer who already has a request (client 2026-10-24):
+ * options sent, or a visit to the property. Anything else on such a customer gets no call date by default.
+ * New numbers (no request yet) keep the defaults below so unanswered calls are retried.
+ */
+export const CALL_AFTER = ["تم إرسال الموقع", "تم إرسال التفاصيل", "زار العقار"];
+
 /** Client update types: default days until the next call, and an optional status change. */
 export const UPD: { k: string; n: number | "none"; status?: string }[] = [
   { k: "اتصلت عليه", n: 3 },
