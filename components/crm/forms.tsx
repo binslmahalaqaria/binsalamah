@@ -20,6 +20,7 @@ import {
   ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
+import { uploadOfferImage } from "@/lib/upload-image";
 import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
 
 type F = Record<string, unknown>;
@@ -35,7 +36,7 @@ const zonesFor = (zones: string[] | undefined, districts: string[]) =>
 function useForm<T extends F>(init: T) {
   const [f, setF] = useState<T>(init);
   const set = (k: keyof T, v: unknown) => setF((x) => ({ ...x, [k]: v }));
-  return { f, set };
+  return { f, set, setF };
 }
 
 function findDup(d: CrmData, phone: string, exceptId?: string | null) {
@@ -399,7 +400,7 @@ export function PropertyForm({ id }: { id?: string }) {
   const { data, closeModal, toast, openModal } = useCrm();
   const rec = data.props.find((p) => p.id === id);
   const r: Partial<Property> = rec || {};
-  const { f, set } = useForm({
+  const { f, set, setF } = useForm({
     title: s(r.title), type: r.type || "فيلا", purpose: r.purpose || "بيع", price: s(r.price), status: r.status || "متاح",
     district: s(r.district), area: s(r.area), bedrooms: s(r.bedrooms), bathrooms: s(r.bathrooms), floor: s(r.floor),
     priceNote: s(r.priceNote), link: s(r.link), images: (r.images || []).slice(), newImg: "",
@@ -410,6 +411,20 @@ export function PropertyForm({ id }: { id?: string }) {
   });
   const [busy, setBusy] = useState(false);
   const [waArmed, setWaArmed] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  // Photos from the phone/computer go to Firebase Storage (offers/…, public read, staff-only write).
+  const uploadFiles = async (files: FileList | null) => {
+    const list = Array.from(files || []).filter((x) => x.type.startsWith("image/"));
+    if (!list.length) return;
+    setUploading(list.length);
+    const urls: string[] = [];
+    for (const file of list) {
+      try { urls.push((await uploadOfferImage(file)).url); }
+      catch { toast("تعذّر رفع الصورة " + file.name); }
+      setUploading((n) => n - 1);
+    }
+    if (urls.length) setF((p) => ({ ...p, images: [...p.images, ...urls] }));
+  };
   const dists = useMemo(() => allDistricts(data, DISTRICTS), [data]);
 
   const setUnit = (i: number, k: keyof Unit, v: string) =>
@@ -510,11 +525,15 @@ export function PropertyForm({ id }: { id?: string }) {
               ))}
             </div>
           )}
-          <div className="flex gap-2">
-            <input className="crm-input flex-1" dir="ltr" value={f.newImg} placeholder="https://… رابط الصورة" onChange={(e) => set("newImg", e.target.value)} />
+          <div className="flex flex-wrap gap-2">
+            <label className={"crm-btn primary cursor-pointer" + (uploading ? " pointer-events-none opacity-60" : "")}>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
+              {uploading ? "جارٍ رفع " + uploading + " صورة…" : "📷 رفع صور"}
+            </label>
+            <input className="crm-input min-w-[180px] flex-1" dir="ltr" value={f.newImg} placeholder="أو الصق رابط صورة https://…" onChange={(e) => set("newImg", e.target.value)} />
             <button type="button" className="crm-btn" onClick={() => { if (f.newImg.trim()) { set("images", [...f.images, f.newImg.trim()]); set("newImg", ""); } }}>+ إضافة صورة</button>
           </div>
-          <span className="crm-hint">الصورة الأولى هي الغلاف. تُضاف الصور عبر الروابط إلى حين تفعيل تخزين الصور في Firebase.</span>
+          <span className="crm-hint">ارفع الصور من جهازك أو جوالك (تُصغَّر تلقائياً)، أو الصق رابطاً. الصورة الأولى هي الغلاف، وتنتقل الصور إلى الموقع عند «اعرضه في الموقع».</span>
         </div>
 
         <Sec>المسؤول عن العقار</Sec>
