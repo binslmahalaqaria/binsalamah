@@ -131,6 +131,10 @@ export interface Request extends Demand {
   status: string;
   assignee: string | null;
   propertyId: string | null;
+  /** Website requests: true until an employee records the first real update (opening/assigning doesn't count). */
+  awaitingUpdate?: boolean;
+  firstUpdateAt?: string | null;
+  firstUpdateBy?: string | null;
   unit: string | null;
   price: number | null;
   commissionPct: number | null;

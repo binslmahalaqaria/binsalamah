@@ -194,6 +194,11 @@ export async function reactivateClient(d: CrmData, clientId: string) {
 
 export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; reqId?: string } = {}) {
   const ok = await applyUpdate0(d, id, type, next, text, propertyId, opts);
+  // The first real update on a website request clears «بانتظار تحديث الموظف» (who and when are kept).
+  if (ok) {
+    const w = (opts.reqId && d.requests.find((x) => x.id === opts.reqId && x.awaitingUpdate)) || (!opts.reqId && d.requests.find((x) => x.clientId === id && x.awaitingUpdate && OPEN_REQ(x)));
+    if (w) await write("requests", w.id, { awaitingUpdate: false, firstUpdateAt: nowStamp(), firstUpdateBy: d.uid || null, updatedAt: nowStamp() }, "update");
+  }
   if (ok && UPD_STAGE[type]) await advanceReq(d, id, UPD_STAGE[type], opts.reqId);
   return ok;
 }
@@ -343,8 +348,12 @@ export async function cancelSale(d: CrmData, reqId: string, to: string, note: st
 }
 
 /** Changes a request's stage directly (callers route deposit/sale/cancel through the modals first). */
-export async function setReqStage(reqId: string, to: string) {
+export async function setReqStage(reqId: string, to: string, d?: CrmData) {
   await write("requests", reqId, { status: to, updatedAt: nowStamp() }, "update");
+  // An explicit stage change is kept in the client's log (who, when, from → to).
+  const r = d?.requests.find((x) => x.id === reqId);
+  const c = d && r && clientById(d, r.clientId);
+  if (d && r && c) await write("clients", c.id, { log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: (r.status || "جديد") + " ← " + to, call: false }), updatedAt: nowStamp() }, "update");
 }
 
 /** Records that a property was sent to a request's client; nudges early-stage requests forward. */
@@ -536,6 +545,9 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
 export async function scheduleViewing(d: CrmData, reqId: string, at: string, propId: string | null, note: string) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return false;
+  // Never a second open viewing for the same request and property: the existing one is moved instead.
+  const dup = d.viewings.find((x) => x.requestId === r.id && (x.propertyId || null) === (propId || null) && ["مجدولة", "مؤجلة"].includes(x.status));
+  if (dup) { if (dup.at !== at) await postponeViewing(d, dup, at, note); return true; }
   await write("viewings", null, {
     requestId: r.id, clientId: r.clientId, propertyId: propId, at, status: "مجدولة", feedback: null, followUp: null,
     assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null, by: d.uid || null,

@@ -138,6 +138,7 @@ export function NextStep({ r }: { r: Request }) {
   else if (j.visited) main = <span className={cls("ok")}>زار العقار {ageDays(j.visited.at)}</span>;
   else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد معاينة</span>;
   else main = <span className={cls("muted")}>لم يُرسل إليه أي عرض بعد</span>;
+  if (r.awaitingUpdate && OPEN_REQ(r)) main = <span className="font-semibold text-[var(--crm-danger)]">بانتظار تحديث الموظف — سجّل نتيجة التواصل</span>;
   const late = c?.nextCall && c.nextCall < today();
   return (
     <div className="grid min-w-0 gap-0.5 text-[13px]">
@@ -229,6 +230,6 @@ export function changeStage(d: CrmData, r: Request, to: string, open: (m: Modal)
   // Every move into a deposit or sale goes through its form (amount, unit, sale date, reservation).
   if (SOLD_ST.includes(to)) return open({ kind: "close", reqId: r.id, to });
   if (SOLD_ST.includes(from) && !SOLD_ST.includes(to)) return open({ kind: "cancel", reqId: r.id, to });
-  setReqStage(r.id, to).then(() => toast("انتقل الطلب إلى: " + lbl(to)));
+  setReqStage(r.id, to, d).then(() => toast("انتقل الطلب إلى: " + lbl(to)));
 }
 

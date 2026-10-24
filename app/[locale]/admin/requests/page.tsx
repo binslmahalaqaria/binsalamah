@@ -83,6 +83,7 @@ export default function RequestsPage() {
         <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, r.id)}>
           <div className="flex flex-wrap items-center gap-1.5">
             <b className="font-heading text-[15.5px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+            {r.awaitingUpdate && OPEN_REQ(r) && <Pill tone="hot">بانتظار تحديث الموظف</Pill>}
             {c?.temp && <TempPill t={c.temp} />}
             {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>

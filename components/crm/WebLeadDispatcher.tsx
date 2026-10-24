@@ -113,7 +113,7 @@ export function WebLeadDispatcher() {
       }
       const rref = doc(collection(db, "requests"));
       tx.set(rref, {
-        clientId, status: "جديد", priority: "عادية", source: "الموقع", assignee: to,
+        clientId, status: "جديد", priority: "عادية", source: "الموقع", assignee: to, awaitingUpdate: true,
         ...(p.isRequest ? demand : { purpose: "شراء", propTypes: [], districts: null, budget: null }),
         requirements: p.isRequest ? p.requirements : l.message || null,
         notes: "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
