@@ -1,15 +1,18 @@
 rules_version = '2';
 
-// Offer images are public marketing content (read is open to everyone).
-// Only authenticated staff (checked via Firestore in the app layer at
-// upload time) may upload/delete — Storage rules can't cheaply join
-// against Firestore, so this is a coarse "any signed-in user" check;
-// Firestore rules remain the source of truth for who is real staff.
+// Offer and property images are public marketing content (read is open to everyone).
+// Only an active CRM staff member may upload or delete (checked against their
+// staff/{uid} doc in Firestore — a signed-in stranger can't upload), images only, under 10 MB.
 service firebase.storage {
   match /b/{bucket}/o {
+    function isActiveStaff() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/staff/$(request.auth.uid)).data.active == true;
+    }
     match /offers/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
+      allow delete: if isActiveStaff();
+      allow create, update: if isActiveStaff()
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
