@@ -219,6 +219,9 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   async function save() {
     if (nameless && !f.clientName.trim()) return toast("اكتب اسم العميل — محفوظ بالرقم فقط");
     if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
+    // Every chosen zone needs at least one district in it (client 2026-10-24).
+    const noDist = f.zones.filter((z) => !f.districts.some((d) => zoneOf(d)?.ar === z));
+    if (noDist.length) return toast("حدّد حيّاً واحداً على الأقل في: " + noDist.join("، "));
     setBusy(true);
     try {
       // One client, one employee: a new request for an existing client follows the client's active owner — the

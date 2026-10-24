@@ -58,6 +58,8 @@ export function RequestForm({ districts }: { districts: string[] }) {
     if (!mobile) return setErr(t("reqNeedPhone"));
     // Location is required: in Riyadh at least an area (north, west, …) or a district; elsewhere the district name.
     if (riyadh ? !zone && !picked.length : !district.trim()) return setErr(t("reqNeedArea"));
+    // A zone alone isn't enough: at least one district in it (client 2026-10-24).
+    if (riyadh && !picked.length) return setErr(t("reqNeedDistrict"));
     if (city === OTHER && !otherCity.trim()) return setErr(t("reqNeedArea"));
     setErr("");
     setState("sending");

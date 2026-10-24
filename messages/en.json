@@ -408,6 +408,7 @@
     "budget": "Budget",
     "waShort": "WhatsApp",
     "reqNeedArea": "Please choose an area or district (e.g. North Riyadh)",
+    "reqNeedDistrict": "Please pick at least one district in that area",
     "reqBudgetHint": "Type your budget, e.g. 1.5 million",
     "reqPhoneLabel": "Mobile number",
     "partnersTitle": "Our partners"
