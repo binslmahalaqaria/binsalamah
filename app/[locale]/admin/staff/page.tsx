@@ -245,7 +245,7 @@ export default function AdminStaffPage() {
                       {s.id !== user?.uid && <button
                         onClick={async () => {
                           if (s.active) {
-                            if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته المفتوحة على بقية الفريق بالتساوي. متابعة؟")) return;
+                            if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته القائمة على بقية الفريق بالتساوي. متابعة؟")) return;
                             await setStaffActive(s.id, false);
                             try {
                               const r = await redistributeFrom(s.id, user?.uid ?? null);

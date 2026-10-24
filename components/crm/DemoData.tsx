@@ -168,7 +168,7 @@ export function DemoData() {
     try {
       const docs = build(data.uid);
       await commitAll(docs.map(([col, id, body]) => (b) => b.set(doc(db, col, id), body)));
-      toast("انضافت البيانات التجريبية");
+      toast("أُضيفت البيانات التجريبية");
     } catch {
       toast("تعذّرت الإضافة، تأكد من أنك المالك");
     } finally {
@@ -192,7 +192,7 @@ export function DemoData() {
       await commitAll(ops);
       // Staff docs last, in case a batch above needed them for rules.
       await Promise.all(STAFF.map((s) => deleteDoc(doc(db, "staff", s.id)).catch(() => {})));
-      toast("انمسحت البيانات التجريبية (" + ops.length + ")");
+      toast("حُذفت البيانات التجريبية (" + ops.length + ")");
     } catch {
       toast("تعذّر المسح، يرجى المحاولة مجدداً");
     } finally {

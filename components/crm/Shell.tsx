@@ -59,7 +59,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   // «الأرقام» (managers): numbers added and not contacted yet; employees work their own in «مكالمات العملاء الجدد».
   const toContact = data.clients.filter((c) => c.status === TO_CONTACT).length;
   const groups: [string, NavItem[]][] = [
-    ["", [{ href: "/admin", k: "today", label: "لوحتي", badge: due + newTasks }]],
+    ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: due + newTasks }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/proposals", "/admin/viewings"] },
       { href: "/admin/clients", k: "clients", label: "العملاء" },

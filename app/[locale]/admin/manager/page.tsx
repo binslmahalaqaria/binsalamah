@@ -175,7 +175,7 @@ export default function ManagerPage() {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <section className="crm-card grid content-start gap-2.5 p-4">
-          <h2 className="text-[15.5px]">الطلبات المفتوحة حسب المرحلة <span className="num muted text-sm">({openReqs.length})</span></h2>
+          <h2 className="text-[15.5px]">الطلبات قيد المتابعة حسب المرحلة <span className="num muted text-sm">({openReqs.length})</span></h2>
           {stageCount.map(([st, n]) => (
             <div key={st} className="grid grid-cols-[110px_1fr_32px] items-center gap-2.5 text-[13.5px]">
               <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>

@@ -233,7 +233,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       // Choosing someone else for an existing client's new request moves the client (and their open requests) too — ask first.
       let moveClient = false;
       if (!rec && owner && data.isMgr && pick && pick !== owner) {
-        if (window.confirm("هذا العميل عند " + nameOf(data, owner) + ". هل تحوّله مع كل طلباته المفتوحة إلى " + nameOf(data, pick) + "؟\n(إلغاء = يبقى الطلب عند " + nameOf(data, owner) + ")")) moveClient = true;
+        if (window.confirm("هذا العميل عند " + nameOf(data, owner) + ". هل تحوّله مع كل طلباته القائمة إلى " + nameOf(data, pick) + "؟\n(إلغاء = يبقى الطلب عند " + nameOf(data, owner) + ")")) moveClient = true;
         else pick = owner;
       }
       const demand = {

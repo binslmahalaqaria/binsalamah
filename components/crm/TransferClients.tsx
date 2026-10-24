@@ -115,7 +115,7 @@ export function TransferClients({ onClose }: { onClose: () => void }) {
         {split === "count" && <input className="!w-20" inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))} />}
       </div>
       <div className="flex flex-wrap gap-4 text-[13.5px]">
-        <label className="flex items-center gap-1.5"><input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={withReqs} onChange={(e) => setWithReqs(e.target.checked)} /> مع طلباتهم المفتوحة</label>
+        <label className="flex items-center gap-1.5"><input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={withReqs} onChange={(e) => setWithReqs(e.target.checked)} /> مع طلباتهم القائمة</label>
         <label className="flex items-center gap-1.5"><input type="checkbox" className="h-4 w-4 accent-[var(--crm-gold)]" checked={withTasks} onChange={(e) => setWithTasks(e.target.checked)} /> مع مهامهم غير المنجزة</label>
       </div>
       <div className="flex flex-wrap items-center gap-2">

@@ -33,7 +33,7 @@ export default function ContactPage() {
   const [adding, setAdding] = useState(false);
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
-  if (!data.isMgr) return <Empty>هذه الصفحة مخصصة للمدراء والمالك. أرقامك الجديدة تجدها في «لوحتي ← مكالمات العملاء الجدد».</Empty>;
+  if (!data.isMgr) return <Empty>هذه الصفحة مخصصة للمدراء والمالك. أرقامك الجديدة تجدها في «الرئيسية ← مكالمات العملاء الجدد».</Empty>;
 
   const all = visibleClients(data).filter((c) => c.status === TO_CONTACT);
   const qq = q.trim();
@@ -102,7 +102,7 @@ export default function ContactPage() {
 
   return (
     <>
-      <PageHeader title="الأرقام" sub="أرقام جديدة لم يُتصل بها بعد: أضفها ووزّعها على الفريق، ويتصل بها كل موظف من «لوحتي»"
+      <PageHeader title="الأرقام" sub="أرقام جديدة لم يُتصل بها بعد: أضفها ووزّعها على الفريق، ويتصل بها كل موظف من «الرئيسية»"
         action={
           <div className="flex flex-wrap gap-2">
             {can(data, "export") && (
@@ -157,7 +157,7 @@ export default function ContactPage() {
       ) : (
         <Empty>{all.length ? "لا توجد نتائج." : "لا يوجد عملاء للتواصل حالياً. " + (data.isMgr ? "عند استيراد العملاء القدامى يظهرون هنا ليتواصل معهم الفريق." : "")}</Empty>
       )}
-      <p className="crm-hint mt-3">يتصل كل موظف بأرقامه من «لوحتي ← مكالمات العملاء الجدد» ويسجّل النتيجة هناك. هذه الصفحة للإضافة والتوزيع والمتابعة فقط. غير المهتمين تجدهم في العملاء ← الأرشيف.</p>
+      <p className="crm-hint mt-3">يتصل كل موظف بأرقامه من «الرئيسية ← مكالمات العملاء الجدد» ويسجّل النتيجة هناك. هذه الصفحة للإضافة والتوزيع والمتابعة فقط. غير المهتمين تجدهم في العملاء ← الأرشيف.</p>
     </>
   );
 }

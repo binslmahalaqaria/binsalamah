@@ -259,7 +259,7 @@ export default function HomeDashboard() {
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="اليوم وبكرة وما فات موعده — أكّد الموعد، وسجّل النتيجة بعده">
+      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="اليوم وغداً وما فات موعده — أكّد الموعد، وسجّل النتيجة بعده">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
