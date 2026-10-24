@@ -4,12 +4,13 @@
 set -e
 P=binsalamah-34cb1
 R=me-central2
+FN_R=europe-west1
 gcloud config set project $P >/dev/null
 echo ">> enabling APIs"
 gcloud services enable cloudfunctions.googleapis.com cloudbuild.googleapis.com run.googleapis.com eventarc.googleapis.com artifactregistry.googleapis.com firebase.googleapis.com identitytoolkit.googleapis.com --quiet
 D=$(mktemp -d); cd $D
 cat > package.json <<'J'
-{ "name": "staff-login-fn", "main": "index.js", "engines": { "node": "20" },
+{ "name": "staff-login-fn", "main": "index.js", "engines": { "node": "22" },
   "dependencies": { "@google-cloud/functions-framework": "^3.4.0", "firebase-admin": "^12.7.0" } }
 J
 cat > index.js <<'J'
@@ -25,7 +26,7 @@ functions.cloudEvent("deleteStaffLogin", async (ce) => {
 });
 J
 echo ">> deploying"
-gcloud functions deploy deleteStaffLogin --gen2 --runtime=nodejs20 --region=$R --source=. \
+gcloud functions deploy deleteStaffLogin --gen2 --runtime=nodejs22 --region=$FN_R --source=. \
   --entry-point=deleteStaffLogin \
   --trigger-event-filters=type=google.cloud.firestore.document.v1.deleted \
   --trigger-event-filters=database='(default)' \
