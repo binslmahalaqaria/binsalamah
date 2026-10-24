@@ -242,11 +242,11 @@ export default function AdminStaffPage() {
                       <button
                         onClick={async () => {
                           if (s.active) {
-                            if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته ومهامه المفتوحة على بقية الفريق بالتساوي. متابعة؟")) return;
+                            if (!window.confirm("تجميد " + s.name + ": يُمنع من الدخول، وتُوزَّع كل عملائه وطلباته المفتوحة على بقية الفريق بالتساوي. متابعة؟")) return;
                             await setStaffActive(s.id, false);
                             try {
                               const r = await redistributeFrom(s.id, user?.uid ?? null);
-                              setResetMsg({ id: s.id, text: r ? "✓ جُمّد، ووُزّع " + r.clients + " عميل و" + r.requests + " طلب و" + r.tasks + " مهمة على: " + r.to.join("، ") : "جُمّد. لا يوجد موظفون آخرون لتوزيع عملائه عليهم — أضف موظفين ثم حوّل عملاءه من صفحة العملاء." });
+                              setResetMsg({ id: s.id, text: r ? "✓ جُمّد، ووُزّع " + r.clients + " عميل و" + r.requests + " طلب مفتوح على: " + r.to.join("، ") : "جُمّد. لا يوجد موظفون آخرون لتوزيع عملائه عليهم — أضف موظفين ثم حوّل عملاءه من صفحة العملاء." });
                             } catch { setResetMsg({ id: s.id, text: "جُمّد الحساب، لكن تعذّر توزيع العملاء. حوّلهم من صفحة العملاء ← تحويل عملاء." }); }
                           } else await setStaffActive(s.id, true);
                           reload();
