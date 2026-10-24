@@ -3,7 +3,7 @@
 /** Client file: contact, next step, requests with their journey, open tasks, notes, and the full log. */
 import { useEffect } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { can, clientById, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
+import { can, clientById, journey, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
 import { confirmVisit, deleteRequest, postpone, write } from "@/lib/crm/actions";
 import { isPreview } from "@/lib/crm/preview";
 import { fmtStamp, fmtVisit, money, nowStamp, relDay, today } from "@/lib/crm/util";
@@ -36,7 +36,10 @@ export function ClientDrawer() {
     .filter((r) => r.clientId === c.id)
     .sort((a, b) => Number(OPEN_REQ(b)) - Number(OPEN_REQ(a)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   const tasks = data.tasks.filter((t) => t.clientId === c.id && !t.done);
-  const vp = propById(data, c.visitProperty);
+  // The visit shown is the one on the opened request (not a date left on the client from an earlier request).
+  const curReq = reqs.find((r) => r.id === drawer.req) || reqs.find(OPEN_REQ);
+  const vis = curReq ? journey(data, curReq).visit : null;
+  const vp = vis?.prop;
 
   return (
     <>
@@ -93,10 +96,10 @@ export function ClientDrawer() {
               <div className="grid gap-0.5 rounded-xl bg-[var(--crm-surface-2)] p-2.5">
                 <span className="muted text-xs">موعد المعاينة</span>
                 <b className="text-sm">
-                  {c.visitAt ? (
+                  {vis ? (
                     <>
-                      {fmtVisit(c.visitAt)}{vp ? " · " + vp.title : ""}{" "}
-                      {c.visitConfirmed ? <Pill tone="ok">مؤكد</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}
+                      {fmtVisit(vis.at)}{vp ? " · " + vp.title : ""}{" "}
+                      {vis.ok ? <Pill tone="ok">مؤكد</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}
                     </>
                   ) : "—"}
                 </b>
@@ -105,7 +108,7 @@ export function ClientDrawer() {
             <div className="flex flex-wrap gap-1.5">
               <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "update", clientId: c.id })}>تحديث</button>
               <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تم التأجيل إلى " + n); }}>تأجيل 3 أيام</button>
-              {c.visitAt && !c.visitConfirmed && (
+              {vis && !vis.ok && (
                 <button type="button" className="crm-btn" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الزيارة</button>
               )}
               <button type="button" className="crm-btn" onClick={() => openModal({ kind: "task", preset: { clientId: c.id, assignee: c.assignee || data.uid } })}>+ مهمة</button>
