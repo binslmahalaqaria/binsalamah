@@ -9,9 +9,10 @@ import {
 import { assignClient } from "@/lib/crm/actions";
 import type { Client, Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, num, splitList, today } from "@/lib/crm/util";
+import { zoneOf } from "@/lib/districts";
 import { Empty, Icon, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
-import { changeStage, NeedLine, NextStep, reqMenu, TempPill } from "@/components/crm/bits";
+import { changeStage, NeedLine, NextStep, reqMenu } from "@/components/crm/bits";
 
 /** Under the client's name: the last call (outcome + when) and the next one, so follow-up is visible here too. */
 function CallLine({ c }: { c: Client | undefined }) {
@@ -69,50 +70,52 @@ export default function RequestsPage() {
       };
     })) || toast("لا توجد بيانات للتصدير");
 
-  const GRID = data.isMgr
-    ? "xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_130px_minmax(0,1.1fr)_120px_150px]"
-    : "xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_130px_minmax(0,1.1fr)_150px]";
+  // One row per request, one column per fact (client 2026-10-24): client · mobile · type · zone · districts · owner · last update · when.
+  const GRID = "grid-cols-[minmax(150px,1.3fr)_120px_minmax(90px,0.8fr)_minmax(90px,0.8fr)_minmax(120px,1.2fr)_120px_minmax(150px,1.5fr)_110px_150px]";
 
   const row = (r: Request) => {
     const c = clientById(data, r.clientId);
     const mc = OPEN_REQ(r) ? data.props.filter((p) => match(r, p)).length : 0;
     const st = r.status || "جديد";
+    const ds = splitList(r.districts);
+    const zones = r.zones?.length ? r.zones : Array.from(new Set(ds.map((x) => zoneOf(x)?.ar).filter((z): z is string => !!z)));
+    const last = (c?.log || [])[0];
     const late = !!c?.nextCall && c.nextCall < today() && OPEN_REQ(r);
     return (
-      <div key={r.id} className={"crm-row grid-cols-[minmax(0,1fr)_128px] " + GRID + (late ? " late" : "")}>
+      <div key={r.id} className={"crm-row gap-3 " + GRID + (late ? " late" : "")}>
         <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, r.id)}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <b className="font-heading text-[15.5px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+          <b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            <Pill tone={REQ_TONE[st]}>{lbl(st)}</Pill>
             {r.awaitingUpdate && OPEN_REQ(r) && <Pill tone="hot">بانتظار تحديث الموظف</Pill>}
-            <TempPill t={c?.temp} />
-            {r.priority && r.priority !== "عادية" && <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill>}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">{c?.phone && <><span className="num">{c.phone}</span> · </>}سُجّل {fmtStamp(r.createdAt)}</div>
         </div>
-        <div className="max-xl:col-span-2 max-xl:row-start-2"><NeedLine r={r} /></div>
-        <div className="max-xl:col-start-2 max-xl:row-start-1 self-start xl:self-center">
-          <select className={"crm-pill w-full cursor-pointer !rounded-full !border-transparent !px-2.5 !py-1 !text-[13px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
-            onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
-            {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
-          </select>
-        </div>
-        <div className="max-xl:col-span-2 max-xl:row-start-3 max-xl:rounded-lg max-xl:bg-[var(--crm-surface-2)] max-xl:px-2.5 max-xl:py-1.5"><NextStep r={r} /><CallLine c={c} /></div>
-        {data.isMgr && (
-          <div className="max-xl:row-start-4">
+        <div className="num self-center text-[13.5px]">{c?.phone || "—"}</div>
+        <div className="self-center text-[13.5px]">{typesOf(r).join("، ") || "—"}</div>
+        <div className="self-center text-[13.5px]">{zones.join("، ") || "—"}</div>
+        <div className="min-w-0 self-center text-[13px] text-[var(--crm-ink-2)]" title={ds.join("، ")}>{ds.length ? ds.slice(0, 4).join("، ") + (ds.length > 4 ? " +" + (ds.length - 4) : "") : "—"}</div>
+        <div className="self-center">
+          {data.isMgr ? (
             <select className={"crm-quiet w-full !text-[13px] " + (r.assignee ? "" : "!text-[var(--crm-warn)]")} aria-label="المسؤول" value={r.assignee || ""}
               onChange={async (e) => { const x = await assignClient(data, r.clientId, e.target.value || null, r.id); toast(x.name ? "تم الإسناد إلى " + x.name : "أصبح غير مسند"); }}>
               <option value="">غير مسند</option>
               {members(data).map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}
             </select>
-          </div>
-        )}
-        <div className={"flex items-center justify-end gap-1.5 " + (data.isMgr ? "max-xl:row-start-4" : "max-xl:col-span-2 max-xl:row-start-4")}>
+          ) : <span className="text-[13.5px]">{r.assignee ? nameOf(data, r.assignee) : "غير مسند"}</span>}
+        </div>
+        <div className="min-w-0 self-center text-[13px]">
+          {last ? <><b className="font-semibold">{lbl(last.type)}</b>{last.text ? <span className="block truncate text-[var(--crm-ink-3)]" title={last.text}>{last.text}</span> : null}</> : <span className="text-[var(--crm-ink-3)]">لا يوجد تحديث</span>}
+        </div>
+        <div className="self-center text-[12.5px] text-[var(--crm-ink-2)]">{last ? <>{ageDays(last.at)}<span className="block text-[11.5px] text-[var(--crm-ink-3)]">{fmtStamp(last.at)}</span></> : "—"}</div>
+        <div className="flex items-center justify-end gap-1.5 self-center">
+          <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !px-2 !py-1 !text-[12.5px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
+            onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
+            {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}
+          </select>
           {needsSaleInfo(r) ? (
-            <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: st })}>أكمل بيانات البيع</button>
-          ) : OPEN_REQ(r) && mc ? (
-            <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>
-              <b className="num text-[var(--crm-gold-ink)]">{mc}</b> {mc === 1 ? "عقار مناسب" : "عقارات مناسبة"}
-            </button>
+            <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "close", reqId: r.id, to: st })}>البيع</button>
+          ) : mc ? (
+            <button type="button" className="crm-btn sm" title="عقارات مناسبة" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}><b className="num text-[var(--crm-gold-ink)]">{mc}</b></button>
           ) : null}
           <Kebab items={reqMenu(data, r, openModal)} />
         </div>
@@ -222,9 +225,10 @@ export default function RequestsPage() {
           ];
         });
         return body.length ? (
-          <div className="crm-card overflow-hidden">
-            <div className={"crm-head hidden xl:grid xl:gap-3.5 " + GRID}><span>العميل</span><span>المطلوب</span><span>المرحلة</span><span>الخطوة التالية</span>{data.isMgr && <span>المسؤول</span>}<span /></div>
+          <div className="crm-card overflow-x-auto"><div className="min-w-[1180px]">
+            <div className={"crm-head grid gap-3 " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
             {body}
+          </div>
           </div>
         ) : <Empty>لا توجد طلبات هنا{qq || nF ? " بهذا البحث أو الفلتر" : ""}.</Empty>;
       })()}
