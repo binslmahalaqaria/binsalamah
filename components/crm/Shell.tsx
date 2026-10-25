@@ -14,7 +14,7 @@ import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
 import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
 import { TO_CONTACT } from "@/lib/crm/constants";
-import { runEscalation, runNoResponse } from "@/lib/crm/actions";
+import { cleanOldCallDates, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
@@ -100,6 +100,14 @@ export function CrmShell({ children }: { children: ReactNode }) {
     if (!loaded || previewAs) return;
     const t = setTimeout(() => runNoResponse(data, noRespDone.current).catch(() => {}), 6000);
     return () => clearTimeout(t);
+  }, [loaded, data, previewAs]);
+
+  // One-time clean-up of call dates set under the old rule (owner only; flagged so it runs once).
+  const cleaned = useRef(false);
+  useEffect(() => {
+    if (!loaded || previewAs || cleaned.current || !data.isAdmin) return;
+    cleaned.current = true;
+    cleanOldCallDates(data).catch(() => { cleaned.current = false; });
   }, [loaded, data, previewAs]);
 
   useEffect(() => setMoreOpen(false), [pathname]);

@@ -6,12 +6,12 @@
  * and overdue clients escalate back to the sales manager.
  */
 import {
-  addDoc, collection, deleteDoc, doc, runTransaction, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDoc, runTransaction, setDoc, updateDoc,
   writeBatch, type DocumentReference,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
-import { CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
+import { CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
 import {
   answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
@@ -597,4 +597,24 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
     if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد المعاينة");
     else await backToSearch(d, v.requestId);
   }
+}
+
+/**
+ * One-time clean-up (client 2026-10-24): before the new rule, every update set a call date. Customers with a
+ * request now get one only after options are sent, after a visit, or before a viewing — older dates that don't
+ * fit are cleared once (owner session; flagged in settings/migrations so it never runs again).
+ */
+export async function cleanOldCallDates(d: CrmData) {
+  if (!d.isAdmin) return;
+  const flag = doc(db, "settings", "migrations");
+  const f = await getDoc(flag);
+  if (f.exists() && f.data().callDates20261024) return;
+  const hasOpen = new Set(d.requests.filter(OPEN_REQ).map((r) => r.clientId));
+  const stale = d.clients.filter((c) => c.nextCall && hasOpen.has(c.id) && !c.visitAt && !CALL_AFTER.includes((c.log || [])[0]?.type || ""));
+  for (let k = 0; k < stale.length; k += 400) {
+    const b = writeBatch(db);
+    stale.slice(k, k + 400).forEach((c) => b.update(doc(db, "clients", c.id), { nextCall: null }));
+    await b.commit();
+  }
+  await setDoc(flag, { callDates20261024: true, cleared: stale.length, at: nowStamp() }, { merge: true });
 }

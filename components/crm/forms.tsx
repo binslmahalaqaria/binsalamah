@@ -12,7 +12,7 @@ import { useCrm } from "@/lib/crm/store";
 import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  allDistricts, clientById, members, nameOf, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
+  allDistricts, clientById, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
 import { assignClient, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
@@ -217,6 +217,11 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     clientOpts.unshift([base.clientId, presetClient?.name || preset?._clientName || "العميل"]);
 
   async function save() {
+    // One open request per customer (client 2026-10-24): a second one is not created — the current one is edited instead.
+    if (!rec && f.clientId) {
+      const ex = data.requests.find((r) => r.clientId === f.clientId && OPEN_REQ(r));
+      if (ex) { toast("لهذا العميل طلب قائم — عدّل طلبه الحالي بدل إضافة طلب جديد"); return openModal({ kind: "request", id: ex.id }); }
+    }
     if (nameless && !f.clientName.trim()) return toast("اكتب اسم العميل — محفوظ بالرقم فقط");
     if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
     // Every chosen zone needs at least one district in it (client 2026-10-24).
