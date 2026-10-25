@@ -199,7 +199,8 @@ export async function applyUpdate(d: CrmData, id: string, type: string, next: st
     const w = (opts.reqId && d.requests.find((x) => x.id === opts.reqId && x.awaitingUpdate)) || (!opts.reqId && d.requests.find((x) => x.clientId === id && x.awaitingUpdate && OPEN_REQ(x)));
     if (w) await write("requests", w.id, { awaitingUpdate: false, firstUpdateAt: nowStamp(), firstUpdateBy: d.uid || null, updatedAt: nowStamp() }, "update");
   }
-  if (ok && UPD_STAGE[type]) await advanceReq(d, id, UPD_STAGE[type], opts.reqId);
+  // The stage is the employee's decision only (client 2026-10-25): an update never moves the request by itself.
+  void UPD_STAGE; void advanceReq;
   return ok;
 }
 
@@ -370,7 +371,8 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
   const sent = [...new Set((r.sent || []).concat(pid))];
   await recordProposal(d, r, pid);
-  await write("requests", reqId, { sent, updatedAt: nowStamp(), ...(early ? { status: "أرسلنا خيارات" } : {}) }, "update");
+  void early;
+  await write("requests", reqId, { sent, updatedAt: nowStamp() }, "update");
 }
 
 /** Assigns a client and its open requests (plus `reqId`, if given) to a staff member. */
@@ -547,8 +549,7 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
       log: pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: pTitle(d, p.propertyId) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId, call: false }),
       ...(status === "مهتم" ? { interestIn: p.propertyId } : {}), updatedAt: nowStamp(),
     }, "update");
-  if (status === "غير مناسب" && !d.proposals.some((x) => x.requestId === p.requestId && x.id !== p.id && PROP_OPEN.includes(x.status)))
-    await backToSearch(d, p.requestId);
+  void PROP_OPEN; void backToSearch; // the stage stays as the employee set it
 }
 
 /** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «معاينة», the offer linked. */
@@ -592,10 +593,8 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
   const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
   if (result === "interested") {
     if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد المعاينة");
-    if (v.requestId) await advanceReq(d, v.clientId, "تفاوض", v.requestId);
   } else if (result === "unsuitable") {
     if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد المعاينة");
-    else await backToSearch(d, v.requestId);
   }
 }
 

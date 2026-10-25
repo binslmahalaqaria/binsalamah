@@ -162,14 +162,14 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
         <button type="button" className="crm-btn primary" onClick={async () => {
           if (!res) return toast("اختر رأي العميل");
           await viewingResult(data, v, res, fb.trim(), next === "none" ? null : addDays(+next));
-          toast(res === "interested" ? "انتقل الطلب إلى التفاوض" : res === "unsuitable" ? "عاد الطلب إلى مرحلة «جاري البحث»" : "سُجّلت النتيجة وموعد المتابعة");
+          toast(res === "interested" ? "سُجّل الانطباع — غيّر مرحلة الطلب بنفسك إذا لزم" : res === "unsuitable" ? "سُجّل الانطباع — غيّر مرحلة الطلب بنفسك إذا لزم" : "سُجّلت النتيجة وموعد المتابعة");
           closeModal();
         }}>حفظ</button>
         <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
       </div>}>
       <p className="m-0 mb-2 text-[13.5px]">{p?.title || "—"} · {fmtVisit(v.at)}</p>
       <div className="crm-sec !mt-0 mb-2">انطباع العميل بعد الزيارة</div>
-      <RadioChips options={[["interested", "مناسب — نكمل معه (تفاوض)"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب — يعود إلى «جاري البحث»"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
+      <RadioChips options={[["interested", "مناسب — نكمل معه"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
       <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
       <div className="crm-sec mb-2">متابعة بعد المعاينة</div>
       <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
