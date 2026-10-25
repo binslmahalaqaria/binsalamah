@@ -80,8 +80,10 @@ export default function HomeDashboard() {
   // New requests have no call date (client 2026-10-24): they show here until options are sent; the follow-up
   // call is set when options go out.
   const needsOptions = (c: Client) => !c.nextCall && ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد");
-  const follow = mine.filter((c) => isActive(c) && open(c).length && (due(c) || needsOptions(c)) && !c.visitAt &&
-    ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || "")).sort(byPrio);
+  // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
+  const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || ""));
+  const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
+  const follow = base.filter((c) => !needsOptions(c) && due(c)).sort(byPrio);
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
@@ -270,19 +272,26 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={3} title="طلبات تحتاج متابعة" count={follow.length} hint="طلبات جديدة: ابحث وأرسل لها خيارات — ومتابعات حان موعدها">
+      <Section n={3} title="طلبات جديدة" count={newReqs.length} hint="ابحث لها عن عقار مناسب وأرسل الخيارات للعميل — الأقدم أولاً">
+        {newReqs.map((c) => {
+          const r = open(c)[0];
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>);
+        })}
+      </Section>
+
+      <Section n={4} title="متابعات اليوم" count={follow.length} hint="عملاء حان موعد الاتصال بهم — سجّل نتيجة الاتصال">
         {follow.map((c) => {
           const r = open(c)[0];
           return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>);
         })}
       </Section>
 
-      <Section n={4} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
+      <Section n={5} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={5} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
+      <Section n={6} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
@@ -302,11 +311,11 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={6} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
+      <Section n={7} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={7} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
+      <Section n={8} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
         {privDue.map((x) => (
           <div key={x.id} className="flex items-start gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 last:border-0">
