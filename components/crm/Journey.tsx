@@ -45,7 +45,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>
         </>}
         {["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) && (
-          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId })}>حدد معاينة</button>
+          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId })}>حدد زيارة</button>
         )}
         <Kebab items={[
           p.status === "أُرسل" ? { label: "شاهد العرض — بانتظار رده", onClick: () => set("بانتظار الرد") } : null,

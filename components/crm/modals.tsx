@@ -87,7 +87,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
-        <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في معاينتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
+        <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في زيارتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
       <div className="crm-sec mb-2">الاتصال القادم</div>
       <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
@@ -113,7 +113,7 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
   const [saving, setSaving] = useState(false);
   if (!r || !c) return null;
   return (
-    <ModalFrame title={(v ? "تأجيل المعاينة: " : "موعد معاينة: ") + c.name} onClose={closeModal} width={480}
+    <ModalFrame title={(v ? "تأجيل الزيارة: " : "موعد زيارة: ") + c.name} onClose={closeModal} width={480}
       footer={
         <>
           <div className="flex gap-2">
@@ -123,13 +123,13 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
               setSaving(true);
               if (v) await postponeViewing(data, v, at, note.trim());
               else await scheduleViewing(data, r.id, at, pid || null, note.trim());
-              toast((v ? "أُجّلت المعاينة إلى " : "تم حفظ موعد المعاينة ") + fmtVisit(at));
+              toast((v ? "أُجّلت الزيارة إلى " : "تم حفظ موعد الزيارة ") + fmtVisit(at));
               closeModal();
             }}>{v ? "حفظ الموعد الجديد" : "حفظ الموعد"}</button>
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
           {v && (
-            <button type="button" className="crm-btn danger" onClick={async () => { await cancelViewing(data, v, note.trim()); toast("أُلغيت المعاينة"); closeModal(); }}>إلغاء المعاينة</button>
+            <button type="button" className="crm-btn danger" onClick={async () => { await cancelViewing(data, v, note.trim()); toast("أُلغيت الزيارة"); closeModal(); }}>إلغاء الزيارة</button>
           )}
         </>
       }>
@@ -142,7 +142,7 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
         )}
         <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} placeholder={v ? "مثال: العميل مسافر" : "مثال: سيحضر مع زوجته"} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      <p className="crm-hint mt-2">تُحفظ في سجل المعاينات، وقبل الموعد بيوم تظهر في لوحتك لتأكيدها مع العميل.</p>
+      <p className="crm-hint mt-2">تُحفظ في سجل الزيارات، وقبل الموعد بيوم تظهر في لوحتك لتأكيدها مع العميل.</p>
     </ModalFrame>
   );
 }
@@ -157,7 +157,7 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
   if (!v) return null;
   const c = clientById(data, v.clientId), p = propById(data, v.propertyId);
   return (
-    <ModalFrame title={"نتيجة المعاينة: " + (c?.name || "")} onClose={closeModal} width={520}
+    <ModalFrame title={"نتيجة الزيارة: " + (c?.name || "")} onClose={closeModal} width={520}
       footer={<div className="flex gap-2">
         <button type="button" className="crm-btn primary" onClick={async () => {
           if (!res) return toast("اختر رأي العميل");
@@ -171,7 +171,7 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
       <div className="crm-sec !mt-0 mb-2">انطباع العميل بعد الزيارة</div>
       <RadioChips options={[["interested", "مناسب — نكمل معه"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
       <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
-      <div className="crm-sec mb-2">متابعة بعد المعاينة</div>
+      <div className="crm-sec mb-2">متابعة بعد الزيارة</div>
       <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
     </ModalFrame>
   );

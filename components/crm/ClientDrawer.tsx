@@ -95,7 +95,7 @@ export function ClientDrawer() {
                 </b>
               </div>
               <div className="grid gap-0.5 rounded-xl bg-[var(--crm-surface-2)] p-2.5">
-                <span className="muted text-xs">موعد المعاينة</span>
+                <span className="muted text-xs">موعد الزيارة</span>
                 <b className="text-sm">
                   {vis ? (
                     <>
@@ -159,7 +159,7 @@ export function ClientDrawer() {
                     )}
                     {data.viewings.some((v) => v.requestId === r.id) && (
                       <details className="crm-more !col-span-1" open={open}>
-                        <summary>المعاينات ({data.viewings.filter((v) => v.requestId === r.id).length})</summary>
+                        <summary>الزيارات ({data.viewings.filter((v) => v.requestId === r.id).length})</summary>
                         <div className="-mx-3 border-t border-[var(--crm-line)]">{data.viewings.filter((v) => v.requestId === r.id).map((v) => <ViewingRow key={v.id} v={v} showClient={false} />)}</div>
                       </details>
                     )}

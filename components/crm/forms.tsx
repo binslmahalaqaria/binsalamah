@@ -451,7 +451,7 @@ export function PropertyForm({ id }: { id?: string }) {
     set("waMessage",
       "السلام عليكم ورحمة الله" + (me && me !== "أنا" ? "، معك " + me : "") + " من بن سلمه العقارية\n\n" +
       propSummary({ ...f, price: num(f.price), area: num(f.area), bedrooms: num(f.bedrooms), bathrooms: num(f.bathrooms), streetWidth: num(f.streetWidth) } as unknown as Partial<Property>, us.length ? us : null) +
-      "\n\nللاستفسار والمعاينة تواصل معنا.");
+      "\n\nللاستفسار والزيارة تواصل معنا.");
   }
 
   async function save() {
@@ -670,7 +670,7 @@ export function TaskForm({ id, preset }: { id?: string; preset?: Partial<Task> }
         </>
       }>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <Field label="المهمة *" full><input value={f.title} autoFocus={!rec} placeholder="مثال: ترتيب معاينة فيلا النرجس مع أنس" onChange={(e) => set("title", e.target.value)} /></Field>
+        <Field label="المهمة *" full><input value={f.title} autoFocus={!rec} placeholder="مثال: ترتيب زيارة فيلا النرجس مع أنس" onChange={(e) => set("title", e.target.value)} /></Field>
         <Field label="المُسند إليه"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} /></Field>
         <Field label="التاريخ"><input type="date" value={f.due} onChange={(e) => set("due", e.target.value)} /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>

@@ -58,7 +58,7 @@ export default function ClientsPage() {
       return {
         "الاسم": c.name, "الجوال": c.phone || "", "الطلب": d.purpose || "", "نوع العقار": typesOf(d).join("، "), "الميزانية": d.budget ?? "",
         "الدفع": d.payment || "", "البنك": d.bank || "", "الأحياء": d.districts || "", "أقل مساحة": d.areaMin ?? "", "أقل غرف": d.bedroomsMin ?? "",
-        "الدور المطلوب": (d.floors || []).join("، "), "موعد المعاينة": c.visitAt ? c.visitAt.replace("T", " ") + (c.visitConfirmed ? " (مؤكد)" : "") : "",
+        "الدور المطلوب": (d.floors || []).join("، "), "موعد الزيارة": c.visitAt ? c.visitAt.replace("T", " ") + (c.visitConfirmed ? " (مؤكد)" : "") : "",
         "استفسر عن": propById(data, c.interestIn)?.title || "", "تفاصيل الطلب": d.requirements || "", "الاهتمام": c.temp || "", "الحالة": c.status || "نشط",
         "آخر تحديث": c.lastUpdate || "", "تاريخ آخر تحديث": fmtStamp(c.lastUpdateAt), "الاتصال القادم": c.nextCall || "",
         "المسؤول": nameOf(data, c.assignee), "المصدر": c.source || "", "ملاحظات": c.notes || "",
@@ -79,7 +79,7 @@ export default function ClientsPage() {
           </div>
           <div className="mt-1 truncate text-[13px] text-[var(--crm-ink-2)]">
             {wantLine(data, c) || <span className="muted">لم يُسجَّل طلبه</span>}
-            {c.visitAt && <span className="text-[var(--crm-gold-ink)]"> · معاينة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</span>}
+            {c.visitAt && <span className="text-[var(--crm-gold-ink)]"> · زيارة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</span>}
           </div>
           {c.lastUpdate && <div className="mt-0.5 text-xs text-[var(--crm-ink-3)]">آخر تواصل: {lbl(c.lastUpdate)}</div>}
         </div>

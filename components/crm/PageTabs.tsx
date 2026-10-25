@@ -34,7 +34,7 @@ export function RequestTabs() {
     { href: "/admin/requests", label: "الطلبات" },
     // The customer journey after the request.
     { href: "/admin/proposals", label: "العروض" },
-    { href: "/admin/viewings", label: "المعاينات" },
+    { href: "/admin/viewings", label: "الزيارات" },
     { href: "/admin/leads", label: "نماذج الموقع", show: !previewAs },
   ]} />;
 }

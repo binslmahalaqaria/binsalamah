@@ -102,7 +102,7 @@ export default function ManagerPage() {
         <Tile v={sum("calls")} l="مكالمات" onClick={() => showCalls("all")} />
         <Tile v={sum("answered") + (sum("calls") ? " (" + Math.round((sum("answered") / sum("calls")) * 100) + "%)" : "")} l="مكالمات ناجحة" onClick={() => showCalls("ok")} />
         <Tile v={sum("noAnswer")} l="مكالمات غير ناجحة" onClick={() => showCalls("no")} />
-        <Tile v={sum("visits")} l="معاينات" />
+        <Tile v={sum("visits")} l="زيارات" />
         <Tile v={sum("sent")} l="عروض مُرسلة" />
         <Tile v={sum("reqs")} l="طلبات جديدة" />
         <Tile v={sum("deposits") + " / " + sum("sales")} l="عربون / بيع" />
@@ -191,7 +191,7 @@ export default function ManagerPage() {
           {[
             [absent.length, "موظف لم يسجّل حضوره اليوم", absent.map((id) => nameOf(data, id)).join("، ")],
             [lateClients.length, "عميل تأخر الاتصال به", ""],
-            [missedVisits.length, "معاينة فاتت بدون نتيجة", ""],
+            [missedVisits.length, "زيارة فاتت بدون نتيجة", ""],
             [lateTasks.length, "مهمة متأخرة", ""],
             [unassigned.length, "عميل غير مسند", ""],
           ].map(([n, l, extra]) => (

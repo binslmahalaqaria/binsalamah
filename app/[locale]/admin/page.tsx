@@ -286,7 +286,7 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={5} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
+      <Section n={5} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>

@@ -37,7 +37,7 @@ export function ClientChips({ c }: { c: Client }) {
     <div className="mt-1.5 flex flex-wrap gap-1.5">
       {nreq > 1 && <Chip>{nreq} طلبات</Chip>}
       <DemandChips r={d} />
-      {c.visitAt && <Chip cls="visit">معاينة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</Chip>}
+      {c.visitAt && <Chip cls="visit">زيارة {fmtVisit(c.visitAt)}{c.visitConfirmed ? " ✓" : ""}</Chip>}
       {data.isMgr && <Chip cls={c.assignee ? "" : "warn"}>{c.assignee ? "المسؤول: " + nameOf(data, c.assignee) : "غير مسند"}</Chip>}
     </div>
   );
@@ -133,10 +133,10 @@ export function NextStep({ r }: { r: Request }) {
       </span>
     );
   } else if (r.status === "ملغي") main = <span className={cls("muted")}>ملغي</span>;
-  else if (j.visit?.past) main = <span className={cls("warn")}>المعاينة فاتت ({fmtVisit(j.visit.at)}) — سجّل النتيجة</span>;
-  else if (j.visit) main = <span className={cls(j.visit.ok ? "ok" : "warn")}>معاينة {fmtVisit(j.visit.at)}{j.visit.ok ? " ✓ مؤكدة" : " · بحاجة إلى تأكيد"}</span>;
+  else if (j.visit?.past) main = <span className={cls("warn")}>الزيارة فاتت ({fmtVisit(j.visit.at)}) — سجّل النتيجة</span>;
+  else if (j.visit) main = <span className={cls(j.visit.ok ? "ok" : "warn")}>زيارة {fmtVisit(j.visit.at)}{j.visit.ok ? " ✓ مؤكدة" : " · بحاجة إلى تأكيد"}</span>;
   else if (j.visited) main = <span className={cls("ok")}>زار العقار {ageDays(j.visited.at)}</span>;
-  else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد معاينة</span>;
+  else if (j.sent) main = <span>{j.sent.type === "تم إرسال التفاصيل" ? "أُرسلت التفاصيل" : "أُرسل الموقع"} {ageDays(j.sent.at)} ← يُرجى تحديد موعد زيارة</span>;
   else main = <span className={cls("warn")}>أرسل له خيارات مناسبة</span>;
   const late = c?.nextCall && c.nextCall < today();
   return (
@@ -178,7 +178,7 @@ export function JourneyBox({ r }: { r: Request }) {
       ) : j.visited ? (
         <Row tone="ok">زار العقار · {ageDays(j.visited.at)}</Row>
       ) : (
-        <Row tone="no">لم يُحدَّد موعد معاينة</Row>
+        <Row tone="no">لم يُحدَّد موعد زيارة</Row>
       )}
       {j.c?.nextCall && <Row tone="info">الاتصال القادم: {lateTxt(j.c.nextCall)}</Row>}
     </div>

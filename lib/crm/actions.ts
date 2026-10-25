@@ -225,7 +225,7 @@ export async function confirmVisit(d: CrmData, id: string) {
     id,
     {
       visitConfirmed: true,
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد المعاينة " + fmtVisit(c.visitAt) }),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد الزيارة " + fmtVisit(c.visitAt) }),
       updatedAt: nowStamp(),
     },
     "update"
@@ -252,7 +252,7 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
         at: nowStamp(),
         byId: d.uid,
         type: clear ? "إلغاء موعد" : "حدد موعد زيارة",
-        text: clear ? "تم إلغاء موعد المعاينة" : fmtVisit(at) + (note ? " — " + note : ""),
+        text: clear ? "تم إلغاء موعد الزيارة" : fmtVisit(at) + (note ? " — " + note : ""),
         propertyId: propId,
       }),
       lastUpdate: clear ? c.lastUpdate || null : "حدد موعد زيارة",
@@ -552,7 +552,7 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
   void PROP_OPEN; void backToSearch; // the stage stays as the employee set it
 }
 
-/** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «معاينة», the offer linked. */
+/** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «زيارة», the offer linked. */
 export async function scheduleViewing(d: CrmData, reqId: string, at: string, propId: string | null, note: string) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return false;
@@ -571,7 +571,7 @@ export async function scheduleViewing(d: CrmData, reqId: string, at: string, pro
 /** Postpones a viewing to a new time (status «مؤجلة»; still upcoming). */
 export async function postponeViewing(d: CrmData, v: Viewing, at: string, note: string) {
   await write("viewings", v.id, { at, status: "مؤجلة", history: [...(v.history || []), ev(d, "مؤجلة", note || "إلى " + fmtVisit(at))], updatedAt: nowStamp() }, "update");
-  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, "تأجيل المعاينة" + (note ? ": " + note : ""));
+  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, "تأجيل الزيارة" + (note ? ": " + note : ""));
 }
 
 /** Cancels a viewing (kept in the record as «ملغاة»). */
@@ -592,9 +592,9 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
   await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
   const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
   if (result === "interested") {
-    if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد المعاينة");
+    if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد الزيارة");
   } else if (result === "unsuitable") {
-    if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد المعاينة");
+    if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد الزيارة");
   }
 }
 
