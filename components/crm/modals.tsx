@@ -71,6 +71,12 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
     await applyUpdate(data, clientId, type, nx, note.trim(), prop || null, { reqId });
+    // Location/details sent → the next step is the visit: open the booking straight away (client 2026-10-25).
+    const openR = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.find((x) => x.clientId === clientId && OPEN_REQ(x));
+    if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
+      toast("سُجّل الإرسال — حدّد موعد الزيارة، أو أغلق النافذة إن لم يُتفق بعد");
+      return openModal({ kind: "visit", reqId: openR.id, propertyId: prop || undefined });
+    }
     toast("تم — " + (nx ? "الاتصال القادم " + relDay(nx) + " (" + nx + ")" : "بدون موعد اتصال"));
     closeModal();
   }
@@ -162,8 +168,8 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
         <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
       </div>}>
       <p className="m-0 mb-2 text-[13.5px]">{p?.title || "—"} · {fmtVisit(v.at)}</p>
-      <div className="crm-sec !mt-0 mb-2">رأي العميل</div>
-      <RadioChips options={[["interested", "مهتم — ننتقل للتفاوض"], ["thinking", "يفكر"], ["unsuitable", "غير مناسب — نبحث عن غيره"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
+      <div className="crm-sec !mt-0 mb-2">انطباع العميل بعد الزيارة</div>
+      <RadioChips options={[["interested", "مناسب — نكمل معه (تفاوض)"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب — يعود إلى «جاري البحث»"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
       <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
       <div className="crm-sec mb-2">متابعة بعد المعاينة</div>
       <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />

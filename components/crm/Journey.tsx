@@ -69,7 +69,7 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <b className="font-heading">{c?.name || "—"}</b>}
           <Pill tone={VIEW_TONE[v.status]}>{v.status}</Pill>
-          {past ? <Pill tone="hot">فات موعدها — سجّل النتيجة</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
+          {past ? <Pill tone="hot">تمت الزيارة — اتصل وسجّل انطباعه</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
           {fmtVisit(v.at)}{pr ? " · " + pr.title : ""}{v.feedback ? " · " + v.feedback : ""}{v.followUp ? " · المتابعة " + v.followUp : ""}
@@ -79,8 +79,8 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
       {open && (
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <ContactIcons phone={c?.phone} />}
-          {!past && !confirmed && c && <button type="button" className="crm-btn sm" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد</button>}
-          <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "viewResult", viewingId: v.id })}>تمت — النتيجة</button>
+          {!past && !confirmed && c && <button type="button" className="crm-btn sm" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الموعد</button>}
+          <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "viewResult", viewingId: v.id })}>{past ? "سجّل الانطباع" : "تمت الزيارة"}</button>
           {v.requestId && <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: v.requestId!, viewingId: v.id })}>تأجيل / إلغاء</button>}
         </div>
       )}

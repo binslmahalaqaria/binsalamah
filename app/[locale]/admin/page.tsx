@@ -96,8 +96,12 @@ export default function HomeDashboard() {
   // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
   const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
   const allViews = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));
-  const views = allViews.filter((v) => soon(v.at));
-  const viewings = mine.filter((c) => soon(c.visitAt) && !allViews.some((v) => v.clientId === c.id)).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
+  // Today and tomorrow: confirm the appointment. Once the visit day has passed it moves to «اتصال بعد الزيارة».
+  const views = allViews.filter((v) => soon(v.at) && v.at.slice(0, 10) >= t);
+  const afterViews = allViews.filter((v) => v.at.slice(0, 10) < t);
+  const legacy = mine.filter((c) => soon(c.visitAt) && !allViews.some((v) => v.clientId === c.id)).sort((a, b) => a.visitAt!.localeCompare(b.visitAt!));
+  const viewings = legacy.filter((c) => c.visitAt!.slice(0, 10) >= t);
+  const afterLegacy = legacy.filter((c) => c.visitAt!.slice(0, 10) < t);
   // 5) Negotiation / deposit: follow-up due today.
   const neg = reqsMine(negSt).filter((x) => due(x.c));
   // 6) Tasks due today or overdue (plus new undated ones until seen); overdue first, by priority within.
@@ -247,19 +251,38 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={2} title="طلبات تحتاج متابعة" count={follow.length} hint="طلبات جديدة: ابحث وأرسل لها خيارات — ومتابعات حان موعدها">
+      <Section n={2} title="اتصال بعد الزيارة" count={afterViews.length + afterLegacy.length} hint="زار العقار — اتصل عليه وسجّل انطباعه: مناسب نكمل معه، غير مناسب يعود إلى «جاري البحث»">
+        {afterViews.map((v) => <ViewingRow key={v.id} v={v} />)}
+        {afterLegacy.map((c) => {
+          const p = propById(data, c.visitProperty);
+          return (
+            <div key={c.id} className="crm-row late grid-cols-[minmax(0,1fr)_auto]">
+              <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
+                <b className="font-heading">{c.name}</b>
+                <div className="text-xs text-[var(--crm-ink-3)]">زار {fmtVisit(c.visitAt)}{p ? " · " + p.title : ""}{team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}</div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ContactIcons phone={c.phone} />
+                <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, type: "زار العقار", propertyId: c.visitProperty || undefined })}>سجّل الانطباع</button>
+              </div>
+            </div>
+          );
+        })}
+      </Section>
+
+      <Section n={3} title="طلبات تحتاج متابعة" count={follow.length} hint="طلبات جديدة: ابحث وأرسل لها خيارات — ومتابعات حان موعدها">
         {follow.map((c) => {
           const r = open(c)[0];
           return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>);
         })}
       </Section>
 
-      <Section n={3} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
+      <Section n={4} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد معاينة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={4} title="المعاينات المجدولة" count={views.length + viewings.length} hint="اليوم وغداً وما فات موعده — أكّد الموعد، وسجّل النتيجة بعده">
+      <Section n={5} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
@@ -279,11 +302,11 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={5} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
+      <Section n={6} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={6} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
+      <Section n={7} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
         {privDue.map((x) => (
           <div key={x.id} className="flex items-start gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 last:border-0">
