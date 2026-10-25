@@ -23,7 +23,7 @@ export function PropertyTabs() {
   return <SubTabs tabs={[
     { href: "/admin/properties", label: "مخزون العقارات" },
     // The website screens write through their own helpers, so they are left out of the read-only preview.
-    { href: "/admin/offers", label: "المعروضة في الموقع", show: !previewAs },
+    { href: "/admin/offers", label: "عقارات الموقع", show: !previewAs },
   ]} />;
 }
 

@@ -134,7 +134,7 @@ export default function PropertiesPage() {
                     {data.isMgr && !previewAs && (web[p.id] ? (
                       <Link href={"/admin/offers/" + web[p.id].id + "/edit"} className="crm-btn sm">🌐 {web[p.id].status === "published" ? "معروض في الموقع" : "مسودة في الموقع"}</Link>
                     ) : st !== "مباع" && (
-                      <Link href={"/admin/offers/new?from=" + encodeURIComponent(p.id)} className="crm-btn sm">🌐 اعرضه في الموقع</Link>
+                      <Link href={"/admin/offers/new?from=" + encodeURIComponent(p.id)} className="crm-btn sm">🌐 تفعيل في الموقع</Link>
                     ))}
                   </div>
                   {(p.contactName || p.contactPhone) && (

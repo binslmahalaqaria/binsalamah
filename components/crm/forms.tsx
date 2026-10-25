@@ -541,7 +541,7 @@ export function PropertyForm({ id }: { id?: string }) {
             <input className="crm-input min-w-[180px] flex-1" dir="ltr" value={f.newImg} placeholder="أو الصق رابط صورة https://…" onChange={(e) => set("newImg", e.target.value)} />
             <button type="button" className="crm-btn" onClick={() => { if (f.newImg.trim()) { set("images", [...f.images, f.newImg.trim()]); set("newImg", ""); } }}>+ إضافة صورة</button>
           </div>
-          <span className="crm-hint">ارفع الصور من جهازك أو جوالك (تُصغَّر تلقائياً)، أو الصق رابطاً. الصورة الأولى هي الغلاف، وتنتقل الصور إلى الموقع عند «اعرضه في الموقع».</span>
+          <span className="crm-hint">ارفع الصور من جهازك أو جوالك (تُصغَّر تلقائياً)، أو الصق رابطاً. الصورة الأولى هي الغلاف، وتنتقل الصور إلى الموقع عند «تفعيل في الموقع».</span>
         </div>
 
         <Sec>المسؤول عن العقار</Sec>
