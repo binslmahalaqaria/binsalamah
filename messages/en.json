@@ -293,7 +293,7 @@
     "reqSub": "Specify the property you need and one of our advisors will contact you within one working day.",
     "reqQ1": "Property type",
     "reqQ2": "City and district *",
-    "reqQ3": "Approximate budget",
+    "reqQ3": "Approximate budget and size",
     "reqQ4": "Contact details",
     "reqNoDistrict": "No preference",
     "reqNoBudget": "Not specified",
@@ -410,6 +410,12 @@
     "reqNeedArea": "Please choose an area or district (e.g. North Riyadh)",
     "reqNeedDistrict": "Please pick at least one district in that area",
     "reqBudgetHint": "Type your budget, e.g. 1.5 million",
+    "payQ": "How will you pay?",
+    "payCash": "Cash",
+    "payBank": "Bank finance",
+    "payBoth": "Bank + cash",
+    "reqAreaHint": "Size in square metres, e.g. 300",
+    "reqMatches": "Listings that may suit you",
     "reqPhoneLabel": "Mobile number",
     "partnersTitle": "Our partners"
   }

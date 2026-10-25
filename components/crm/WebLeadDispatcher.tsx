@@ -21,6 +21,7 @@ import { useCrm } from "@/lib/crm/store";
 import { isPreview } from "@/lib/crm/preview";
 import { intl, nowStamp } from "@/lib/crm/util";
 import { PTYPES } from "@/lib/crm/constants";
+import { parseBudget } from "@/lib/budget";
 
 interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; assigned_to?: string | null; dispatched?: unknown }
 
@@ -32,15 +33,19 @@ function parse(message: string | null | undefined) {
   const purpose = get("الغرض");
   const districts = (get("الأحياء") || get("الحي")).replace("غير محدد", "").trim();
   const city = get("المدينة");
-  const budgetTxt = get("الميزانية").replace(/[٠-٩]/g, (x) => String("٠١٢٣٤٥٦٧٨٩".indexOf(x)));
-  const n = Number(budgetTxt.replace(/[^\d.]/g, ""));
-  const budget = !n ? null : /مليون/.test(budgetTxt) && n < 1000 ? n * 1e6 : n;
+  const budgetTxt = get("الميزانية").replace("غير محددة", "").trim();
+  const budget = parseBudget(budgetTxt);
+  const pay = get("الدفع");
+  const payment = ["كاش", "بنك", "بنك + كاش"].includes(pay) ? pay : null;
+  const areaMin = Number(get("المساحة").replace(/[^\d]/g, "")) || null;
   return {
     isRequest: parts[0] === "طلب عقاري من الموقع",
     purpose: /إيجار/.test(purpose) ? "إيجار" : "شراء",
     propTypes: type && (PTYPES as readonly string[]).includes(type) ? [type] : type ? [type] : [],
     districts: districts || null,
     budget,
+    areaMin,
+    payment,
     requirements: [city && "المدينة: " + city, purpose && "الغرض: " + purpose, budgetTxt && !budget ? "الميزانية: " + budgetTxt : ""].filter(Boolean).join(" — ") || null,
   };
 }
@@ -94,7 +99,7 @@ export function WebLeadDispatcher() {
       }
       const now = nowStamp();
       const note = p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
-      const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget };
+      const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, payment: p.payment };
       let clientId = existing?.id;
       if (!clientId) {
         const cref = doc(collection(db, "clients"));
