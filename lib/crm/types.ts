@@ -70,6 +70,8 @@ export interface Unit {
 
 export interface Property {
   id: string;
+  /** Sequential property number (#1, #2, …) given automatically, for quick look-up (client 2026-10-25). */
+  ref?: number;
   title: string;
   type: string | null;
   purpose: string | null;

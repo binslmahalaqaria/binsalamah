@@ -21,6 +21,7 @@ import {
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage } from "@/lib/upload-image";
+import { downloadAllImages } from "./downloadImages";
 import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
 
 type F = Record<string, unknown>;
@@ -420,6 +421,7 @@ export function PropertyForm({ id }: { id?: string }) {
   const [busy, setBusy] = useState(false);
   const [waArmed, setWaArmed] = useState(false);
   const [uploading, setUploading] = useState(0);
+  const [zipping, setZipping] = useState(false);
   // Photos from the phone/computer go to Firebase Storage (offers/…, public read, staff-only write).
   const uploadFiles = async (files: FileList | null) => {
     const list = Array.from(files || []).filter((x) => x.type.startsWith("image/"));
@@ -478,7 +480,7 @@ export function PropertyForm({ id }: { id?: string }) {
   }
 
   return (
-    <ModalFrame title={rec ? "تعديل عقار" : "إضافة عقار"} onClose={closeModal}
+    <ModalFrame title={rec ? "تعديل عقار" + (rec.ref ? " #" + rec.ref : "") : "إضافة عقار"} onClose={closeModal}
       footer={
         <>
           <div className="flex flex-wrap gap-2">
@@ -541,6 +543,16 @@ export function PropertyForm({ id }: { id?: string }) {
             <input className="crm-input min-w-[180px] flex-1" dir="ltr" value={f.newImg} placeholder="أو الصق رابط صورة https://…" onChange={(e) => set("newImg", e.target.value)} />
             <button type="button" className="crm-btn" onClick={() => { if (f.newImg.trim()) { set("images", [...f.images, f.newImg.trim()]); set("newImg", ""); } }}>+ إضافة صورة</button>
           </div>
+          {f.images.length > 0 && (
+            <button type="button" className="crm-btn justify-self-start" disabled={zipping} onClick={async () => {
+              setZipping(true);
+              try {
+                const r = await downloadAllImages(f.images, (rec?.ref ? "#" + rec.ref + " " : "") + (f.title || "صور العقار"));
+                toast(r.ok ? "تم تنزيل " + r.ok + " صورة" + (r.failed ? " — تعذّر تنزيل " + r.failed : "") : "تعذّر تنزيل الصور");
+              } catch (e) { toast(e instanceof Error ? e.message : "تعذّر تنزيل الصور"); }
+              finally { setZipping(false); }
+            }}>{zipping ? "جارٍ تجهيز الصور…" : "⬇ تنزيل كل الصور (" + f.images.length + ")"}</button>
+          )}
           <span className="crm-hint">ارفع الصور من جهازك أو جوالك (تُصغَّر تلقائياً)، أو الصق رابطاً. الصورة الأولى هي الغلاف، وتنتقل الصور إلى الموقع عند «تفعيل في الموقع».</span>
         </div>
 

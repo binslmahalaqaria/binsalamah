@@ -14,7 +14,7 @@ import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
 import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
 import { TO_CONTACT } from "@/lib/crm/constants";
-import { cleanOldCallDates, runEscalation, runNoResponse } from "@/lib/crm/actions";
+import { assignPropRefs, cleanOldCallDates, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
@@ -108,6 +108,14 @@ export function CrmShell({ children }: { children: ReactNode }) {
     if (!loaded || previewAs || cleaned.current || !data.isAdmin) return;
     cleaned.current = true;
     cleanOldCallDates(data).catch(() => { cleaned.current = false; });
+  }, [loaded, data, previewAs]);
+
+  // Property numbers (#1, #2, …): any property still without one gets the next number.
+  const numbering = useRef(false);
+  useEffect(() => {
+    if (!loaded || previewAs || numbering.current || !data.props.some((p) => !p.ref)) return;
+    numbering.current = true;
+    assignPropRefs(data).catch(() => {}).finally(() => { numbering.current = false; });
   }, [loaded, data, previewAs]);
 
   useEffect(() => setMoreOpen(false), [pathname]);

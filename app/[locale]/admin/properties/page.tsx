@@ -31,7 +31,9 @@ export default function PropertiesPage() {
 
   let list = data.props.slice();
   const qq = q.trim();
-  if (qq) list = list.filter((p) => [p.title, p.district, p.city, p.contactName, p.contactPhone, p.features, p.notes].join(" ").includes(qq));
+  // «#12» or «12» finds property number 12.
+  const refQ = /^#?d+$/.test(qq) ? Number(qq.replace("#", "")) : 0;
+  if (qq) list = list.filter((p) => (refQ && p.ref === refQ) || [p.title, p.district, p.city, p.contactName, p.contactPhone, p.features, p.notes].join(" ").includes(qq));
   if (F.status) list = list.filter((p) => (p.status || "متاح") === F.status);
   if (F.type) list = list.filter((p) => p.type === F.type);
   if (F.kind) list = list.filter((p) => p.ownerKind === F.kind);
@@ -50,7 +52,7 @@ export default function PropertiesPage() {
 
   const exportRows = () =>
     exportCsv("العقارات", list.flatMap((p) => (unitsOf(p).length ? unitsOf(p).map((u) => ({ ...unitView(p, u), unitName: u.name })) : [{ ...p, unitName: "" }])).map((p) => ({
-      "العقار": p.title, "الوحدة": p.unitName, "النوع": p.type || "", "للـ": p.purpose || "", "الحالة": p.status || "متاح", "السعر": p.price ?? "",
+      "رقم العقار": p.ref ? "#" + p.ref : "", "العقار": p.title, "الوحدة": p.unitName, "النوع": p.type || "", "للـ": p.purpose || "", "الحالة": p.status || "متاح", "السعر": p.price ?? "",
       "ملاحظة السعر": p.priceNote || "", "المدينة": p.city || "", "الحي": p.district || "", "المساحة": p.area ?? "", "مسطح البناء": p.buildArea ?? "",
       "غرف": p.bedrooms ?? "", "الدور": p.floor || "", "دورات مياه": p.bathrooms ?? "", "صالات": p.livingRooms ?? "", "أدوار": p.floors ?? "",
       "الواجهة": p.facing || "", "عرض الشارع": p.streetWidth ?? "", "العمر": p.age || "", "المميزات": p.features || "", "نوع المعلن": p.ownerKind || "",
@@ -120,7 +122,7 @@ export default function PropertiesPage() {
                     <span className="flex gap-1.5"><Pill tone={PSTATUS_TONE[st]}>{st}</Pill>{p.ownerKind && <Pill tone={OWNERK_TONE[p.ownerKind]}>{p.ownerKind}</Pill>}</span>
                     <span className="muted text-[12.5px]">{p.type || ""} · {p.purpose || "بيع"}</span>
                   </div>
-                  <h3 className="text-[15px]">{p.title}</h3>
+                  <h3 className="text-[15px]">{p.ref ? <span className="num me-1.5 rounded-md bg-[var(--crm-surface-2)] px-1.5 py-0.5 text-[12.5px] text-[var(--crm-ink-2)]">#{p.ref}</span> : null}{p.title}</h3>
                   {p.createdBy && <span className="text-[12px] text-[var(--crm-ink-3)]">أضافه: {nameOf(data, p.createdBy)}</span>}
                   <div className="font-heading text-[19px] text-[var(--crm-gold-ink)]">{propPrice(p)} {p.priceNote && <small className="font-sans text-xs text-[var(--crm-ink-3)]">{p.priceNote}</small>}</div>
                   <div className="flex flex-wrap gap-1.5">

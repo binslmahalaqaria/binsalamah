@@ -618,3 +618,21 @@ export async function cleanOldCallDates(d: CrmData) {
   }
   await setDoc(flag, { callDates20261024: true, cleared: stale.length, at: nowStamp() }, { merge: true });
 }
+
+/**
+ * Gives every property without a number the next one (#1, #2, … in the order they were added), using the
+ * counters/props counter in a transaction so two open sessions never hand out the same number.
+ */
+export async function assignPropRefs(d: CrmData) {
+  const todo = d.props.filter((p) => !p.ref).sort((x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || "")));
+  for (const p of todo) {
+    await runTransaction(db, async (tx) => {
+      const cRef = doc(db, "counters", "props"), pRef = doc(db, "properties", p.id);
+      const [c, cur] = await Promise.all([tx.get(cRef), tx.get(pRef)]);
+      if (!cur.exists() || cur.data().ref) return;
+      const n = (c.exists() ? Number(c.data().last) || 0 : 0) + 1;
+      tx.set(cRef, { last: n }, { merge: true });
+      tx.update(pRef, { ref: n });
+    });
+  }
+}
