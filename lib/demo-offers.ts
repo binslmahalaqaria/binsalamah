@@ -24,7 +24,7 @@ const DEMO: Offer[] = [
  * One sample shown to everyone (client 2026-10-20, to check the site on a phone), clearly
  * labelled. Set to null to remove it.
  */
-const PUBLIC_DEMO: string | null = "demo-1";
+const PUBLIC_DEMO: string | null = null; // client 2026-10-26: hide the sample listing
 const labelled = (o: Offer): Offer => ({ ...o, title_ar: o.title_ar + " (عرض تجريبي)", title_en: o.title_en + " (sample)" });
 
 export const withDemo = (offers: Offer[], demo: unknown) =>
