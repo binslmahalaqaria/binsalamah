@@ -561,7 +561,7 @@ function WhatsAppInbox() {
                   ) : (
                     <>
                     <button type="button" className="crm-btn sm" disabled={!cur.phone}
-                      title="يُسجَّل الرقم في «الأرقام» ليتصل به الموظف، بدون طلب"
+                      title="يُضاف الرقم إلى «الأرقام» ليتصل به الموظف، بدون طلب"
                       onClick={async () => {
                         if (!cur.phone) return;
                         const ph = localPhone(cur.phone);
@@ -573,17 +573,17 @@ function WhatsAppInbox() {
                             notes: cur.last ? "آخر رسالة على واتساب: " + String(cur.last).slice(0, 500) : null,
                             log: [], createdAt: nowStamp(), updatedAt: nowStamp(),
                           });
-                          toast("تم تسجيل الرقم في «الأرقام»");
+                          toast("تمت إضافة الرقم إلى «الأرقام»");
                         } catch (e) { toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر تسجيل الرقم"); }
                       }}>
-                      📥 تسجيل رقم
+                      📥 إضافة رقم
                     </button>
                     <button type="button" className="crm-btn sm primary"
                       onClick={() => openModal({ kind: "request", preset: {
                         source: data.sources.includes("واتساب") ? "واتساب" : null, _newName: cur.name || "", _newPhone: localPhone(cur.phone),
                         ...(curSrc?.defaultAssignee || curSrc?.ownerUid ? { assignee: curSrc.defaultAssignee || curSrc.ownerUid } : {}),
                       } })}>
-                      إضافة كعميل وطلب
+                      إضافة طلب
                     </button>
                     </>
                   )}
@@ -738,7 +738,7 @@ function SourcesSettings({ sources, onChange }: { sources: Source[]; onChange: (
           </div>
         </div>
       ))}
-      <p className="crm-hint m-0">الموظف الافتراضي: يرى كل محادثات الرقم، ويُسند إليه العميل عند «إضافة كعميل وطلب». حذف الرقم يمسح محادثاته المحفوظة في النظام ولا يمسها في الجوال.</p>
+      <p className="crm-hint m-0">الموظف الافتراضي: يرى كل محادثات الرقم، ويُسند إليه العميل عند «إضافة طلب». حذف الرقم يمسح محادثاته المحفوظة في النظام ولا يمسها في الجوال.</p>
     </div>
   );
 }
