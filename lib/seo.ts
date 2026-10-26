@@ -80,38 +80,30 @@ export interface EnquiryOffer {
 export interface EnquiryUnit { name: string; price: number; area?: number | null; rooms?: number | null; bathrooms?: number | null }
 
 /**
- * The WhatsApp enquiry a visitor sends (client 2026-10-20: formal, clear, every detail):
- * greeting, the property's details as a short list (or the unit's), the short link, a closing line.
+ * The WhatsApp enquiry a visitor sends from a property (client 2026-10-26: simple, refined, clear):
+ * greeting, what it is about, one line of the key facts, the short link, a short closing — no emoji, no long list.
  */
 export function enquiryMessage(o: EnquiryOffer, unit?: EnquiryUnit, ar = true) {
   const n = (v: number) => v.toLocaleString("en-US");
-  // Words instead of a dash so the order survives right-to-left chat bubbles.
-  const range = (a?: number | null, b?: number | null) =>
-    a ? (b && b !== a ? (ar ? "من " + n(a) + " إلى " + n(b) : n(a) + " to " + n(b)) : n(a)) : "";
   const cur = ar ? "ريال" : "SAR";
   const m2 = ar ? "م²" : "m²";
-  const place = [o.district && (ar && !/^حي\s/.test(o.district) ? "حي " + o.district : o.district), o.city].filter(Boolean).join(ar ? "، " : ", ");
-  const row = (label: string, value: string | number | null | undefined) => (value ? "▪️ " + label + ": " + value : "");
-  const L = ar
-    ? { hi: "السلام عليكم ورحمة الله وبركاته،", intro: unit ? "أرغب بالاستفسار عن الوحدة التالية:" : "أرغب بالاستفسار عن العقار التالي:",
-        project: "المشروع", prop: "العقار", unit: "الوحدة", type: "النوع", where: "الموقع", area: "المساحة", rooms: "الغرف", baths: "دورات المياه", price: "السعر",
-        link: "رابط العقار", end: "أرجو تزويدي بالتفاصيل الكاملة وطريقة الحجز، وشكراً لكم." }
-    : { hi: "Hello,", intro: unit ? "I would like to enquire about the following unit:" : "I would like to enquire about the following property:",
-        project: "Project", prop: "Property", unit: "Unit", type: "Type", where: "Location", area: "Area", rooms: "Bedrooms", baths: "Bathrooms", price: "Price",
-        link: "Link", end: "Please share the full details and how to reserve. Thank you." };
-  const rows = unit
-    ? [row(L.project, o.title), row(L.unit, unit.name), row(L.type, o.type), row(L.where, place),
-       row(L.area, unit.area ? n(unit.area) + " " + m2 : ""), row(L.rooms, unit.rooms), row(L.baths, unit.bathrooms), row(L.price, n(unit.price) + " " + cur)]
-    : [row(L.prop, o.title), row(L.type, o.type), row(L.where, place),
-       row(L.area, range(o.areaFrom, o.areaTo) && range(o.areaFrom, o.areaTo) + " " + m2), row(L.rooms, o.rooms),
-       row(L.price, range(o.priceFrom, o.priceTo) && range(o.priceFrom, o.priceTo) + " " + cur)];
-  return [L.hi, L.intro, "", ...rows.filter(Boolean), "", "🔗 " + L.link + ": " + shortOfferUrl(o.slug), "", L.end].join("\n");
+  const range = (a?: number | null, b?: number | null) =>
+    a ? (b && b !== a ? (ar ? "من " + n(a) + " إلى " + n(b) : n(a) + " to " + n(b)) : n(a)) : "";
+  const place = [o.district && (ar && !/^حيs/.test(o.district) ? "حي " + o.district : o.district), o.city].filter(Boolean).join(ar ? "، " : ", ");
+  const area = unit ? (unit.area ? n(unit.area) + " " + m2 : "") : range(o.areaFrom, o.areaTo) ? range(o.areaFrom, o.areaTo) + " " + m2 : "";
+  const price = unit ? n(unit.price) + " " + cur : range(o.priceFrom, o.priceTo) ? (o.priceTo && o.priceTo !== o.priceFrom ? "" : ar ? "يبدأ من " : "From ") + range(o.priceFrom, o.priceTo) + " " + cur : "";
+  const facts = [place, area, price].filter(Boolean).join(ar ? "  ·  " : "  ·  ");
+  const name = unit ? o.title + (ar ? " — الوحدة " : " — Unit ") + unit.name : o.title;
+  const lines = ar
+    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أرغب بالاستفسار عن:", name, facts, "", shortOfferUrl(o.slug), "", "أرجو التواصل معي لتزويدي بالتفاصيل. شكراً لكم."]
+    : ["Hello,", "", "I would like to enquire about:", name, facts, "", shortOfferUrl(o.slug), "", "Please contact me with the details. Thank you."];
+  return lines.filter((l, i) => l !== "" || (i > 0 && lines[i - 1] !== "")).join("\n");
 }
 
-/** The message from the site-wide WhatsApp button: a short template the visitor completes. */
+/** The message from the site-wide contact button: a short template the visitor completes. */
 export function generalEnquiry(ar = true) {
   return (ar
-    ? ["السلام عليكم ورحمة الله وبركاته،", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بالاستفسار عن عقار.", "", "▪️ نوع العقار: ", "▪️ الحي المفضل: ", "▪️ الميزانية التقريبية: ", "", "وشكراً لكم."]
-    : ["Hello,", "I am contacting you through the Bin Slmah Real Estate website about a property.", "", "▪️ Property type: ", "▪️ Preferred district: ", "▪️ Approximate budget: ", "", "Thank you."]
+    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بالاستفسار عن عقار.", "", "نوع العقار: ", "الحي المفضّل: ", "الميزانية: ", "", "شكراً لكم."]
+    : ["Hello,", "", "I am contacting you through the Bin Slmah Real Estate website about a property.", "", "Property type: ", "Preferred district: ", "Budget: ", "", "Thank you."]
   ).join("\n");
 }
