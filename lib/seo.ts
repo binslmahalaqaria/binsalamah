@@ -103,7 +103,7 @@ export function enquiryMessage(o: EnquiryOffer, unit?: EnquiryUnit, ar = true) {
 /** The message from the site-wide contact button: a short template the visitor completes. */
 export function generalEnquiry(ar = true) {
   return (ar
-    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بالاستفسار عن عقار. تفاصيل طلبي:", "", "الاسم: ", "الغرض: (شراء / إيجار)", "نوع العقار: ", "المدينة والحي المفضّل: ", "المساحة المطلوبة: ", "الميزانية: ", "طريقة الشراء: (كاش / بنك)", "أنسب وقت للتواصل: ", "", "أرجو التواصل معي لعرض الخيارات المناسبة. شكراً لكم."]
-    : ["Hello,", "", "I am contacting you through the Bin Slmah Real Estate website about a property. My details:", "", "Name: ", "Purpose: (buy / rent)", "Property type: ", "City and preferred district: ", "Size: ", "Budget: ", "Payment: (cash / bank finance)", "Best time to reach me: ", "", "Please contact me with suitable options. Thank you."]
+    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بشراء عقار. تفاصيل طلبي:", "", "الاسم: ", "نوع العقار: ", "المدينة والحي المفضّل: ", "المساحة المطلوبة: ", "الميزانية: ", "طريقة الشراء: (كاش / بنك)", "أنسب وقت للتواصل: ", "", "أرجو التواصل معي لعرض الخيارات المناسبة. شكراً لكم."]
+    : ["Hello,", "", "I am contacting you through the Bin Slmah Real Estate website about buying a property. My details:", "", "Name: ", "Property type: ", "City and preferred district: ", "Size: ", "Budget: ", "Payment: (cash / bank finance)", "Best time to reach me: ", "", "Please contact me with suitable options. Thank you."]
   ).join("\n");
 }
