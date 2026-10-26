@@ -321,7 +321,7 @@ function TransferModal({ reqId }: { reqId: string }) {
 
 /* ---------- matching ---------- */
 function ReqMatchesModal({ reqId }: { reqId: string }) {
-  const { data, closeModal, toast } = useCrm();
+  const { data, closeModal, toast, openModal } = useCrm();
   const r = data.requests.find((x) => x.id === reqId);
   if (!r) return null;
   const c = clientById(data, r.clientId);
@@ -343,7 +343,7 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
                   <span className="muted text-[12.5px]">{m.why.join(" · ")}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("تم التسجيل: إرسال " + p.title + " — اتصال بعد 3 أيام"))}>أرسل إليه</a>}
+                  {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>أرسل إليه</a>}
                   <button type="button" className="crm-btn sm" onClick={() => navigator.clipboard?.writeText(propMsg(p)).then(() => toast("تم نسخ الرسالة، يرجى لصقها للعميل في واتساب"))}>نسخ الرسالة</button>
                 </div>
               </div>
@@ -380,7 +380,7 @@ function PropReqsModal({ propId }: { propId: string }) {
                   <span><b className="link" onClick={() => openModal({ kind: "request", id: r.id })}>{c?.name || ""}</b> <Pill tone={REQ_TONE[r.status || "جديد"]}>{r.status || "جديد"}</Pill></span>
                   <span className="muted text-[12.5px]">{m!.why.join(" · ")}</span>
                 </div>
-                {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => toast("تم التسجيل: إرسال " + p.title))}>أرسل إليه</a>}
+                {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>أرسل إليه</a>}
               </div>
             );
           })}

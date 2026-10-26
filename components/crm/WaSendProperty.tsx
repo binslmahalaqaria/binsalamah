@@ -18,7 +18,7 @@ export function WaSendProperty({ client, onClose, send }: {
   /** Sends one item to the open chat: a photo by link, or a text message. */
   send: (item: { url: string } | { text: string }) => Promise<void>;
 }) {
-  const { data, toast } = useCrm();
+  const { data, toast, openModal } = useCrm();
   const [q, setQ] = useState("");
   const [pick, setPick] = useState<Property | null>(null);
   const [imgs, setImgs] = useState<string[]>([]);
@@ -52,8 +52,10 @@ export function WaSendProperty({ client, onClose, send }: {
         await send({ text: msg.trim() });
       }
       if (req) await reqSent(data, req.id, pick.id).catch(() => {});
-      toast("أُرسل العقار للعميل" + (req ? " وسُجّل في طلبه" : ""));
+      toast("أُرسل العقار للعميل" + (req ? " وسُجّل في طلبه — حدّد موعد الزيارة" : ""));
       onClose();
+      // The next step after sending the property is the visit: open the booking straight away.
+      if (req) openModal({ kind: "visit", reqId: req.id, propertyId: pick.id });
     } catch {
       toast("تعذّر إرسال بعض العناصر — تأكد أن الرقم متصل");
     } finally {
