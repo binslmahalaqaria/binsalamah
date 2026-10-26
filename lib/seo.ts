@@ -103,7 +103,7 @@ export function enquiryMessage(o: EnquiryOffer, unit?: EnquiryUnit, ar = true) {
 /** The message from the site-wide contact button: a short template the visitor completes. */
 export function generalEnquiry(ar = true) {
   return (ar
-    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بالتواصل معكم.", "", "الاسم: ", "موضوع التواصل: (شراء / إيجار / بيع عقار / استشارة / أخرى)", "التفاصيل: (نوع العقار، الحي، الميزانية إن وُجدت)", "أنسب وقت للتواصل: ", "", "شكراً لكم."]
-    : ["Hello,", "", "I am contacting you through the Bin Slmah Real Estate website and would like to get in touch.", "", "Name: ", "Subject: (buying / renting / selling a property / consultation / other)", "Details: (property type, district, budget if any)", "Best time to reach me: ", "", "Thank you."]
+    ? ["السلام عليكم ورحمة الله وبركاته،", "", "أتواصل معكم عبر موقع بن سلمه العقارية، وأرغب بالتواصل معكم.", "", "شكراً لكم."]
+    : ["Hello,", "", "I am contacting you through the Bin Slmah Real Estate website and would like to get in touch.", "", "Thank you."]
   ).join("\n");
 }
