@@ -191,12 +191,12 @@ export function signInvoice(inv: ZInvoice, certB64: string, privatePem: string, 
   const time = signingTime.toISOString().slice(0, 19);
   const spHash = Buffer.from(createHash("sha256").update(signedPropsForHash(time, ci.hash, ci.issuer, ci.serial), "utf8").digest("hex")).toString("base64");
 
-  const signedProps =
-    '<xades:SignedProperties Id="xadesSignedProperties"><xades:SignedSignatureProperties>' + t("xades:SigningTime", time) +
-    "<xades:SigningCertificate><xades:Cert><xades:CertDigest>" +
-    el("ds:DigestMethod", "", { Algorithm: "http://www.w3.org/2001/04/xmlenc#sha256" }) + t("ds:DigestValue", ci.hash) +
-    "</xades:CertDigest><xades:IssuerSerial>" + t("ds:X509IssuerName", ci.issuer) + t("ds:X509SerialNumber", ci.serial) +
-    "</xades:IssuerSerial></xades:Cert></xades:SigningCertificate></xades:SignedSignatureProperties></xades:SignedProperties>";
+  // The element is embedded with EXACTLY the text that was hashed (same spacing), only without the namespace declarations
+  // it inherits from <ds:Signature>/<xades:QualifyingProperties>: a validator that canonicalises the element from the
+  // document (production) then arrives at the same bytes as one that re-renders it from its fields (sandbox).
+  const signedProps = signedPropsForHash(time, ci.hash, ci.issuer, ci.serial)
+    .replace(' xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"', "")
+    .split(' xmlns:ds="http://www.w3.org/2000/09/xmldsig#"').join("");
   const xpath = (x: string) => el("ds:Transform", t("ds:XPath", x), { Algorithm: "http://www.w3.org/TR/1999/REC-xpath-19991116" });
   const ublExt =
     "<ext:UBLExtensions><ext:UBLExtension>" + t("ext:ExtensionURI", "urn:oasis:names:specification:ubl:dsig:enveloped:xades") + "<ext:ExtensionContent>" +
