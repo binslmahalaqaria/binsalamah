@@ -22,6 +22,10 @@ import {
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage } from "@/lib/upload-image";
 import { downloadAllImages } from "./downloadImages";
+import { activateOnSite } from "@/lib/crm/offer-from-property";
+import { listOffers } from "@/lib/offers";
+import { useAuth } from "@/lib/auth-context";
+import type { Offer } from "@/lib/types";
 import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
 
 type F = Record<string, unknown>;
@@ -422,6 +426,13 @@ export function PropertyForm({ id }: { id?: string }) {
   const [waArmed, setWaArmed] = useState(false);
   const [uploading, setUploading] = useState(0);
   const [zipping, setZipping] = useState(false);
+  const { user } = useAuth();
+  const [activating, setActivating] = useState(false);
+  const [siteOffer, setSiteOffer] = useState<Offer | null>(null);
+  useEffect(() => {
+    if (!rec || !data.isMgr) return;
+    listOffers().then((os) => setSiteOffer(os.find((o) => o.property_id === rec.id) || null)).catch(() => {});
+  }, [rec, data.isMgr]);
   // Photos from the phone/computer go to Firebase Storage (offers/…, public read, staff-only write).
   const uploadFiles = async (files: FileList | null) => {
     const list = Array.from(files || []).filter((x) => x.type.startsWith("image/"));
@@ -555,6 +566,28 @@ export function PropertyForm({ id }: { id?: string }) {
           )}
           <span className="crm-hint">ارفع الصور من جهازك أو جوالك (تُصغَّر تلقائياً)، أو الصق رابطاً. الصورة الأولى هي الغلاف، وتنتقل الصور إلى الموقع عند «تفعيل في الموقع».</span>
         </div>
+
+        {rec && data.isMgr && (
+          <>
+            <Sec>الموقع الإلكتروني</Sec>
+            <div className="grid gap-2 sm:col-span-2">
+              {siteOffer ? (
+                <a className="crm-btn justify-self-start" href={"/ar/admin/offers/" + siteOffer.id + "/edit"} target="_blank" rel="noopener">🌐 {siteOffer.status === "published" ? "معروض في الموقع" : "مسودة في الموقع"} — تعديل إعلان الموقع</a>
+              ) : rec.status === "مباع" ? <span className="crm-hint">العقار مباع — لا يُعلن في الموقع.</span> : (
+                <button type="button" className="crm-btn primary justify-self-start" disabled={activating} onClick={async () => {
+                  if (!user) return;
+                  setActivating(true);
+                  try {
+                    const err = await activateOnSite(rec, user.uid, await user.getIdToken());
+                    if (err) toast(err); else { toast("تم تفعيل العقار في الموقع"); listOffers().then((os) => setSiteOffer(os.find((o) => o.property_id === rec.id) || null)).catch(() => {}); }
+                  } catch { toast("تعذّر التفعيل، حاول مرة أخرى"); }
+                  finally { setActivating(false); }
+                }}>{activating ? "جارٍ التفعيل…" : "🌐 تفعيل في الموقع"}</button>
+              )}
+              <span className="crm-hint">يُفعَّل بآخر بيانات محفوظة للعقار (احفظ تعديلاتك أولاً). الإعلان نسخة منفصلة: تعدّل فيه الوصف والصور والسعر المعروض بدون ما يتغير العقار في النظام.</span>
+            </div>
+          </>
+        )}
 
         <Sec>المسؤول عن العقار</Sec>
         <Field label="نوع المعلن"><Select value={f.ownerKind} onChange={(v) => set("ownerKind", v)} options={OWNERK} /></Field>
