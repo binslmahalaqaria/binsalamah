@@ -88,7 +88,7 @@ export function OfferCard({ offer, whatsappNumber }: { offer: Offer; whatsappNum
         <div className="mt-auto flex gap-2 pt-1">
           <Link href={href} className="flex-1 rounded-full bg-navy px-3 py-2.5 text-center text-sm font-medium text-cream transition-colors hover:bg-navy/85">{s("details")}</Link>
           <WhatsAppLink whatsappNumber={whatsappNumber} message={waMessage}
-            className="rounded-full border border-navy/20 px-4 py-2.5 text-center text-sm font-medium text-navy transition-colors hover:border-[#25d366] hover:text-[#1da851]">
+            className="rounded-full border border-navy/20 px-4 py-2.5 text-center text-sm font-medium text-navy transition-colors hover:border-navy hover:text-[#1da851]">
             {t("contactUs")}
           </WhatsAppLink>
         </div>

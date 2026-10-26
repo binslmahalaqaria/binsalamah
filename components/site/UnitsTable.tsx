@@ -30,7 +30,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
   const chip = (on: boolean) => "rounded-full px-4 py-1.5 text-sm transition-colors " + (on ? "bg-navy text-cream" : "bg-navy/5 text-navy hover:bg-navy/10");
   const badge = (u: OfferUnit) => <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 " + STATUS[u.status].cls}>{ar ? STATUS[u.status].ar : STATUS[u.status].en}</span>;
   const ask = (u: OfferUnit) => u.status === "sold" ? null : (
-    <WhatsAppLink whatsappNumber={whatsappNumber} message={msg(u)} className="rounded-full border border-navy/20 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:border-[#25d366] hover:text-[#1da851]">{L.ask}</WhatsAppLink>
+    <WhatsAppLink whatsappNumber={whatsappNumber} message={msg(u)} className="rounded-full border border-navy/20 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:border-navy hover:text-[#1da851]">{L.ask}</WhatsAppLink>
   );
 
   return (
