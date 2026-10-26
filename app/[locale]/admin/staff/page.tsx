@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
-import { listStaff, setStaffActive, setStaffRole, createStaffAccount, sendResetLink, deleteStaffAccount } from "@/lib/staff-client";
+import { listStaff, setStaffActive, setStaffName, setStaffRole, createStaffAccount, sendResetLink, deleteStaffAccount } from "@/lib/staff-client";
 import { redistributeFrom, restoreTo } from "@/lib/crm/redistribute";
 import type { Staff, StaffRole } from "@/lib/types";
 
@@ -195,7 +195,15 @@ export default function AdminStaffPage() {
                         {initials(s.name)}
                       </div>
                       <div>
-                        <div className="font-medium text-navy">{s.name}</div>
+                        <div className="flex items-center gap-1.5 font-medium text-navy">
+                          {s.name}
+                          <button type="button" title="تعديل الاسم" aria-label={"تعديل اسم " + s.name} className="text-xs text-navy/40 hover:text-navy"
+                            onClick={async () => {
+                              const n = window.prompt("الاسم الجديد:", s.name);
+                              if (n === null || !n.trim() || n.trim() === s.name) return;
+                              try { await setStaffName(s.id, n); reload(); } catch { window.alert("تعذّر تغيير الاسم"); }
+                            }}>✎</button>
+                        </div>
                         <div className="text-xs text-navy/50">{s.email}</div>
                       </div>
                     </div>

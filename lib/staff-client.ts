@@ -31,6 +31,11 @@ export async function setStaffActive(
   await updateDoc(doc(db, COLLECTION, id), { active });
 }
 
+/** Renames a staff member (the CRM shows this name everywhere; the login email is unchanged). */
+export async function setStaffName(id: string, name: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, id), { name: name.trim() });
+}
+
 export async function setStaffRole(
   id: string,
   role: StaffRole
