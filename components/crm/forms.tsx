@@ -580,7 +580,7 @@ export function PropertyForm({ id }: { id?: string }) {
                   try {
                     const err = await activateOnSite(rec, user.uid, await user.getIdToken());
                     if (err) toast(err); else { toast("تم تفعيل العقار في الموقع"); listOffers().then((os) => setSiteOffer(os.find((o) => o.property_id === rec.id) || null)).catch(() => {}); }
-                  } catch { toast("تعذّر التفعيل، حاول مرة أخرى"); }
+                  } catch (e) { console.error("activateOnSite", e); toast("تعذّر التفعيل: " + (e instanceof Error ? e.message : String(e))); }
                   finally { setActivating(false); }
                 }}>{activating ? "جارٍ التفعيل…" : "🌐 تفعيل في الموقع"}</button>
               )}

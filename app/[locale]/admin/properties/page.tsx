@@ -159,7 +159,7 @@ export default function PropertiesPage() {
                           const err = await activateOnSite(p, user.uid, await user.getIdToken());
                           if (err) toast(err);
                           else { toast("تم تفعيل «" + p.title + "» في الموقع — تقدر تعدّل إعلانه من «عقارات الموقع»"); const os = await listOffers(); setWeb(Object.fromEntries(os.filter((o) => o.property_id).map((o) => [o.property_id as string, o]))); }
-                        } catch { toast("تعذّر التفعيل، حاول مرة أخرى"); }
+                        } catch (e) { console.error("activateOnSite", e); toast("تعذّر التفعيل: " + (e instanceof Error ? e.message : String(e))); }
                         finally { setActivating(null); }
                       }}>{activating === p.id ? "جارٍ التفعيل…" : "🌐 تفعيل في الموقع"}</button>
                     ))}
