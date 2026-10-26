@@ -407,7 +407,7 @@ function WhatsAppInbox() {
       {showSettings && <SourcesSettings sources={sources} onChange={poll} />}
       {showImport && data.isMgr && <WaImport sources={sources} onClose={() => setShowImport(false)} />}
       {/* pull every conversation back to its first message */}
-      {sources.filter((s) => s.canManage && s.status === "open").map((s) => {
+      {sources.filter((s, i, all) => s.canManage && s.status === "open" && !(s.me && all.findIndex((x) => x.status === "open" && x.me?.id === s.me?.id) < i)).map((s) => {
         const b = s.backfill;
         const pct = b && b.total ? Math.round((b.done / b.total) * 100) : 0;
         const finished = b && !b.running && b.total > 0 && b.done >= b.total;
