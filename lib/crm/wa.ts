@@ -25,6 +25,8 @@ export interface WaSource {
   since: number | null;
   unread: number;
   qr: string | null;
+  /** Set by the server when a link was refused (e.g. the same phone is already linked as another number). */
+  warn?: string | null;
   canManage: boolean;
   /** History sync from the phone: percent (when known) and whether it finished. */
   sync: { progress: number | null; done: boolean; at: number | null } | null;
