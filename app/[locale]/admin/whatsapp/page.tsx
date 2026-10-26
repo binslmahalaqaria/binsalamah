@@ -573,7 +573,7 @@ function WhatsAppInbox() {
                             notes: cur.last ? "آخر رسالة على واتساب: " + String(cur.last).slice(0, 500) : null,
                             log: [], createdAt: nowStamp(), updatedAt: nowStamp(),
                           });
-                          toast("تمت إضافة الرقم إلى «الأرقام»");
+                          toast("تم تسجيل الرقم في «الأرقام»");
                         } catch (e) { toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر تسجيل الرقم"); }
                       }}>
                       📥 إضافة رقم
