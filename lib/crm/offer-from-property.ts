@@ -49,6 +49,9 @@ export async function activateOnSite(p: Property, uid: string, idToken: string):
   }
   if (!canPublishOffer({ ...parsed.data, images })) return "أضف صورة واحدة على الأقل";
   const data = await fillEnglish(parsed.data, idToken);
-  await createOffer({ ...data, images, property_id: p.id }, "published", uid);
+  // Firestore refuses `undefined` (e.g. an English field the translation left out): drop those keys, deeply.
+  const clean = <T,>(v: T): T => Array.isArray(v) ? (v.map(clean) as unknown as T)
+    : v && typeof v === "object" ? (Object.fromEntries(Object.entries(v as object).filter(([, x]) => x !== undefined).map(([k, x]) => [k, clean(x)])) as T) : v;
+  await createOffer(clean({ ...data, images, property_id: p.id }), "published", uid);
   return null;
 }
