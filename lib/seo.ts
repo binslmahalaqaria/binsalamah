@@ -63,6 +63,7 @@ export const SOCIAL = [
   { id: "instagram", label: "Instagram", handle: "binslmahre", url: "https://www.instagram.com/binslmahre" },
   { id: "x", label: "X", handle: "binslmahre", url: "https://x.com/binslmahre" },
   { id: "tiktok", label: "TikTok", handle: "binslmahre", url: "https://www.tiktok.com/@binslmahre" },
+  { id: "youtube", label: "YouTube", handle: "binslmahRE", url: "https://www.youtube.com/@binslmahRE" },
 ] as const;
 
 /** Full public link of a property. */

@@ -1,7 +1,7 @@
 import { getLocale } from "next-intl/server";
 import { Logo } from "@/components/Logo";
 import { RequestForm } from "@/components/site/RequestForm";
-import { IconInstagram, IconTikTok, IconX } from "@/components/site/icons";
+import { IconInstagram, IconTikTok, IconYouTube, IconX } from "@/components/site/icons";
 import { allDistricts } from "@/lib/districts";
 import { SOCIAL } from "@/lib/seo";
 
@@ -43,7 +43,7 @@ export async function ComingSoon() {
           {SOCIAL.map((x) => (
             <a key={x.id} href={x.url} target="_blank" rel="noopener noreferrer" aria-label={x.label + " @" + x.handle}
               className="grid h-10 w-10 place-items-center rounded-full border border-navy/15 text-[18px] text-navy transition-colors hover:bg-navy hover:text-cream">
-              {x.id === "instagram" ? <IconInstagram /> : x.id === "tiktok" ? <IconTikTok /> : <IconX />}
+              {x.id === "instagram" ? <IconInstagram /> : x.id === "tiktok" ? <IconTikTok /> : x.id === "youtube" ? <IconYouTube /> : <IconX />}
             </a>
           ))}
         </div>

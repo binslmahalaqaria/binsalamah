@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPublicContactInfo } from "@/lib/settings";
 import { SOCIAL, organizationJsonLd } from "@/lib/seo";
-import { IconInstagram, IconMail, IconPhone, IconPin, IconTikTok, IconX } from "@/components/site/icons";
+import { IconInstagram, IconMail, IconPhone, IconPin, IconTikTok, IconYouTube, IconX } from "@/components/site/icons";
 import { Splash } from "@/components/site/Splash";
 import { ComingSoon } from "@/components/site/ComingSoon";
 import { COMING_SOON } from "@/lib/site-mode";
@@ -82,7 +82,7 @@ export default async function PublicLayout({
             {SOCIAL.map((x) => (
               <a key={x.id} href={x.url} target="_blank" rel="noopener noreferrer" aria-label={x.label + " @" + x.handle} title={"@" + x.handle}
                 className="grid h-10 w-10 place-items-center rounded-full border border-cream/25 text-[18px] text-cream transition-colors hover:border-cream hover:bg-cream hover:text-navy">
-                {x.id === "instagram" ? <IconInstagram /> : x.id === "tiktok" ? <IconTikTok /> : <IconX />}
+                {x.id === "instagram" ? <IconInstagram /> : x.id === "tiktok" ? <IconTikTok /> : x.id === "youtube" ? <IconYouTube /> : <IconX />}
               </a>
             ))}
           </div>
