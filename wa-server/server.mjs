@@ -282,9 +282,20 @@ function makeSession(src) {
     s.sock = sock;
     sock.ev.on("creds.update", saveCreds);
     sock.ev.on("connection.update", async (u) => {
-      if (u.qr) Object.assign(s.state, { status: "qr", qr: await QRCode.toDataURL(u.qr, { margin: 1, width: 300 }) });
+      if (u.qr) { s.sawQr = true; Object.assign(s.state, { status: "qr", qr: await QRCode.toDataURL(u.qr, { margin: 1, width: 300 }) }); }
       if (u.connection === "open") {
         s.fails = 0;
+        // The same phone must not be linked as two sources (every chat would show twice): a fresh QR link whose number is
+        // already open under another source is unlinked at once and the user is told which source has it.
+        const meId = jidNormalizedUser(sock.user?.id);
+        const twin = s.sawQr && sources.find((x) => x.id !== s.id && sessions.get(x.id)?.state.status === "open" && sessions.get(x.id)?.state.me?.id === meId);
+        s.sawQr = false;
+        if (twin) {
+          s.state.warn = "هذا الجوال مربوط مسبقاً في «" + twin.label + "» — لا يمكن ربطه مرتين. أُلغي هذا الربط.";
+          await sock.logout().catch(() => {});
+          return;
+        }
+        s.state.warn = null;
         Object.assign(s.state, { status: "open", qr: null, since: Date.now(), me: { id: jidNormalizedUser(sock.user?.id), name: sock.user?.name || null } });
         if (!s.store.labelsSynced) s.syncLabels().catch((e) => console.warn("[" + s.id + "] label sync failed:", e?.message || e));
       }
@@ -466,7 +477,7 @@ const pub = (src, who) => {
   const s = sessions.get(src.id);
   const unread = s ? Object.values(s.store.chats).reduce((n, c) => n + (c.unread || 0), 0) : 0;
   return {
-    ...src, status: s?.state.status || "stopped", me: s?.state.me || null, since: s?.state.since || null, unread, sync: s?.state.sync || null,
+    ...src, status: s?.state.status || "stopped", warn: s?.state.warn || null, me: s?.state.me || null, since: s?.state.since || null, unread, sync: s?.state.sync || null,
     chats: s ? Object.keys(s.store.chats).length : 0, hidden: s ? Object.keys(s.store.chats).filter((j) => j.endsWith("@lid")).length : 0,
     qr: canManage(src, who) ? s?.state.qr || null : null, canManage: canManage(src, who), backfill: s?.backfill || null,
   };
@@ -558,7 +569,17 @@ http.createServer(async (req, res) => {
     // --- inbox ---
     if (url.pathname === "/api/chats") {
       const out = [];
-      for (const src of sources.filter((x) => canSee(x, who))) {
+      // The same phone linked as two sources would list every chat twice: show it once (the company number wins).
+      const seenPhones = new Set();
+      const visible = sources.filter((x) => canSee(x, who)).sort((a, b) => (a.kind === "company" ? 0 : 1) - (b.kind === "company" ? 0 : 1));
+      const uniq = visible.filter((x) => {
+        const me = sessions.get(x.id)?.state.me?.id;
+        if (!me) return true;
+        if (seenPhones.has(me)) return false;
+        seenPhones.add(me);
+        return true;
+      });
+      for (const src of uniq) {
         const s = sessions.get(src.id);
         if (!s) continue;
         for (const c of Object.values(s.store.chats)) {
@@ -579,7 +600,7 @@ http.createServer(async (req, res) => {
         }
       }
       out.sort((a, b) => b.ts - a.ts);
-      const labels = sources.filter((x) => canSee(x, who)).flatMap((x) => Object.values(sessions.get(x.id)?.store.labels || {}).map((l) => ({ ...l, source: x.id })));
+      const labels = uniq.flatMap((x) => Object.values(sessions.get(x.id)?.store.labels || {}).map((l) => ({ ...l, source: x.id })));
       return send(res, 200, { chats: out.slice(0, 3000), labels });
     }
     const src = srcOf(url.searchParams.get("source") || body.source);

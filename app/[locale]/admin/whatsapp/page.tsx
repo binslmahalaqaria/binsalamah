@@ -395,6 +395,7 @@ function WhatsAppInbox() {
               <li>امسح الرمز الظاهر.</li>
             </ol>
             <p className="crm-hint m-0">يبقى واتساب يعمل على الجوال كالمعتاد، وتظهر المحادثات هنا خلال دقائق.</p>
+            {s.warn && <p className="m-0 rounded-lg bg-[var(--crm-warn-soft,#fdecec)] p-2 text-[13.5px] font-semibold text-[var(--crm-warn,#b3261e)]">⚠ {s.warn}</p>}
           </div>
           {s.qr ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -555,7 +556,8 @@ function WhatsAppInbox() {
                   <div className={"flex flex-wrap gap-2 " + (tools ? "max-md:w-full" : "max-md:hidden")}>
                   {curClient ? (
                     <>
-                      <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: curClient.id })}>تسجيل الإجراء التالي</button>
+                      <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "request", preset: { clientId: curClient.id } })}>إضافة طلب</button>
+                      <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: curClient.id })}>تسجيل الإجراء التالي</button>
                       <button type="button" className="crm-btn sm" onClick={() => openClient(curClient.id)}>ملف العميل{data.isMgr ? " · " + nameOf(data, curClient.assignee) : ""}</button>
                     </>
                   ) : (
