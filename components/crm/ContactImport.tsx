@@ -119,8 +119,6 @@ export function ContactImport({ onClose }: { onClose: () => void }) {
   async function template() {
     await writeExcelFile([
       TEMPLATE_HEAD.map((h) => ({ value: h, fontWeight: "bold" as const, backgroundColor: "#333333", color: "#FFFFFF" })),
-      ["0551234567"],
-      ["+966559876543"],
     ], { columns: [{ width: 20 }], rightToLeft: true, stickyRowsCount: 1, sheet: "الأرقام" })
       .toFile("نموذج-قائمة-التواصل.xlsx");
   }
