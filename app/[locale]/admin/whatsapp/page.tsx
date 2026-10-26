@@ -14,7 +14,9 @@ import { useCrm } from "@/lib/crm/store";
 import { can, matchesForReq, members, nameOf, propPrice, reqsOf, visibleClients, wantLine } from "@/lib/crm/logic";
 import { auth } from "@/lib/firebase";
 import type { Client } from "@/lib/crm/types";
-import { normPhone, waLink } from "@/lib/crm/util";
+import { normPhone, nowStamp, waLink } from "@/lib/crm/util";
+import { createClient, isPhoneTaken, PHONE_TAKEN } from "@/lib/crm/actions";
+import { TO_CONTACT } from "@/lib/crm/constants";
 import {
   localPhone, seesAllOf, waApi as api, waTime as timeOf, WA_LABEL_COLORS, WA_STATUS_AR,
   type WaChat as Chat, type WaLabel, type WaMsg as Msg, type WaSource as Source,
@@ -557,6 +559,25 @@ function WhatsAppInbox() {
                       <button type="button" className="crm-btn sm" onClick={() => openClient(curClient.id)}>ملف العميل{data.isMgr ? " · " + nameOf(data, curClient.assignee) : ""}</button>
                     </>
                   ) : (
+                    <>
+                    <button type="button" className="crm-btn sm" disabled={!cur.phone}
+                      title="يُسجَّل الرقم في «الأرقام» ليتصل به الموظف، بدون طلب"
+                      onClick={async () => {
+                        if (!cur.phone) return;
+                        const ph = localPhone(cur.phone);
+                        try {
+                          await createClient({
+                            name: cur.name || ph, phone: ph, source: data.sources.includes("واتساب") ? "واتساب" : null,
+                            status: TO_CONTACT, assignee: null, assignedAt: null, assignedBy: null, unseen: false, temp: null,
+                            nextCall: null, visitAt: null, visitProperty: null, visitConfirmed: false,
+                            notes: cur.last ? "آخر رسالة على واتساب: " + String(cur.last).slice(0, 500) : null,
+                            log: [], createdAt: nowStamp(), updatedAt: nowStamp(),
+                          });
+                          toast("تم تسجيل الرقم في «الأرقام»");
+                        } catch (e) { toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر تسجيل الرقم"); }
+                      }}>
+                      📥 تسجيل رقم
+                    </button>
                     <button type="button" className="crm-btn sm primary"
                       onClick={() => openModal({ kind: "request", preset: {
                         source: data.sources.includes("واتساب") ? "واتساب" : null, _newName: cur.name || "", _newPhone: localPhone(cur.phone),
@@ -564,6 +585,7 @@ function WhatsAppInbox() {
                       } })}>
                       إضافة كعميل وطلب
                     </button>
+                    </>
                   )}
                   </div>
                 </div>

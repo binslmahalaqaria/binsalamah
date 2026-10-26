@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { doc, collection, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
+import { TO_CONTACT } from "@/lib/crm/constants";
 import { useCrm } from "@/lib/crm/store";
 import { assertWritable } from "@/lib/crm/preview";
 import { members, nameOf } from "@/lib/crm/logic";
@@ -73,7 +74,7 @@ export function WaImport({ sources, onClose }: { sources: WaSource[]; onClose: (
           batch.set(ref, {
             name: c.name || localPhone(c.phone), phone: localPhone(c.phone), source,
             assignee: who, assignedAt: who ? nowStamp() : null, assignedBy: who ? data.uid : null, unseen: !!who && who !== data.uid,
-            temp: null, status: "نشط", nextCall: call === "today" ? today() : null, visitAt: null, visitProperty: null, visitConfirmed: false,
+            temp: null, status: TO_CONTACT, nextCall: call === "today" ? today() : null, visitAt: null, visitProperty: null, visitConfirmed: false,
             notes: c.last ? "آخر رسالة على واتساب (" + d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear() + "): " + c.last.slice(0, 500) : null,
             log: [], createdAt: nowStamp(), updatedAt: nowStamp(),
           });
