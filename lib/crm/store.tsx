@@ -20,7 +20,7 @@ import type { Staff } from "@/lib/types";
 import type {
   AttendanceDay, ChatMsg, Client, DirectMsg, Invoice, CrmSettings, Goal, HrFile, PayrollRow, Property, Proposal, Request, Task, Viewing,
 } from "./types";
-import type { CrmData, RoundRobin } from "./logic";
+import type { CrmData, NumberFeed, RoundRobin } from "./logic";
 import { nowStamp } from "./util";
 import { PROP_LEGACY, PTYPES, SOURCES } from "./constants";
 import { setPreviewMode } from "./preview";
@@ -119,6 +119,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [propTypes, setPropTypes] = useState<string[]>([...PTYPES]);
   const [sources, setSources] = useState<string[]>([...SOURCES]);
   const [rr, setRr] = useState<RoundRobin>({ on: false, order: [], last: null });
+  const [feed, setFeed] = useState<NumberFeed>({ on: false, batch: 10 });
   const [previewAs, setPreviewAs] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal | null>(null);
   const [drawer, setDrawer] = useState<{ id: string; req?: string } | null>(null);
@@ -176,6 +177,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
         setSources(Array.isArray(ss) && ss.length ? ss.map(String) : [...SOURCES]);
         const r = (s.exists() ? s.data().rr : null) as Partial<RoundRobin> | null;
         setRr({ on: !!r?.on, order: Array.isArray(r?.order) ? r!.order.map(String) : [], last: r?.last ?? null });
+        const fd = (s.exists() ? s.data().feed : null) as Partial<NumberFeed> | null;
+        setFeed({ on: !!fd?.on, batch: Math.min(50, Math.max(1, Number(fd?.batch) || 10)) });
       }),
       onSnapshot(doc(db, "crm", "settings"), (s) => {
         if (s.exists()) setSettings({ salesManager: null, escalateDays: 2, escalateOff: false, ...(s.data() as Partial<CrmSettings>) });
@@ -262,8 +265,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   useEffect(() => setPreviewMode(!!target), [target]);
 
   const data: CrmData = useMemo(
-    () => ({ proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "", propTypes, sources, rr }),
-    [proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs, propTypes, sources, rr]
+    () => ({ proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs: isMgr ? viewAs : "", propTypes, sources, rr, feed }),
+    [proposals, viewings, clients, props, requests, tasks, staff, goals, att, hr, payroll, uid, isMgr, isAdmin, viewAs, propTypes, sources, rr, feed]
   );
 
   const toast = useCallback((msg: string) => {

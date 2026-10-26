@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { Empty, PageHeader } from "@/components/crm/ui";
-import { AutoAssign, Escalation, ListEditor, PermsEditor } from "@/components/crm/SettingsParts";
+import { AutoAssign, Escalation, ListEditor, NumberFeedCard, PermsEditor } from "@/components/crm/SettingsParts";
 import { DemoData } from "@/components/crm/DemoData";
 import { ImportOld } from "@/components/crm/ImportOld";
 import { ResetData } from "@/components/crm/ResetData";
@@ -40,7 +40,7 @@ export default function SetupPage() {
           <ListEditor field="sources" />
         </div>
       )}
-      {tab === "assign" && <div className="max-w-2xl"><AutoAssign /></div>}
+      {tab === "assign" && <div className="grid max-w-2xl gap-3"><AutoAssign /><NumberFeedCard /></div>}
       {tab === "perms" && data.isAdmin && <PermsEditor />}
       {tab === "escalate" && data.isAdmin && <div className="max-w-2xl"><Escalation /></div>}
       {tab === "tools" && data.isAdmin && (

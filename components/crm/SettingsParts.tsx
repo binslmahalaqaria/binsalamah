@@ -11,7 +11,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
 import { useRouter } from "@/i18n/navigation";
-import { PTYPES, SOURCES } from "@/lib/crm/constants";
+import { PTYPES, SOURCES, TO_CONTACT } from "@/lib/crm/constants";
 import { members, nameOf, PERM_DEFAULT, PERMS, typesOf, type PermKey } from "@/lib/crm/logic";
 import { write } from "@/lib/crm/actions";
 import { assertWritable } from "@/lib/crm/preview";
@@ -167,6 +167,37 @@ export function AutoAssign() {
       )}
       <div className="border-t border-[var(--crm-line)] pt-3">
         <button type="button" className="crm-btn primary" disabled={busy || !dirty} onClick={save}>حفظ</button>
+      </div>
+    </Card>
+  );
+}
+
+/* ---------- numbers feed ---------- */
+export function NumberFeedCard() {
+  const { data, toast } = useCrm();
+  const [on, setOn] = useState(data.feed.on);
+  const [batch, setBatch] = useState(String(data.feed.batch));
+  const [busy, setBusy] = useState(false);
+  const n = Math.min(50, Math.max(1, Math.round(Number(batch)) || 10));
+  const pool = data.clients.filter((c) => !c.assignee && c.status === TO_CONTACT).length;
+  async function save() {
+    setBusy(true);
+    try {
+      await saveLists({ feed: { on, batch: n }, by: data.uid });
+      toast(on ? "تم تفعيل تغذية الأرقام التلقائية" : "تم إيقاف تغذية الأرقام");
+    } catch { toast(NO_RULE); } finally { setBusy(false); }
+  }
+  return (
+    <Card title="تغذية الأرقام تلقائياً"
+      hint="أضف الأرقام في «الأرقام» بدون تحديد موظف. كلما أنهى الموظف الاتصال بكل أرقامه (مرة واحدة على الأقل لكل رقم) يُسند إليه النظام الدفعة التالية من الأرقام غير المسندة، الأقدم أولاً، بدون تدخل منك.">
+      <label className="crm-check justify-self-start"><input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} /><span>تفعيل التغذية التلقائية</span></label>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span>عدد الأرقام في كل دفعة:</span>
+        <input className="!w-20" inputMode="numeric" value={batch} onChange={(e) => setBatch(e.target.value.replace(/D/g, ""))} />
+        <span className="muted">أرقام غير مسندة بانتظار التوزيع الآن: <b className="num">{pool}</b></span>
+      </div>
+      <div className="border-t border-[var(--crm-line)] pt-3">
+        <button type="button" className="crm-btn primary" disabled={busy || (on === data.feed.on && n === data.feed.batch)} onClick={save}>حفظ</button>
       </div>
     </Card>
   );

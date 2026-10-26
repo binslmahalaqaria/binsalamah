@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
-import { CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
+import { isCall, CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
 import {
   answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
@@ -634,4 +634,34 @@ export async function assignPropRefs(d: CrmData) {
       tx.update(pRef, { ref: n });
     });
   }
+}
+
+/**
+ * Automatic feeding of numbers (client 2026-10-26): when an employee has called every number they were given
+ * (none of their «للتواصل» numbers is still without a call), they get the next batch from the unassigned pool,
+ * oldest first — no manager needed. Runs in the employee's own session; each number is claimed in a transaction so two
+ * employees finishing at the same moment never get the same number. Returns how many were handed over.
+ */
+export async function feedNumbers(d: CrmData): Promise<number> {
+  if (!d.feed?.on || !d.uid || d.isMgr) return 0;
+  const mine = d.clients.filter((c) => c.assignee === d.uid && c.status === TO_CONTACT && !(c.log || []).some((l) => isCall(l)));
+  if (mine.length) return 0;
+  const pool = d.clients.filter((c) => !c.assignee && c.status === TO_CONTACT)
+    .sort((x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || ""))).slice(0, d.feed.batch);
+  let got = 0;
+  for (const c of pool) {
+    const ok = await runTransaction(db, async (tx) => {
+      const ref = doc(db, "clients", c.id);
+      const cur = await tx.get(ref);
+      if (!cur.exists() || cur.data().assignee) return false; // someone else took it
+      const at = nowStamp();
+      tx.update(ref, {
+        assignee: d.uid, assignedAt: at, assignedBy: null, unseen: true, updatedAt: at,
+        log: [{ at, byId: null, type: "تحويل", text: "أُسند تلقائياً بعد إنجاز الأرقام السابقة", call: false }, ...((cur.data().log as unknown[]) || [])].slice(0, 80),
+      });
+      return true;
+    }).catch(() => false);
+    if (ok) got++;
+  }
+  return got;
 }

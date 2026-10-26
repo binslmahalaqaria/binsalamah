@@ -38,6 +38,14 @@ export interface CrmData {
   sources: string[];
   /** Round-robin assignment of requests added by managers (crm/lists.rr). */
   rr: RoundRobin;
+  /** Automatic feeding of new numbers to employees (crm/lists.feed). */
+  feed: NumberFeed;
+}
+
+export interface NumberFeed {
+  on: boolean;
+  /** How many numbers an employee gets each time (default 10). */
+  batch: number;
 }
 
 export interface RoundRobin {
