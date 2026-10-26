@@ -169,7 +169,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               <div className="font-heading text-2xl font-bold text-navy">{range(offer.price_from, offer.price_to)} <span className="text-sm font-normal text-navy/50">{s("sar")}</span></div>
             </div>
             <WhatsAppLink whatsappNumber={whatsappNumber} message={waMessage}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#25d366] px-5 py-3 font-medium text-white transition-opacity hover:opacity-90">
+              className="flex items-center justify-center gap-2 rounded-full bg-[#333333] px-5 py-3 font-medium text-white transition-opacity hover:opacity-90">
               {s("ctaWa")}
             </WhatsAppLink>
             <a href="#interest" className="rounded-full border border-navy px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy hover:text-cream">{t("registerInterest")}</a>
