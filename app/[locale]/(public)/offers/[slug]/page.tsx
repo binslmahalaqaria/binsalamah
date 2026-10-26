@@ -10,7 +10,8 @@ import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
 import { UnitsTable } from "@/components/site/UnitsTable";
-import { IconArea, IconBath, IconBed, IconCheck, IconPin, IconSofa, IconShield } from "@/components/site/icons";
+import { FeatureTiles } from "@/components/site/FeatureTiles";
+import { IconArea, IconBath, IconBed, IconPin, IconSofa, IconShield } from "@/components/site/icons";
 
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
 
@@ -146,11 +147,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
           {!!offer.features?.length && (
             <div className="grid gap-3">
               <h2 className="font-heading text-xl font-bold text-navy">{ar ? "المميزات" : "Features"}</h2>
-              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {(!ar && offer.features_en?.length === offer.features.length ? offer.features_en : offer.features).map((x) => (
-                  <li key={x} className="flex items-center gap-2 text-navy/80"><span className="grid h-6 w-6 place-items-center rounded-full bg-gold/15 text-sm text-gold"><IconCheck /></span>{x}</li>
-                ))}
-              </ul>
+              <FeatureTiles ar={ar} items={offer.features.map((k, i) => ({ key: k, text: !ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k }))} />
             </div>
           )}
 
