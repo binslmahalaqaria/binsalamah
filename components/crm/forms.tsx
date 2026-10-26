@@ -13,11 +13,11 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { assignClient, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
+import { toggleTask, assignClient, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
-  ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Sec, Select,
+  ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Pill, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage } from "@/lib/upload-image";
@@ -667,6 +667,37 @@ export function TaskForm({ id, preset }: { id?: string; preset?: Partial<Task> }
   useEffect(() => {
     if (unseenMine && rec) write("tasks", rec.id, { seen: true }, "update").catch(() => {});
   }, [unseenMine, rec]);
+
+  // A task given to an employee by someone else is read-only for them (client 2026-10-26): they can only open it and mark it done.
+  const readOnly = !!rec && !data.isMgr && rec.createdBy !== data.uid;
+  if (rec && readOnly) {
+    const cl = clientById(data, rec.clientId), pr = data.props.find((p) => p.id === rec.propertyId);
+    return (
+      <ModalFrame title="مهمة" onClose={closeModal} width={560}
+        footer={
+          <div className="flex flex-wrap gap-2">
+            {rec.assignee === data.uid && !rec.done && (
+              <button type="button" className="crm-btn primary" onClick={async () => { await toggleTask(data, rec.id, true); toast("أحسنت، تم إنجاز المهمة"); closeModal(); }}>تم الإنجاز</button>
+            )}
+            <button type="button" className="crm-btn" onClick={closeModal}>إغلاق</button>
+          </div>
+        }>
+        <div className="grid gap-2.5 text-[14px]">
+          <b className="font-heading text-[16px]">{rec.title}</b>
+          {rec.done && <Pill tone="ok">منجزة</Pill>}
+          <div className="grid gap-1 text-[13.5px] text-[var(--crm-ink-2)]">
+            <span>الموعد: {rec.due || "—"}</span>
+            <span>الأولوية: {rec.priority || "عادية"}</span>
+            {rec.createdBy && <span>من: {nameOf(data, rec.createdBy)}</span>}
+            {cl && <span>العميل: {cl.name}</span>}
+            {pr && <span>العقار: {pr.title}</span>}
+          </div>
+          {rec.notes && <p className="m-0 whitespace-pre-wrap rounded-lg bg-[var(--crm-surface-2)] px-3 py-2">{rec.notes}</p>}
+          <span className="crm-hint">المهام التي تصلك من الإدارة لا تُعدَّل، وإنما تضغط «تم الإنجاز» عند الانتهاء منها.</span>
+        </div>
+      </ModalFrame>
+    );
+  }
 
   async function save() {
     if (!f.title.trim()) return toast("يرجى تعبئة حقل: المهمة");

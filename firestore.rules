@@ -104,8 +104,16 @@ service cloud.firestore {
     match /requests/{id} {
       allow read, write: if isActiveStaff();
     }
+    // Tasks (client 2026-10-26): whoever a task is assigned to can only mark it done (and seen); managers and the
+    // person who created a task can change or delete it.
     match /tasks/{id} {
-      allow read, write: if isActiveStaff();
+      allow read, create: if isActiveStaff();
+      allow update: if isActiveStaff() && (
+        isManager() || resource.data.createdBy == request.auth.uid ||
+        (resource.data.assignee == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done', 'doneAt', 'doneBy', 'seen', 'updatedAt']))
+      );
+      allow delete: if isActiveStaff() && (isManager() || resource.data.createdBy == request.auth.uid);
     }
     // Private reminders («مهامي الخاصة»): only their owner may read or change them —
     // no other staff member, not even managers.
