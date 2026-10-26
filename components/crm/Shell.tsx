@@ -15,6 +15,7 @@ import { useCrm } from "@/lib/crm/store";
 import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
 import { TO_CONTACT } from "@/lib/crm/constants";
 import { assignPropRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
+import { TaskAlerts } from "./TaskAlerts";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
@@ -244,6 +245,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       <ClientDrawer />
       {can(data, "assistant") && <Assistant />}
       <ModalHost />
+      <TaskAlerts />
       {toastMsg && <div className="crm-toast" role="status">{toastMsg}</div>}
     </div>
   );
