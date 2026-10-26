@@ -14,7 +14,7 @@ import { useCrm } from "@/lib/crm/store";
 import { can, matchesForReq, members, nameOf, propPrice, reqsOf, visibleClients, wantLine } from "@/lib/crm/logic";
 import { auth } from "@/lib/firebase";
 import type { Client } from "@/lib/crm/types";
-import { normPhone } from "@/lib/crm/util";
+import { normPhone, waLink } from "@/lib/crm/util";
 import {
   localPhone, seesAllOf, waApi as api, waTime as timeOf, WA_LABEL_COLORS, WA_STATUS_AR,
   type WaChat as Chat, type WaLabel, type WaMsg as Msg, type WaSource as Source,
@@ -138,7 +138,14 @@ function WhatsAppInbox() {
     if (!wantPhone || !sources || handled.current === wantPhone + "|" + draft) return;
     const open = sources.filter((s) => s.status === "open");
     const found = chats.find((c) => c.phone === wantPhone && open.some((s) => s.id === c.source)) || chats.find((c) => c.phone === wantPhone);
-    if (!found && !open.length) { if (!chats.length) return; toast("لا يوجد رقم واتساب متصل في النظام"); handled.current = wantPhone + "|" + draft; return; }
+    if (!found && !open.length) {
+      // No linked number at all: say so and open the customer's chat in the normal WhatsApp instead of waiting for chats that will never come.
+      toast("لا يوجد رقم واتساب متصل في النظام — فُتحت المحادثة في واتساب جوالك");
+      handled.current = wantPhone + "|" + draft;
+      const ext = waLink(wantPhone, draft || undefined);
+      if (ext) window.open(ext, "_blank", "noopener");
+      return;
+    }
     if (!found && !chats.length && open.some((s) => !s.sync?.done)) return; // wait for the first chat list
     handled.current = wantPhone + "|" + draft;
     if (found) setSel(key(found));
@@ -348,8 +355,12 @@ function WhatsAppInbox() {
     <>
       <PageHeader title="واتساب" sub="صندوق موحّد لمحادثات أرقام الشركة" />
       <div className="crm-card grid max-w-xl gap-2 p-5">
-        <b>خدمة واتساب غير متصلة</b>
-        <p className="crm-hint m-0">يجب تشغيل خادم واتساب أولاً. على الجهاز الذي يعمل عليه النظام: افتح مجلد <span className="num">wa-server</span> ثم شغّل الأمر <span className="num">npm start</span>.</p>
+        <b>خدمة واتساب غير متصلة حالياً</b>
+        <p className="crm-hint m-0">الخادم متوقف أو يعيد التشغيل. حاول مجدداً بعد دقيقة، وإن استمر الانقطاع فالخادم على Railway يحتاج «Restart».</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="crm-btn primary" onClick={() => { setDown(false); poll(); }}>إعادة المحاولة</button>
+          {wantPhone && waLink(wantPhone, draft || undefined) && <a className="crm-btn wa" href={waLink(wantPhone, draft || undefined)!} target="_blank" rel="noopener">فتح واتساب على جوالي</a>}
+        </div>
       </div>
     </>
   );

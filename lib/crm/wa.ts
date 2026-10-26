@@ -55,13 +55,22 @@ export interface WaMsg { id: string; fromMe: boolean; text: string; ts: number; 
 export async function waApi<T>(p: string, body?: object): Promise<T> {
   if (body) assertWritable(); // no sending, tagging or linking while previewing as an employee
   const token = await auth?.currentUser?.getIdToken();
-  const r = await fetch(WA_SERVER + p, {
-    method: body ? "POST" : "GET",
-    headers: { Authorization: "Bearer " + token, ...(body ? { "Content-Type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!r.ok) throw new Error(String(r.status));
-  return r.json();
+  // A stopped or restarting server (Railway) used to leave the request hanging for minutes, so the WhatsApp page
+  // sat on «جارٍ الاتصال…». Give up after a few seconds so the page can say the service is down instead.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), body ? 60000 : 10000); // sending media can take longer than reading
+  try {
+    const r = await fetch(WA_SERVER + p, {
+      method: body ? "POST" : "GET",
+      headers: { Authorization: "Bearer " + token, ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctl.signal,
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** 9665XXXXXXXX → 05XXXXXXXX (Saudi mobiles); other countries keep the + form. */
