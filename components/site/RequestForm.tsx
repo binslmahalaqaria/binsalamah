@@ -17,7 +17,6 @@ import { SEARCH_TYPES } from "@/components/site/SearchBar";
 import { Link } from "@/i18n/navigation";
 import { listPublishedOffers } from "@/lib/offers";
 import { parseBudget } from "@/lib/budget";
-import { COMING_SOON } from "@/lib/site-mode";
 import type { Offer } from "@/lib/types";
 
 /** Same types and order as the search bar; "أخرى" asks the visitor to name it. The CRM reads the lead in Arabic. */
@@ -40,7 +39,7 @@ const saudiMobile = (s: string) => {
   return m ? "0" + m[1] : null;
 };
 
-export function RequestForm({ districts }: { districts: string[] }) {
+export function RequestForm({ districts, noLinks }: { districts: string[]; noLinks?: boolean }) {
   const t = useTranslations("Site");
   const ar = useLocale() === "ar";
   const [type, setType] = useState<(typeof SEARCH_TYPES)[number] | "">("");
@@ -144,7 +143,7 @@ export function RequestForm({ districts }: { districts: string[] }) {
                         </div>
                       </div>
                     );
-                    return COMING_SOON ? <div key={o.id}>{body}</div> : <Link key={o.id} href={"/offers/" + o.slug}>{body}</Link>;
+                    return noLinks ? <div key={o.id}>{body}</div> : <Link key={o.id} href={"/offers/" + o.slug}>{body}</Link>;
                   })}
                 </div>
               </div>

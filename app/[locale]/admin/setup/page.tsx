@@ -15,6 +15,7 @@ import { ImportOld } from "@/components/crm/ImportOld";
 import { ResetData } from "@/components/crm/ResetData";
 import { CompanyDocs } from "@/components/crm/CompanyDocs";
 import { ZatcaLink } from "@/components/crm/ZatcaLink";
+import { SiteSwitch } from "@/components/crm/SiteSwitch";
 
 export default function SetupPage() {
   const { data, loaded } = useCrm();
@@ -50,6 +51,7 @@ export default function SetupPage() {
             <Link href="/admin/staff" className="crm-btn">حسابات الموظفين</Link>
             <Link href="/admin/settings" className="crm-btn">إعدادات الموقع</Link>
           </div>
+          <SiteSwitch />
           <CompanyDocs />
           <ZatcaLink />
           <DemoData />

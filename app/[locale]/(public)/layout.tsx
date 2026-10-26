@@ -8,7 +8,10 @@ import { SOCIAL, organizationJsonLd } from "@/lib/seo";
 import { IconInstagram, IconMail, IconPhone, IconPin, IconTikTok, IconYouTube, IconX } from "@/components/site/icons";
 import { Splash } from "@/components/site/Splash";
 import { ComingSoon } from "@/components/site/ComingSoon";
-import { COMING_SOON } from "@/lib/site-mode";
+import { isSiteOpen } from "@/lib/site-mode";
+
+// Read on every request so the owner's switch in the CRM takes effect at once.
+export const dynamic = "force-dynamic";
 
 /** Office: An Narjis, Othman Bin Affan Road, Riyadh. */
 const MAP_URL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("طريق عثمان بن عفان، حي النرجس، الرياض");
@@ -19,15 +22,16 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
-  const [{ whatsappNumber, contactEmail }, t, nav] = await Promise.all([
+  const [{ whatsappNumber, contactEmail }, t, nav, open] = await Promise.all([
     getPublicContactInfo(),
     getTranslations("Site"),
     getTranslations("Nav"),
+    isSiteOpen(),
   ]);
   const ar = locale === "ar";
 
-  // «انتظرونا قريباً»: only the request form until the owner says the site is ready (lib/site-mode.ts).
-  if (COMING_SOON) {
+  // «انتظرونا قريباً»: only the request form while the owner's switch is off (lib/site-mode.ts).
+  if (!open) {
     return (
       <div className="site flex min-h-screen flex-col bg-cream text-navy">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(whatsappNumber)) }} />

@@ -35,7 +35,7 @@ export async function ComingSoon() {
       </section>
 
       <div className="-mt-20 flex-1">
-        <RequestForm districts={allDistricts([])} />
+        <RequestForm districts={allDistricts([])} noLinks />
       </div>
 
       <footer className="flex flex-col items-center gap-4 border-t border-navy/10 px-6 py-8 text-xs text-navy/50">
