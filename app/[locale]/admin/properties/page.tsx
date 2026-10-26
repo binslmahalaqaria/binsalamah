@@ -3,6 +3,9 @@
 /** "العقارات" — inventory: properties and projects (with units), ready-made WhatsApp messages, and matching clients. */
 import { useEffect, useState } from "react";
 import { listOffers } from "@/lib/offers";
+import { activateOnSite } from "@/lib/crm/offer-from-property";
+import { useAuth } from "@/lib/auth-context";
+import { downloadAllImages } from "@/components/crm/downloadImages";
 import type { Offer } from "@/lib/types";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
@@ -22,6 +25,9 @@ export default function PropertiesPage() {
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
   // Website listings made from a property (property_id), so the card shows it is already on the site.
   const [web, setWeb] = useState<Record<string, Offer>>({});
+  const [activating, setActivating] = useState<string | null>(null);
+  const [zipping, setZipping] = useState<string | null>(null);
+  const { user } = useAuth();
   useEffect(() => {
     if (!data.isMgr || previewAs) return;
     listOffers().then((os) => setWeb(Object.fromEntries(os.filter((o) => o.property_id).map((o) => [o.property_id as string, o])))).catch(() => {});
@@ -131,12 +137,31 @@ export default function PropertiesPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button type="button" className="crm-btn sm wa" onClick={() => copyWa(p)}>نسخ رسالة الواتساب</button>
+                    {(p.images || []).length > 0 && (
+                      <button type="button" className="crm-btn sm" disabled={zipping === p.id} onClick={async () => {
+                        setZipping(p.id);
+                        try {
+                          const r = await downloadAllImages(p.images || [], (p.ref ? "#" + p.ref + " " : "") + p.title);
+                          toast(r.ok ? "تم تنزيل " + r.ok + " صورة" + (r.failed ? " — تعذّر تنزيل " + r.failed : "") : "تعذّر تنزيل الصور");
+                        } catch (e) { toast(e instanceof Error ? e.message : "تعذّر تنزيل الصور"); }
+                        finally { setZipping(null); }
+                      }}>{zipping === p.id ? "جارٍ التجهيز…" : "⬇ كل الصور (" + (p.images || []).length + ")"}</button>
+                    )}
                     {!p.waMessage && <span className="crm-hint">تلقائية من البيانات</span>}
                     {/* One inventory: a property is put on the website from here, its details copied into the website form. */}
                     {data.isMgr && !previewAs && (web[p.id] ? (
                       <Link href={"/admin/offers/" + web[p.id].id + "/edit"} className="crm-btn sm">🌐 {web[p.id].status === "published" ? "معروض في الموقع" : "مسودة في الموقع"}</Link>
                     ) : st !== "مباع" && (
-                      <Link href={"/admin/offers/new?from=" + encodeURIComponent(p.id)} className="crm-btn sm">🌐 تفعيل في الموقع</Link>
+                      <button type="button" className="crm-btn sm primary" disabled={activating === p.id} onClick={async () => {
+                        if (!user) return;
+                        setActivating(p.id);
+                        try {
+                          const err = await activateOnSite(p, user.uid, await user.getIdToken());
+                          if (err) toast(err);
+                          else { toast("تم تفعيل «" + p.title + "» في الموقع — تقدر تعدّل إعلانه من «عقارات الموقع»"); const os = await listOffers(); setWeb(Object.fromEntries(os.filter((o) => o.property_id).map((o) => [o.property_id as string, o]))); }
+                        } catch { toast("تعذّر التفعيل، حاول مرة أخرى"); }
+                        finally { setActivating(null); }
+                      }}>{activating === p.id ? "جارٍ التفعيل…" : "🌐 تفعيل في الموقع"}</button>
                     ))}
                   </div>
                   {(p.contactName || p.contactPhone) && (
