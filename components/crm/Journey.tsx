@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { PROP_TONE, VIEW_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
-import { confirmVisit, setProposalStatus } from "@/lib/crm/actions";
+import { confirmVisit, remove, setProposalStatus } from "@/lib/crm/actions";
 import type { Proposal, Viewing } from "@/lib/crm/types";
 import { ageDays, fmtVisit, money, today } from "@/lib/crm/util";
 import { ContactIcons, Kebab, Pill } from "./ui";
@@ -18,6 +18,8 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
   const [busy, setBusy] = useState(false);
   const c = clientById(data, p.clientId), pr = propById(data, p.propertyId);
   const waiting = ["أُرسل", "بانتظار الرد"].includes(p.status);
+  // The customer or the request was deleted after the offer was sent: nothing can be done with it except removing it.
+  const orphan = !c || !data.requests.some((r) => r.id === p.requestId);
   const set = async (st: string, fb?: string) => {
     setBusy(true);
     try {
@@ -29,15 +31,21 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
     <div className="crm-row grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, p.requestId)}>
         <div className="flex flex-wrap items-center gap-1.5">
-          {showClient && <b className="font-heading">{c?.name || "—"}</b>}
+          {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
           <span className="text-[13.5px]">{pr?.title || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
           <Pill tone={PROP_TONE[p.status]}>{p.status}</Pill>
+          {orphan && <Pill tone="hot">{c ? "الطلب محذوف" : "العميل محذوف"}</Pill>}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
           أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
           {data.isMgr && p.assignee ? " · " + nameOf(data, p.assignee) : ""}
         </div>
       </div>
+      {orphan ? (
+        <div className="flex items-center gap-1.5">
+          <button type="button" className="crm-btn sm danger" onClick={async () => { if (window.confirm("حذف هذا العرض؟ بياناته (العميل أو الطلب) محذوفة أصلاً.")) { await remove("proposals", p.id); toast("تم حذف العرض"); } }}>حذف العرض</button>
+        </div>
+      ) : (
       <div className="flex flex-wrap items-center gap-1.5">
         {showClient && <ContactIcons phone={c?.phone} />}
         {waiting && <>
@@ -53,6 +61,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           p.status !== "غير مناسب" ? { label: "غير مناسب", onClick: () => set("غير مناسب") } : { label: "إعادة كمهتم", onClick: () => set("مهتم") },
         ]} />
       </div>
+      )}
     </div>
   );
 }
@@ -63,12 +72,14 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
   const open = ["مجدولة", "مؤجلة"].includes(v.status);
   const past = open && v.at.slice(0, 10) < today();
   const confirmed = open && !!c?.visitConfirmed && c.visitAt === v.at;
+  const orphan = !c;
   return (
     <div className={"crm-row grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto] " + (past ? "late" : "")}>
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, v.requestId || undefined)}>
         <div className="flex flex-wrap items-center gap-1.5">
-          {showClient && <b className="font-heading">{c?.name || "—"}</b>}
+          {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
           <Pill tone={VIEW_TONE[v.status]}>{v.status}</Pill>
+          {orphan && <Pill tone="hot">العميل محذوف</Pill>}
           {past ? <Pill tone="hot">تمت الزيارة — اتصل وسجّل انطباعه</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
@@ -76,7 +87,11 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
           {data.isMgr && v.assignee ? " · " + nameOf(data, v.assignee) : ""}
         </div>
       </div>
-      {open && (
+      {orphan ? (
+        <div className="flex items-center gap-1.5">
+          <button type="button" className="crm-btn sm danger" onClick={async () => { if (window.confirm("حذف هذه الزيارة؟ عميلها محذوف أصلاً.")) { await remove("viewings", v.id); toast("تم حذف الزيارة"); } }}>حذف الزيارة</button>
+        </div>
+      ) : open && (
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <ContactIcons phone={c?.phone} />}
           {!past && !confirmed && c && <button type="button" className="crm-btn sm" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الموعد</button>}

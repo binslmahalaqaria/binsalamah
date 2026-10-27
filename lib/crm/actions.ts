@@ -86,6 +86,9 @@ export async function deleteClient(d: CrmData, c: Client) {
   const b = writeBatch(db);
   b.delete(doc(db, "clients", c.id));
   for (const r of reqs) b.delete(doc(db, "requests", r.id));
+  // Their offers and viewings go too (they used to stay behind as nameless rows).
+  for (const p of d.proposals.filter((x) => x.clientId === c.id)) b.delete(doc(db, "proposals", p.id));
+  for (const v of d.viewings.filter((x) => x.clientId === c.id)) b.delete(doc(db, "viewings", v.id));
   releasePhone(b, c.phone);
   await b.commit();
   for (const r of reqs) if (SOLD_ST.includes(r.status) && r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
@@ -508,6 +511,10 @@ export async function deleteRequest(d: CrmData, r: Request) {
   const c = clientById(d, r.clientId);
   if (!window.confirm("حذف هذا الطلب" + (c ? " للعميل " + c.name : "") + " نهائياً؟ يبقى العميل نفسه.")) return false;
   await remove("requests", r.id);
+  await Promise.all([
+    ...d.proposals.filter((x) => x.requestId === r.id).map((x) => remove("proposals", x.id)),
+    ...d.viewings.filter((x) => x.requestId === r.id).map((x) => remove("viewings", x.id)),
+  ]);
   if (SOLD_ST.includes(r.status) && r.propertyId) await releaseUnit(d, r.propertyId, r.unit);
   return true;
 }
