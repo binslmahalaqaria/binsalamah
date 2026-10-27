@@ -12,7 +12,8 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
-import { can, dueCalls, members, myTasksOpen, nameOf, visibleRequests } from "@/lib/crm/logic";
+import { can, isActive, members, myTasksOpen, nameOf } from "@/lib/crm/logic";
+import { addDays, today } from "@/lib/crm/util";
 import { TO_CONTACT } from "@/lib/crm/constants";
 import { assignPropRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { TaskAlerts } from "./TaskAlerts";
@@ -50,9 +51,33 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const locale = useLocale();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const due = dueCalls(data).length;
+  // Red badges = things waiting for ME that I have not dealt with: tasks I have not seen, new numbers/customers given to me,
+  // new requests since I last opened «الطلبات», and today's visit appointments / confirmations.
   const newTasks = myTasksOpen(data).filter((t) => t.seen === false).length;
-  const newReq = visibleRequests(data).filter((r) => (r.status || "جديد") === "جديد").length;
+  const newNumbers = data.clients.filter((c) => c.unseen && c.assignee === data.uid).length;
+  const t0 = today(), t1 = addDays(1);
+  const mineActive = data.clients.filter((c) => c.assignee === data.uid && isActive(c) && c.visitAt);
+  const visitsToday = mineActive.filter((c) => c.visitAt!.slice(0, 10) === t0).length;
+  const toConfirm = mineActive.filter((c) => c.visitAt!.slice(0, 10) === t1 && !c.visitConfirmed).length;
+  const noResult = mineActive.filter((c) => c.visitAt!.slice(0, 10) < t0).length;
+  const [reqSeenAt, setReqSeenAt] = useState<string | null>(null);
+  const seenKey = "crmReqSeen:" + (data.uid || "");
+  useEffect(() => {
+    if (!data.uid) return;
+    try {
+      let v = localStorage.getItem(seenKey);
+      if (!v) { v = new Date().toISOString(); localStorage.setItem(seenKey, v); }
+      setReqSeenAt(v);
+    } catch { setReqSeenAt(new Date().toISOString()); }
+  }, [seenKey, data.uid]);
+  useEffect(() => {
+    if (!data.uid || !pathname.startsWith("/admin/requests")) return;
+    const now = new Date().toISOString();
+    try { localStorage.setItem(seenKey, now); } catch { /* private mode */ }
+    setReqSeenAt(now);
+  }, [pathname, seenKey, data.uid, data.requests.length]);
+  const newReq = reqSeenAt ? data.requests.filter((r) => r.assignee === data.uid && (r.status || "جديد") === "جديد" && String(r.createdAt || "") > reqSeenAt).length : 0;
+  const homeBadge = newTasks + newNumbers + visitsToday + toConfirm + noResult;
   const myStaff = data.staff.find((s) => s.id === data.uid);
   const unread = chat.filter((m) => m.by !== data.uid && (!myStaff?.chatSeen || m.at > myStaff.chatSeen)).length
     + dms.filter((m) => m.to === data.uid && !m.read).length;
@@ -60,7 +85,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   // «الأرقام» (managers): numbers added and not contacted yet; employees work their own in «مكالمات العملاء الجدد».
   const toContact = data.clients.filter((c) => c.status === TO_CONTACT).length;
   const groups: [string, NavItem[]][] = [
-    ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: due + newTasks }]],
+    ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: homeBadge }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/proposals", "/admin/viewings"] },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
@@ -169,8 +194,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
                     <Icon k={x.k} />
                     <span>{x.label}</span>
                     {!!x.badge && (
-                      <span className={"ms-auto rounded-full border px-2 text-[11px] font-semibold leading-[18px] num " +
-                        (isOn(x.href) ? "border-[var(--crm-gold)] bg-[var(--crm-gold)] text-[#262626]" : "border-[var(--crm-gold)]/50 text-[var(--crm-gold)]")}>{x.badge}</span>
+                      <span className="ms-auto min-w-[20px] rounded-full bg-[var(--crm-danger)] px-1.5 text-center text-[11px] font-bold leading-[20px] text-white num shadow-[0_0_0_2px_rgb(0_0_0/.15)]">{x.badge}</span>
                     )}
                   </Link>
                 ))}
