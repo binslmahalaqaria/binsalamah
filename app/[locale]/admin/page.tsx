@@ -185,12 +185,12 @@ export default function HomeDashboard() {
     return { why, lastTxt };
   };
 
-  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode) => (
+  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false) => (
     <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
         <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
         <div className="truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div>
-        {(() => { const x = callReason(c, r); return (
+        {withWhy && (() => { const x = callReason(c, r); return (
           <>
             <div className="mt-0.5 text-[13px]"><b className="text-[var(--crm-ink)]">📞 اتصل بخصوص:</b> {x.why}</div>
             {x.lastTxt ? <div className="text-[13px] text-[var(--crm-ink-2)]"><b>📝 موضوع آخر اتصال:</b> {x.lastTxt}</div> : null}
@@ -309,7 +309,7 @@ export default function HomeDashboard() {
       <Section n={4} title="متابعات اليوم" count={follow.length} hint="عملاء حان موعد الاتصال بهم — سجّل نتيجة الاتصال">
         {follow.map((c) => {
           const r = open(c)[0];
-          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>);
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>, true);
         })}
       </Section>
 
