@@ -164,11 +164,33 @@ export default function HomeDashboard() {
     }
   }
 
+  // «Call him about what?» — the reason for the call, worked out from where this customer's request stands.
+  const callReason = (c: Client, r: Request) => {
+    const tm = addDays(1);
+    const va = c.visitAt ? c.visitAt.slice(0, 10) : "";
+    const vp = c.visitProperty ? " (" + c.visitProperty + ")" : "";
+    let why = "";
+    if (va && va < t) why = "الاتصال بعد الزيارة وتسجيل انطباعه" + vp;
+    else if (va === tm) why = "تأكيد زيارة الغد" + vp;
+    else if (va === t) why = "زيارة اليوم" + vp;
+    else if (data.proposals.some((p) => p.clientId === c.id && p.requestId === r.id && ["أُرسل", "بانتظار الرد"].includes(p.status))) why = "متابعة رأيه في العروض المرسلة";
+    else {
+      const st = r.status || "جديد";
+      why = st === "جديد" ? "أول تواصل بعد تسجيل الطلب" : st === "جاري البحث" ? "متابعة البحث عن عقار مناسب" : st === "أرسلنا خيارات" ? "متابعة رأيه في الخيارات المرسلة" : st === "تفاوض" ? "متابعة التفاوض" : st === "عربون" ? "متابعة إجراءات العربون" : "متابعة الطلب";
+    }
+    const last = (c.log || [])[0];
+    const lastTxt = last ? lbl(last.type) + (last.text ? " — " + String(last.text).slice(0, 70) : "") : "";
+    return { why, lastTxt };
+  };
+
   const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode) => (
     <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
         <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
         <div className="truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div>
+        {(() => { const x = callReason(c, r); return (
+          <div className="mt-0.5 text-[13px]"><b className="text-[var(--crm-ink)]">📞 اتصل بخصوص:</b> {x.why}{x.lastTxt ? <span className="text-[var(--crm-ink-3)]"> · آخر ما جرى: {x.lastTxt}</span> : null}</div>
+        ); })()}
         <div className="text-xs text-[var(--crm-ink-3)]">
           {r.sent?.length ? "أُرسل له " + r.sent.length + " عرض · " : ""}آخر تحديث {ageDays(r.updatedAt)}
           {c.nextCall && <> · المتابعة: <span className={c.nextCall < t ? "font-semibold text-[var(--crm-danger)]" : c.nextCall === t ? "font-semibold" : ""}>{relDay(c.nextCall)}</span></>}
