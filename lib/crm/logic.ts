@@ -252,9 +252,10 @@ function match1(c: Demand, p: Property): Match | null {
     } else if (p.type) return null;
   }
   const am = num(c.areaMin),
+    ax = num(c.areaMax),
     pa = num(p.area);
-  if (am && pa) {
-    if (pa >= am * 0.95) {
+  if ((am || ax) && pa) {
+    if ((!am || pa >= am * 0.95) && (!ax || pa <= ax * 1.05)) {
       score += 10;
       why.push(pa + " م²");
     } else score -= 10;
@@ -391,6 +392,14 @@ export function followState(d: CrmData, r: Request): "visit" | "sent" | "none" {
 }
 export const needsSaleInfo = (r: Request) => SOLD_ST.includes(r.status) && (!r.propertyId || !num(r.price));
 
+/** «300 – 400 م²», «من 300 م²», «حتى 400 م²» — empty when the request has no area. */
+export function areaRange(r: { areaMin?: number | null; areaMax?: number | null }) {
+  const a = num(r.areaMin), b = num(r.areaMax);
+  if (a && b) return a + " – " + b + " م²";
+  if (a) return "من " + a + " م²";
+  if (b) return "حتى " + b + " م²";
+  return "";
+}
 export function sortRequests(d: CrmData, rs: Request[]) {
   return rs.sort((a, b) => {
     const ca = clientById(d, a.clientId)?.nextCall || "9",

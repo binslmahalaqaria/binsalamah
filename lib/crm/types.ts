@@ -51,6 +51,7 @@ export interface Client {
   payment?: string | null;
   bank?: string | null;
   areaMin?: number | null;
+  areaMax?: number | null;
   bedroomsMin?: number | null;
   floors?: string[];
   requirements?: string | null;
@@ -119,6 +120,7 @@ export interface Demand {
   payment?: string | null;
   bank?: string | null;
   areaMin?: number | null;
+  areaMax?: number | null;
   bedroomsMin?: number | null;
   floors?: string[];
   requirements?: string | null;

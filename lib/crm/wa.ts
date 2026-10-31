@@ -5,6 +5,7 @@
 import { auth } from "@/lib/firebase";
 import { assertWritable } from "./preview";
 import type { Client, Demand } from "./types";
+import { areaRange } from "./logic";
 import { intl, splitList } from "./util";
 
 // The WhatsApp server runs on Railway (always on, see wa-server/README.md); override with NEXT_PUBLIC_WA_SERVER_URL (e.g. http://localhost:4100).
@@ -109,7 +110,7 @@ export function requestMessage(c: Client, r: Demand | null | undefined, staffNam
     districts.length ? "• الأحياء: " + districts.join("، ") : "",
     x.budget ? "• الميزانية: حتى " + money(x.budget) : "",
     x.payment ? "• طريقة الدفع: " + x.payment + (x.bank ? " (" + x.bank + ")" : "") : "",
-    x.areaMin ? "• المساحة: من " + x.areaMin + " م²" : "",
+    areaRange(x) ? "• المساحة: " + areaRange(x) : "",
     x.bedroomsMin ? "• عدد الغرف: " + x.bedroomsMin + " فأكثر" : "",
     x.floors?.length ? "• الدور المطلوب: " + x.floors.join("، ") : "",
     x.requirements ? "• تفاصيل إضافية: " + x.requirements : "",

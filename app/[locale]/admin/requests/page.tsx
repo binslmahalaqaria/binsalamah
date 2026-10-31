@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { OPEN_STAGES, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
 import {
-  clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
+  clientById, followState, match, members, nameOf, areaRange, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, num, splitList, today } from "@/lib/crm/util";
@@ -52,7 +52,7 @@ export default function RequestsPage() {
       return {
         "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "",
         "نوع العقار": typesOf(r).join("، "), "الأحياء": r.districts || "", "الميزانية": r.budget ?? "", "الدفع": r.payment || "", "البنك": r.bank || "",
-        "أقل مساحة": r.areaMin ?? "", "أقل غرف": r.bedroomsMin ?? "", "الدور": (r.floors || []).join("، "), "التفاصيل": r.requirements || "",
+        "أقل مساحة": r.areaMin ?? "", "أعلى مساحة": r.areaMax ?? "", "أقل غرف": r.bedroomsMin ?? "", "الدور": (r.floors || []).join("، "), "التفاصيل": r.requirements || "",
         "المسؤول": nameOf(data, r.assignee), "تاريخ الطلب": fmtStamp(r.createdAt), "ملاحظات": r.notes || "",
       };
     })) || toast("لا توجد بيانات للتصدير");
@@ -60,7 +60,7 @@ export default function RequestsPage() {
   // One row per request, one column per fact (client 2026-10-24): client · mobile · type · zone · districts · owner · last update · when.
   // Wide screens: a table with a header. Narrower screens: the same facts as a card, each with its label above it,
   // and ⋮ in the corner — nothing is cut off and nothing needs sideways scrolling.
-  const GRID = "xl:grid-cols-[minmax(130px,1.2fr)_100px_minmax(60px,0.7fr)_minmax(75px,0.8fr)_minmax(90px,1.1fr)_100px_minmax(120px,1.4fr)_90px_70px]";
+  const GRID = "xl:grid-cols-[minmax(130px,1.2fr)_100px_minmax(60px,0.7fr)_minmax(80px,0.8fr)_minmax(75px,0.8fr)_minmax(90px,1.1fr)_100px_minmax(120px,1.4fr)_90px_70px]";
   const L = (t: string) => <span className="mb-0.5 block text-[11px] text-[var(--crm-ink-3)] xl:hidden">{t}</span>;
 
   const row = (r: Request) => {
@@ -85,6 +85,7 @@ export default function RequestsPage() {
         </div>
         <div className="min-w-0 self-center text-[13.5px]">{L("الجوال")}<span className="num">{c?.phone || "—"}</span></div>
         <div className="min-w-0 self-center text-[13.5px]">{L("نوع العقار")}{typesOf(r).join("، ") || "—"}</div>
+        <div className="min-w-0 self-center text-[13.5px] font-semibold">{L("المساحة")}<span className="num">{areaRange(r) || "—"}</span></div>
         <div className="min-w-0 self-center text-[13.5px]">{L("المنطقة")}{zones.join("، ") || "—"}</div>
         <div className="min-w-0 self-center text-[13px] text-[var(--crm-ink-2)]" title={ds.join("، ")}>{L("الأحياء")}{ds.length ? ds.slice(0, 4).join("، ") + (ds.length > 4 ? " +" + (ds.length - 4) : "") : "—"}</div>
         <div className="min-w-0 self-center">{L("المسؤول")}
@@ -160,7 +161,7 @@ export default function RequestsPage() {
         const body = [...shown].sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || ""))).map(row);
         return body.length ? (
           <div className="crm-card overflow-hidden"><div>
-            <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
+            <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المساحة</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
             {body}
           </div>
           </div>

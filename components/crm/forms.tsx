@@ -200,7 +200,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
     payment: s(base.payment ?? presetClient?.payment), priority: base.priority || "عادية",
     // The client's interest level (ساخن/دافئ/بارد) lives on the client; set here too so it is at hand with the request.
     temp: s(presetClient?.temp || ""),
-    requirements: s(base.requirements), areaMin: s(base.areaMin), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
+    requirements: s(base.requirements), areaMin: s(base.areaMin), areaMax: s(base.areaMax), bedroomsMin: s(base.bedroomsMin), bank: s(base.bank),
     source: s(base.source), floors: (base.floors || []) as string[], notes: s(base.notes), clientName: "",
     status: base.status || "جديد", assignee: s(base.assignee ?? (!rec && presetClient?.assignee ? presetClient.assignee : !rec && data.isMgr ? AUTO : data.uid)),
     propertyId: s(base.propertyId), unit: s(base.unit), price: s(base.price), commissionPct: s(base.commissionPct ?? 2.5),
@@ -248,7 +248,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       }
       const demand = {
         purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: num(f.budget),
-        payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), bedroomsMin: num(f.bedroomsMin),
+        payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), areaMax: num(f.areaMax), bedroomsMin: num(f.bedroomsMin),
         floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
       const body: Partial<Request> = {
@@ -362,6 +362,8 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         <Sec>متطلبات العميل</Sec>
         <Field label="نوع الطلب"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} /></Field>
         <Field label="الميزانية القصوى (ريال)"><input inputMode="decimal" value={f.budget} onChange={(e) => set("budget", e.target.value)} /></Field>
+        <Field label="المساحة من (م²)"><input inputMode="decimal" value={f.areaMin} placeholder="أقل مساحة" onChange={(e) => set("areaMin", e.target.value)} /></Field>
+        <Field label="المساحة إلى (م²)"><input inputMode="decimal" value={f.areaMax} placeholder="أعلى مساحة" onChange={(e) => set("areaMax", e.target.value)} /></Field>
         <Field label="نوع العقار" full>
           <MultiCheck options={withCurrent(REQ_TYPES.map(([v]) => v), f.propTypes)} labels={Object.fromEntries(REQ_TYPES)} value={f.propTypes} onChange={(v) => set("propTypes", v)} />
         </Field>
@@ -383,8 +385,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         <Field label="تفاصيل الطلب" full>
           <textarea rows={3} value={f.requirements} placeholder="مثال: واجهة شمالية، قريب من المدارس، جاهز للسكن…" onChange={(e) => set("requirements", e.target.value)} />
         </Field>
-        <More title="تفاصيل أدق (اختياري)" open={!!(f.areaMin || f.bedroomsMin || f.bank || f.source || f.notes)}>
-          <Field label="أقل مساحة (م²)"><input inputMode="decimal" value={f.areaMin} onChange={(e) => set("areaMin", e.target.value)} /></Field>
+        <More title="تفاصيل أدق (اختياري)" open={!!(f.bedroomsMin || f.bank || f.source || f.notes)}>
           <Field label="أقل عدد غرف"><input inputMode="decimal" value={f.bedroomsMin} onChange={(e) => set("bedroomsMin", e.target.value)} /></Field>
           <Field label="البنك (في حال التمويل)"><input value={f.bank} onChange={(e) => set("bank", e.target.value)} /></Field>
           <Field label="المصدر"><Select value={f.source} onChange={(v) => set("source", v)} options={withCurrent(data.sources, [f.source])} blank="—" /></Field>

@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 /** Request/client display pieces reused across Today, Requests, Clients, and the client drawer. */
 import { REQ, REQ_TONE, SOLD_ST, TEMP_TONE, UPD_TONE, lbl } from "@/lib/crm/constants";
 import {
-  can, clientById, comm, demandOf, journey, match, nameOf, needsSaleInfo, OPEN_REQ, propById, reqsOf, typesOf, type CrmData,
+  areaRange, can, clientById, comm, demandOf, journey, match, nameOf, needsSaleInfo, OPEN_REQ, propById, reqsOf, typesOf, type CrmData,
 } from "@/lib/crm/logic";
 import type { Client, Demand, Request } from "@/lib/crm/types";
 import { ageDays, fmtVisit, lateTxt, localDay, money, moneyFull, num, splitList, today, waLink } from "@/lib/crm/util";
@@ -21,7 +21,7 @@ export function DemandChips({ r }: { r: Demand }) {
       {!!r.budget && <Chip>{money(r.budget)}</Chip>}
       {r.districts && <Chip>{r.districts}</Chip>}
       {r.payment && <Chip>{r.payment + (r.bank ? " · " + r.bank : "")}</Chip>}
-      {!!r.areaMin && <Chip><span className="num">{r.areaMin}</span> م²+</Chip>}
+      {!!areaRange(r) && <Chip><span className="num">{areaRange(r)}</span></Chip>}
       {!!r.bedroomsMin && <Chip>{r.bedroomsMin} غرف+</Chip>}
       {Array.isArray(r.floors) && r.floors.length > 0 && <Chip>الدور: {r.floors.join(" / ")}</Chip>}
     </>
