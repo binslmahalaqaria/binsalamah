@@ -85,6 +85,9 @@ function WhatsAppInbox() {
   const wantPhone = sp.get("phone"), draft = sp.get("text");
   const [extra, setExtra] = useState<Chat | null>(null);
   const handled = useRef("");
+  // Key of the temporary chat made for a number we never chatted with: the server's list never contains it, so the poll
+  // below must not treat it as «a conversation that no longer exists» (it used to close the chat a few seconds after opening).
+  const extraKey = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // keep the view at the newest message unless the user scrolled up to read
@@ -108,7 +111,7 @@ function WhatsAppInbox() {
       const c = await api<{ chats: Chat[]; labels?: WaLabel[] }>("/api/chats");
       setChats(c.chats);
       setLabels(c.labels || []);
-      setSel((s) => (s && !c.chats.some((x) => key(x) === s) ? null : s));
+      setSel((s) => (s && s !== extraKey.current && !c.chats.some((x) => key(x) === s) ? null : s));
     } catch {
       setDown(true);
     }
@@ -155,6 +158,7 @@ function WhatsAppInbox() {
       const src = open.find((s) => seesAllOf(s, data.uid, data.isMgr)) || open[0];
       const x: Chat = { jid: wantPhone + "@s.whatsapp.net", source: src.id, name: null, phone: wantPhone, ts: Date.now(), unread: 0, tags: [], labels: [] };
       setExtra(x);
+      extraKey.current = key(x);
       setSel(key(x));
     }
     if (draft) setText(draft);
