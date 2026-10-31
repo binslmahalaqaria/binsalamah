@@ -178,8 +178,10 @@ export default function HomeDashboard() {
       const st = r.status || "جديد";
       why = st === "جديد" ? "أول تواصل بعد تسجيل الطلب" : st === "جاري البحث" ? "متابعة البحث عن عقار مناسب" : st === "أرسلنا خيارات" ? "متابعة رأيه في الخيارات المرسلة" : st === "تفاوض" ? "متابعة التفاوض" : st === "عربون" ? "متابعة إجراءات العربون" : "متابعة الطلب";
     }
+    // The topic of the last call: the employee's own note (what was discussed), else the kind of update.
+    const lastCall = (c.log || []).find((l) => l.text && String(l.text).trim());
     const last = (c.log || [])[0];
-    const lastTxt = last ? lbl(last.type) + (last.text ? " — " + String(last.text).slice(0, 70) : "") : "";
+    const lastTxt = lastCall ? String(lastCall.text).trim().slice(0, 160) : last ? lbl(last.type) : "";
     return { why, lastTxt };
   };
 
@@ -189,7 +191,10 @@ export default function HomeDashboard() {
         <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
         <div className="truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div>
         {(() => { const x = callReason(c, r); return (
-          <div className="mt-0.5 text-[13px]"><b className="text-[var(--crm-ink)]">📞 اتصل بخصوص:</b> {x.why}{x.lastTxt ? <span className="text-[var(--crm-ink-3)]"> · آخر ما جرى: {x.lastTxt}</span> : null}</div>
+          <>
+            <div className="mt-0.5 text-[13px]"><b className="text-[var(--crm-ink)]">📞 اتصل بخصوص:</b> {x.why}</div>
+            {x.lastTxt ? <div className="text-[13px] text-[var(--crm-ink-2)]"><b>📝 موضوع آخر اتصال:</b> {x.lastTxt}</div> : null}
+          </>
         ); })()}
         <div className="text-xs text-[var(--crm-ink-3)]">
           {r.sent?.length ? "أُرسل له " + r.sent.length + " عرض · " : ""}آخر تحديث {ageDays(r.updatedAt)}
