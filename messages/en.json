@@ -414,7 +414,8 @@
     "payCash": "Cash",
     "payBank": "Bank finance",
     "payBoth": "Bank + cash",
-    "reqAreaHint": "Size in square metres, e.g. 300",
+    "reqAreaHint": "Size from (m²)",
+    "reqAreaToHint": "Size to (m²)",
     "reqMatches": "Listings that may suit you",
     "reqPhoneLabel": "Mobile number",
     "partnersTitle": "Our partners"

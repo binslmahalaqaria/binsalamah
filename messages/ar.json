@@ -414,7 +414,8 @@
     "payCash": "كاش",
     "payBank": "تمويل بنكي",
     "payBoth": "بنك + كاش",
-    "reqAreaHint": "المساحة المطلوبة بالمتر المربع، مثال: 300",
+    "reqAreaHint": "المساحة من (م²)",
+    "reqAreaToHint": "المساحة إلى (م²)",
     "reqMatches": "عروض قد تناسب طلبك",
     "reqPhoneLabel": "رقم الجوال",
     "partnersTitle": "شركاء النجاح"

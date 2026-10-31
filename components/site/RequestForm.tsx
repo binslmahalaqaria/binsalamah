@@ -52,6 +52,7 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
   const [picked, setPicked] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
   const [area, setArea] = useState("");
+  const [areaTo, setAreaTo] = useState("");
   const [pay, setPay] = useState<(typeof PAYS)[number] | "">("");
   const [matches, setMatches] = useState<Offer[]>([]);
   const [name, setName] = useState("");
@@ -78,20 +79,24 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
       "طلب عقاري من الموقع", "النوع: " + (type === "other" ? otherType.trim() || "أخرى" : type ? TYPE_AR[type] : ""), "الغرض: " + (purpose ? PURPOSE_AR[purpose] : "غير محدد"),
       "المدينة: " + cityName + (riyadh ? " — " + (picked.length ? Array.from(new Set(picked.map((d) => RIYADH_ZONES.find((z) => z.districts.includes(d))?.ar).filter(Boolean))).join("، ") : RIYADH_ZONES.find((z) => z.id === zone)?.ar) : ""), (picked.length > 1 ? "الأحياء: " : "الحي: ") + ((riyadh ? picked.join("، ") : district.trim()) || "غير محدد"), "الميزانية: " + (budget.trim() || "غير محددة"),
       ...(pay ? ["الدفع: " + PAY_AR[pay]] : []),
-      ...(Number(area.replace(/[^\d]/g, "")) ? ["المساحة: " + Number(area.replace(/[^\d]/g, "")) + " م²"] : []),
+      ...(() => {
+        const a = Number(area.replace(/[^\d]/g, "")), b = Number(areaTo.replace(/[^\d]/g, ""));
+        return a && b ? ["المساحة: " + a + " – " + b + " م²"] : a ? ["المساحة: من " + a + " م²"] : b ? ["المساحة: حتى " + b + " م²"] : [];
+      })(),
     ].join(" | ");
     try {
       await createPublicLead({ customer_name: name.trim(), phone: mobile, message, related_offer_id: null });
       setState("done");
       // Listings on the site that fit what was asked: type, district/area, budget (+10%), size (−10%).
       if (purpose !== "reqRent") listPublishedOffers().then((all) => {
-        const b = parseBudget(budget), a = Number(area.replace(/[^\d]/g, "")) || 0;
+        const b = parseBudget(budget), a = Number(area.replace(/[^\d]/g, "")) || 0, ax = Number(areaTo.replace(/[^\d]/g, "")) || 0;
         const zoneDists = riyadh && !picked.length ? RIYADH_ZONES.find((z) => z.id === zone)?.districts || [] : [];
         const fit = all.filter((o) => {
           if (type && type !== "other" && o.type !== type) return false;
           if (riyadh ? (picked.length ? !picked.includes(o.district_ar) : zoneDists.length && !zoneDists.includes(o.district_ar)) : district.trim() && !o.district_ar.includes(district.trim())) return false;
           if (b && o.price_from && o.price_from > b * 1.1) return false;
           if (a && (o.area_to || o.area_from) && (o.area_to || o.area_from) < a * 0.9) return false;
+          if (ax && o.area_from && o.area_from > ax * 1.1) return false;
           return (o.sold_percentage ?? 0) < 100;
         });
         setMatches(fit.slice(0, 6));
@@ -203,7 +208,10 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
               {step(4, t("reqQ3"))}
               <div className="grid gap-3 sm:grid-cols-2 sm:max-w-2xl">
                 <input className={field} value={budget} onChange={(e) => setBudget(e.target.value)} placeholder={t("reqBudgetHint")} />
-                <input className={field} inputMode="numeric" value={area} onChange={(e) => setArea(e.target.value)} placeholder={t("reqAreaHint")} />
+                <div className="grid grid-cols-2 gap-3">
+                  <input className={field} inputMode="numeric" value={area} onChange={(e) => setArea(e.target.value)} placeholder={t("reqAreaHint")} />
+                  <input className={field} inputMode="numeric" value={areaTo} onChange={(e) => setAreaTo(e.target.value)} placeholder={t("reqAreaToHint")} />
+                </div>
               </div>
             </div>
 

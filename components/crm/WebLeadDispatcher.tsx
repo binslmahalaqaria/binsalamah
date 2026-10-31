@@ -37,7 +37,11 @@ function parse(message: string | null | undefined) {
   const budget = parseBudget(budgetTxt);
   const pay = get("الدفع");
   const payment = ["كاش", "بنك", "بنك + كاش"].includes(pay) ? pay : null;
-  const areaMin = Number(get("المساحة").replace(/[^\d]/g, "")) || null;
+  // «300 – 400 م²» → both ends; «من 300 م²» → min; «حتى 400 م²» → max; a lone number (older forms) → min.
+  const areaTxt = get("المساحة");
+  const areaNums = (areaTxt.match(/\d+/g) || []).map(Number);
+  const areaMin = /^\s*حتى/.test(areaTxt) ? null : areaNums[0] || null;
+  const areaMax = /^\s*حتى/.test(areaTxt) ? areaNums[0] || null : areaNums.length > 1 ? areaNums[1] : null;
   return {
     isRequest: parts[0] === "طلب عقاري من الموقع",
     purpose: /إيجار/.test(purpose) ? "إيجار" : "شراء",
@@ -45,6 +49,7 @@ function parse(message: string | null | undefined) {
     districts: districts || null,
     budget,
     areaMin,
+    areaMax,
     payment,
     requirements: [city && "المدينة: " + city, purpose && "الغرض: " + purpose, budgetTxt && !budget ? "الميزانية: " + budgetTxt : ""].filter(Boolean).join(" — ") || null,
   };
@@ -99,7 +104,7 @@ export function WebLeadDispatcher() {
       }
       const now = nowStamp();
       const note = p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
-      const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, payment: p.payment };
+      const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
       let clientId = existing?.id;
       if (!clientId) {
         const cref = doc(collection(db, "clients"));
