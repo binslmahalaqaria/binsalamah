@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { OPEN_STAGES, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
 import {
-  clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, sortRequests, typesOf, visibleRequests, can } from "@/lib/crm/logic";
+  clientById, followState, match, members, nameOf, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, num, splitList, today } from "@/lib/crm/util";
@@ -155,13 +155,9 @@ export default function RequestsPage() {
       {!hasAny ? (
         <Empty big><span className="grid justify-items-center gap-3">لا توجد طلبات بعد.<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button></span></Empty>
       ) : (() => {
-        const body = groups.flatMap((st) => {
-          const rs = sortRequests(data, all.filter((r) => (r.status || "جديد") === st));
-          if (!rs.length) return [];
-          return [
-            ...rs.map(row),
-          ];
-        });
+        // Newest request first (client 2026-10-31), across all the stages being shown.
+        const shown = all.filter((r) => groups.includes((r.status || "جديد") as never));
+        const body = [...shown].sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || ""))).map(row);
         return body.length ? (
           <div className="crm-card overflow-hidden"><div>
             <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
