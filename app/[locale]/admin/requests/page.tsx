@@ -8,7 +8,7 @@ import {
   clientById, followState, match, members, nameOf, areaRange, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Request } from "@/lib/crm/types";
-import { ageDays, exportCsv, fmtStamp, num, splitList, today } from "@/lib/crm/util";
+import { ageDays, exportCsv, fmtStamp, num, splitList, today, money } from "@/lib/crm/util";
 import { zoneOf } from "@/lib/districts";
 import { Empty, Kebab, PageHeader, Select } from "@/components/crm/ui";
 import { RequestTabs } from "@/components/crm/PageTabs";
@@ -60,7 +60,7 @@ export default function RequestsPage() {
   // One row per request, one column per fact (client 2026-10-24): client · mobile · type · zone · districts · owner · last update · when.
   // Wide screens: a table with a header. Narrower screens: the same facts as a card, each with its label above it,
   // and ⋮ in the corner — nothing is cut off and nothing needs sideways scrolling.
-  const GRID = "xl:grid-cols-[minmax(130px,1.2fr)_100px_minmax(60px,0.7fr)_minmax(80px,0.8fr)_minmax(75px,0.8fr)_minmax(90px,1.1fr)_100px_minmax(120px,1.4fr)_90px_70px]";
+  const GRID = "xl:grid-cols-[minmax(130px,1.2fr)_100px_minmax(60px,0.7fr)_minmax(80px,0.8fr)_minmax(85px,0.9fr)_minmax(75px,0.8fr)_minmax(90px,1.1fr)_100px_minmax(120px,1.4fr)_90px_70px]";
   const L = (t: string) => <span className="mb-0.5 block text-[11px] text-[var(--crm-ink-3)] xl:hidden">{t}</span>;
 
   const row = (r: Request) => {
@@ -86,6 +86,7 @@ export default function RequestsPage() {
         <div className="min-w-0 self-center text-[13.5px]">{L("الجوال")}<span className="num">{c?.phone || "—"}</span></div>
         <div className="min-w-0 self-center text-[13.5px]">{L("نوع العقار")}{typesOf(r).join("، ") || "—"}</div>
         <div className="min-w-0 self-center text-[13.5px] font-semibold">{L("المساحة")}<span className="num">{areaRange(r) || "—"}</span></div>
+        <div className="min-w-0 self-center text-[13.5px] font-semibold">{L("الميزانية")}<span className="num">{r.budget ? money(r.budget) : "—"}</span></div>
         <div className="min-w-0 self-center text-[13.5px]">{L("المنطقة")}{zones.join("، ") || "—"}</div>
         <div className="min-w-0 self-center text-[13px] text-[var(--crm-ink-2)]" title={ds.join("، ")}>{L("الأحياء")}{ds.length ? ds.slice(0, 4).join("، ") + (ds.length > 4 ? " +" + (ds.length - 4) : "") : "—"}</div>
         <div className="min-w-0 self-center">{L("المسؤول")}
@@ -161,7 +162,7 @@ export default function RequestsPage() {
         const body = [...shown].sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || ""))).map(row);
         return body.length ? (
           <div className="crm-card overflow-hidden"><div>
-            <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المساحة</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
+            <div className={"crm-head hidden gap-3 xl:grid " + GRID}><span>العميل</span><span>الجوال</span><span>نوع العقار</span><span>المساحة</span><span>الميزانية</span><span>المنطقة</span><span>الأحياء</span><span>المسؤول</span><span>آخر تحديث</span><span>متى</span><span /></div>
             {body}
           </div>
           </div>
