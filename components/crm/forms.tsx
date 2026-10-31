@@ -33,7 +33,7 @@ const s = (v: unknown) => (v == null ? "" : String(v));
 /** The floor question only applies to apartments (شقة) and floors (دور). */
 const needsFloor = (types: string[]) => types.some((t) => t === "شقة" || t === "دور");
 /** Property types offered on a request (client 2026-10-20: keep it short). Stored values stay singular so matching against properties works. */
-const REQ_TYPES: [string, string][] = [["أرض", "أرض"], ["فيلا", "فلل"], ["بنتهاوس", "بنتهاوس"], ["تاون هاوس", "تاون هاوس"], ["شقة", "شقق"], ["أخرى", "أخرى"]];
+const REQ_TYPES: [string, string][] = [["أرض", "أرض"], ["فيلا", "فلل"], ["بنتهاوس", "بنتهاوس"], ["تاون هاوس", "تاون هاوس"], ["شقة", "شقق"], ["دور", "أدوار"], ["عمارة", "عمارات"], ["أخرى", "أخرى"]];
 /** Zones of a request: the saved ones, or the zones its saved districts fall in (older requests). */
 const zonesFor = (zones: string[] | undefined, districts: string[]) =>
   zones?.length ? zones : Array.from(new Set(districts.map((d) => zoneOf(d)?.ar).filter((z): z is string => !!z)));

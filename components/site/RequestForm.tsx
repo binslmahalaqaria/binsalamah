@@ -20,7 +20,10 @@ import { parseBudget } from "@/lib/budget";
 import type { Offer } from "@/lib/types";
 
 /** Same types and order as the search bar; "أخرى" asks the visitor to name it. The CRM reads the lead in Arabic. */
-const TYPE_AR: Record<(typeof SEARCH_TYPES)[number], string> = { apartment: "شقة", floor: "دور", villa: "فيلا", penthouse: "بنتهاوس", townhouse: "تاون هاوس", land: "أرض", other: "أخرى" };
+// The request form also offers «عمارة» (buildings), which the public offers search does not have.
+const FORM_TYPES = [...SEARCH_TYPES, "building"] as const;
+type FormType = (typeof FORM_TYPES)[number];
+const TYPE_AR: Record<FormType, string> = { apartment: "شقة", floor: "دور", villa: "فيلا", penthouse: "بنتهاوس", townhouse: "تاون هاوس", land: "أرض", building: "عمارة", other: "أخرى" };
 const PURPOSES = ["reqBuy", "reqInvest", "reqRent"] as const;
 const PURPOSE_AR = { reqBuy: "شراء للسكن", reqInvest: "شراء للاستثمار", reqRent: "إيجار" };
 /** How the buyer pays (client 2026-10-25); stored in the CRM as كاش / بنك / بنك + كاش. */
@@ -42,7 +45,7 @@ const saudiMobile = (s: string) => {
 export function RequestForm({ districts, noLinks }: { districts: string[]; noLinks?: boolean }) {
   const t = useTranslations("Site");
   const ar = useLocale() === "ar";
-  const [type, setType] = useState<(typeof SEARCH_TYPES)[number] | "">("");
+  const [type, setType] = useState<FormType | "">("");
   const [otherType, setOtherType] = useState("");
   const [purpose, setPurpose] = useState<(typeof PURPOSES)[number] | "">("");
   const [city, setCity] = useState("الرياض");
@@ -159,7 +162,7 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
             <div>
               {step(1, t("reqQ1"))}
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
-                {SEARCH_TYPES.map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => setType(x)}>{t(`typesPlural.${x}`)}</button>)}
+                {FORM_TYPES.map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => setType(x)}>{x === "building" ? (ar ? "عمارات" : "Buildings") : t(`typesPlural.${x}`)}</button>)}
               </div>
               {type === "other" && <input className={field + " mt-3"} placeholder={t("reqOtherType")} value={otherType} onChange={(e) => setOtherType(e.target.value)} />}
             </div>
