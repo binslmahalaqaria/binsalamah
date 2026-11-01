@@ -5,14 +5,15 @@ import { z } from "zod";
  */
 
 // Accepts 05XXXXXXXX or +9665XXXXXXXX / 9665XXXXXXXX Saudi mobile formats.
-const saudiPhoneRegex = /^(?:\+?966|0)5\d{8}$/;
+// Saudi mobile (05… / +9665…) or an international number written with a leading + (8–15 digits).
+const saudiPhoneRegex = /^(?:(?:\+?966|0)5\d{8}|\+[1-9]\d{7,14})$/;
 
 export const leadFormSchema = z.object({
   customer_name: z.string().trim().min(2, "Name is required"),
   phone: z
     .string()
     .trim()
-    .regex(saudiPhoneRegex, "Enter a valid Saudi phone number"),
+    .regex(saudiPhoneRegex, "Enter a valid phone number"),
   message: z.string().trim().max(1000).optional(),
   related_offer_id: z.string().nullable().optional(),
 });

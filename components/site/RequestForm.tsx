@@ -40,8 +40,12 @@ const CITIES: { ar: string; en: string }[] = [
 ];
 const OTHER = "__other";
 
+/** Saudi mobile → «05xxxxxxxx»; international number written with + or 00 → «+<digits>» (8–15 digits); anything else → null. */
 const saudiMobile = (s: string) => {
-  const d = s.replace(/[^\d]/g, "").replace(/^00/, "");
+  const t = s.trim();
+  const intl = /^(?:\+|00)(?!966)([1-9]\d{7,14})$/.exec(t.replace(/[\s\-()]/g, ""));
+  if (intl) return "+" + intl[1];
+  const d = t.replace(/[^\d]/g, "").replace(/^00/, "");
   const m = /^(?:966|0)?(5\d{8})$/.exec(d);
   return m ? "0" + m[1] : null;
 };
