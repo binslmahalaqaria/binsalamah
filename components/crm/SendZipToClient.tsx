@@ -20,6 +20,7 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
   const { data, toast } = useCrm();
   const [q, setQ] = useState("");
   const [pick, setPick] = useState<string | null>(null);
+  const [typed, setTyped] = useState(false); // sending to the number typed in the search box (not a saved client)
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<WaSource | null | undefined>(undefined); // undefined = still checking, null = none connected
   const name = (p.ref ? "#" + p.ref + " " : "") + p.title;
@@ -38,9 +39,11 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
     return visibleClients(data)
       .filter((c) => c.phone && (!t || c.name.includes(t) || String(c.phone).includes(t)))
       .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
-      .slice(0, 40);
+      .slice(0, t ? 100 : 40);
   }, [data, q]);
-  const chosen = data.clients.find((c) => c.id === pick) || null;
+  // A number typed in the box (any format) can be sent to even if it is not a saved client.
+  const typedPhone = useMemo(() => { const d = q.replace(/\D/g, ""); return d.length >= 9 ? intl(q) : null; }, [q]);
+  const chosen = typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
 
   async function sendNow() {
     if (!chosen || !source) return;
@@ -75,14 +78,21 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
         <div className="grid content-start gap-2 overflow-y-auto p-3">
           <span className="text-[13px] text-[var(--crm-ink-2)]">يُرسل ملف واحد فيه {(p.images || []).length} صورة، باسم العقار، على واتساب العميل مباشرة — بدون ما يُحفظ على جوالك.</span>
           {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن. تقدر تستخدم «مشاركة من جوالي» تحت.</span>}
-          <input placeholder="ابحث باسم العميل أو رقمه…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => { setQ(e.target.value); setTyped(false); }} />
+          {typedPhone && (
+            <button type="button" onClick={() => { setTyped(true); setPick(null); }}
+              className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (typed ? "border-[#00a884] bg-[#e7fce3]" : "border-dashed border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
+              <b className="text-[14px]">إرسال إلى هذا الرقم</b>
+              <span className="num text-[13px]" dir="ltr">{q.trim()}</span>
+            </button>
+          )}
           {clients.length ? clients.map((c) => (
-            <button key={c.id} type="button" onClick={() => setPick(c.id)}
+            <button key={c.id} type="button" onClick={() => { setPick(c.id); setTyped(false); }}
               className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (pick === c.id ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
               <b className="truncate text-[14px]">{c.name}</b>
               <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>
             </button>
-          )) : <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا البحث.</p>}
+          )) : !typedPhone && <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا الاسم. اكتب رقم الجوال للإرسال مباشرة.</p>}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
