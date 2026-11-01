@@ -3,6 +3,7 @@
 /** Property photos: one large image with arrows and a counter, thumbnails underneath to switch.
  *  Click the photo (or ⤢) to open it full-screen: arrows / keyboard ← → / swipe to browse, Esc or ✕ to close. */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function Gallery({ images, title }: { images: string[]; title: string }) {
   const [i, setI] = useState(0);
@@ -60,22 +61,24 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
           ))}
         </div>
       )}
-      {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92" role="dialog" aria-modal="true" aria-label={title}
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[2147483000] flex items-center justify-center bg-black/92" role="dialog" aria-modal="true" aria-label={title}
           onClick={() => setOpen(false)}
           onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
           onTouchEnd={(e) => { const x = touchX.current; touchX.current = null; if (x == null) return; const dx = e.changedTouches[0].clientX - x; if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={images[i]} alt={title} className="max-h-[92vh] max-w-[96vw] select-none object-contain" onClick={(e) => e.stopPropagation()} />
-          <button type="button" aria-label="إغلاق" onClick={() => setOpen(false)} className="absolute top-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/30 ltr:right-4 rtl:left-4">✕</button>
+          <button type="button" aria-label="رجوع" onClick={() => setOpen(false)} className="absolute top-4 flex h-11 items-center gap-2 rounded-full bg-white/20 px-4 text-base font-semibold text-white hover:bg-white/35 ltr:left-4 rtl:right-4"><span className="text-xl">→</span><span>رجوع</span></button>
+          <button type="button" aria-label="إغلاق" onClick={() => setOpen(false)} className="absolute top-4 grid h-11 w-11 place-items-center rounded-full bg-white/20 text-2xl text-white hover:bg-white/35 ltr:right-4 rtl:left-4">✕</button>
           {n > 1 && (
             <>
-              <button type="button" aria-label="السابق" onClick={(e) => { e.stopPropagation(); step(-1); }} className="absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30 sm:grid ltr:left-4 rtl:right-4">‹</button>
-              <button type="button" aria-label="التالي" onClick={(e) => { e.stopPropagation(); step(1); }} className="absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30 sm:grid ltr:right-4 rtl:left-4">›</button>
+              <button type="button" aria-label="السابق" onClick={(e) => { e.stopPropagation(); step(-1); }} className="absolute top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/25 text-3xl text-white hover:bg-white/40 ltr:left-3 rtl:right-3">‹</button>
+              <button type="button" aria-label="التالي" onClick={(e) => { e.stopPropagation(); step(1); }} className="absolute top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/25 text-3xl text-white hover:bg-white/40 ltr:right-3 rtl:left-3">›</button>
               <span className="absolute bottom-4 rounded-full bg-white/15 px-4 py-1.5 text-sm text-white" dir="ltr">{i + 1} / {n}</span>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
