@@ -9,7 +9,7 @@ import { auth } from "@/lib/firebase";
 
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/heic": "heic" };
 
-async function buildZip(urls: string[], name: string) {
+export async function buildImagesZip(urls: string[], name: string) {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error("سجّل الدخول من جديد ثم أعد المحاولة.");
   const files: Record<string, Uint8Array> = {};
@@ -38,14 +38,14 @@ function save(blob: Blob, fileName: string) {
 }
 
 export async function downloadAllImages(urls: string[], name: string): Promise<{ ok: number; failed: number }> {
-  const { blob, fileName, ok, failed } = await buildZip(urls, name);
+  const { blob, fileName, ok, failed } = await buildImagesZip(urls, name);
   if (blob) save(blob, fileName);
   return { ok, failed };
 }
 
 /** Opens the share sheet with the ZIP; falls back to a download. `shared` tells which one happened. */
 export async function shareAllImages(urls: string[], name: string): Promise<{ ok: number; failed: number; shared: boolean }> {
-  const { blob, fileName, ok, failed } = await buildZip(urls, name);
+  const { blob, fileName, ok, failed } = await buildImagesZip(urls, name);
   if (!blob) return { ok: 0, failed, shared: false };
   const file = new File([blob], fileName, { type: "application/zip" });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
