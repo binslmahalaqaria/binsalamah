@@ -68,7 +68,6 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
           onTouchEnd={(e) => { const x = touchX.current; touchX.current = null; if (x == null) return; const dx = e.changedTouches[0].clientX - x; if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={images[i]} alt={title} className="max-h-[92vh] max-w-[96vw] select-none object-contain" onClick={(e) => e.stopPropagation()} />
-          <button type="button" aria-label="رجوع" onClick={() => setOpen(false)} className="absolute top-4 flex h-11 items-center gap-2 rounded-full bg-white/20 px-4 text-base font-semibold text-white hover:bg-white/35 ltr:left-4 rtl:right-4"><span className="text-xl">→</span><span>رجوع</span></button>
           <button type="button" aria-label="إغلاق" onClick={() => setOpen(false)} className="absolute top-4 grid h-11 w-11 place-items-center rounded-full bg-white/20 text-2xl text-white hover:bg-white/35 ltr:right-4 rtl:left-4">✕</button>
           {n > 1 && (
             <>
