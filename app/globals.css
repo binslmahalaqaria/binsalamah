@@ -243,3 +243,39 @@ body {
 .login-font button {
   font-family: var(--font-crm-body), system-ui, sans-serif;
 }
+
+/* ===== CRM on phones (client 2026-11-01: «النظام بالجوال مب سلس») =====
+   - inputs at 16px: iPhone Safari zooms the whole page when a smaller field is focused, which made typing feel broken;
+   - bigger tap targets (≥ 40px) for buttons, chips, selects and the ⋮ menus;
+   - dialogs become bottom sheets that scroll inside themselves;
+   - the toast sits above the bottom navigation bar; no sideways page scroll; tables scroll inside their own box. */
+@media (max-width: 767px) {
+  html, body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+  .crm { font-size: 15px; overflow-x: hidden; -webkit-tap-highlight-color: rgb(0 0 0 / .08); }
+  .crm input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]),
+  .crm select, .crm textarea { font-size: 16px; min-height: 44px; }
+  .crm textarea { min-height: 88px; }
+  .crm-btn { min-height: 42px; padding: 9px 16px; }
+  .crm-btn.sm { min-height: 38px; padding: 7px 13px; font-size: 13.5px; }
+  .crm-btn.icon { min-width: 42px; }
+  .crm-qchip { min-height: 38px; padding: 7px 14px; }
+  .crm-check span { padding: 9px 14px; }
+  .crm-row { padding-top: 12px; padding-bottom: 12px; }
+  .crm select.crm-quiet { min-height: 40px; }
+  /* page padding: tighter sides, room for the bottom bar */
+  .crm main, .crm .crm-main { padding-inline: 12px; }
+  /* dialogs: bottom sheet */
+  .crm-overlay { padding: 0; place-items: end center; }
+  .crm-modal { max-width: 100% !important; width: 100%; max-height: 94dvh; overflow-y: auto; overscroll-behavior: contain; border-radius: 22px 22px 0 0; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); }
+  .crm-drawer { width: 100%; }
+  /* forms: one column */
+  .crm-modal .grid.sm\:grid-cols-2, .crm-modal .crm-form { grid-template-columns: minmax(0, 1fr) !important; }
+  .crm-toast { bottom: calc(78px + env(safe-area-inset-bottom)); max-width: calc(100vw - 24px); text-align: center; }
+  /* tables scroll inside their own box instead of widening the page */
+  .crm-card { max-width: 100%; }
+  .crm-table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  /* a long list of tabs/chips scrolls sideways inside its row */
+  .crm-segs, .crm-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  /* keep content clear of the fixed bottom navigation */
+  .crm-shell-pad { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+}
