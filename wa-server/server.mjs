@@ -51,6 +51,10 @@ const PROJECT = process.env.FIREBASE_PROJECT_ID || envFromDotLocal("NEXT_PUBLIC_
 const ORIGINS = (process.env.CRM_ORIGIN || "http://localhost:3000,https://www.binslmahre.com,https://binslmahre.com").split(",").map((s) => s.trim());
 if (!PROJECT) throw new Error("FIREBASE_PROJECT_ID is not set");
 const log = pino({ level: "warn" });
+// One stray error from a WhatsApp session (a dropped socket, a failed media fetch…) must not take the whole service down:
+// Node would exit and Railway would show «Deploy crashed» until it restarts. Log it and carry on.
+process.on("uncaughtException", (e) => console.error("[uncaughtException]", e?.stack || e));
+process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e?.stack || e));
 const MAX_MSGS = 3000; // per chat; high enough to keep older messages pulled on demand
 
 /* ---------------- sources (settings) ---------------- */
