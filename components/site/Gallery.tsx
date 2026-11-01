@@ -1,11 +1,27 @@
 "use client";
 
-/** Property photos: one large image with arrows and a counter, thumbnails underneath to switch. */
-import { useState } from "react";
+/** Property photos: one large image with arrows and a counter, thumbnails underneath to switch.
+ *  Click the photo (or ⤢) to open it full-screen: arrows / keyboard ← → / swipe to browse, Esc or ✕ to close. */
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function Gallery({ images, title }: { images: string[]; title: string }) {
   const [i, setI] = useState(0);
+  const [open, setOpen] = useState(false);
+  const touchX = useRef<number | null>(null);
   const n = images.length;
+  const step = useCallback((d: number) => setI((x) => (x + d + n) % n), [n]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+      else if (e.key === "ArrowRight") step(document.dir === "rtl" ? -1 : 1);
+      else if (e.key === "ArrowLeft") step(document.dir === "rtl" ? 1 : -1);
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [open, step]);
   if (!n) {
     return (
       <div className="grid aspect-[16/10] place-items-center rounded-3xl bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.05),transparent_70%)]">
@@ -17,17 +33,18 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
   const go = (d: number) => setI((i + d + n) % n);
   return (
     <div className="grid gap-3">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-navy/5">
+      <div className="relative aspect-[16/10] cursor-zoom-in overflow-hidden rounded-3xl bg-navy/5" onClick={() => setOpen(true)}>
         {images.map((src, k) => (
           // Plain <img>: offer photos are arbitrary external URLs (CLAUDE.md §12).
           // eslint-disable-next-line @next/next/no-img-element
           <img key={src + k} src={src} alt={k === i ? title : ""} aria-hidden={k !== i}
             className={"absolute inset-0 h-full w-full object-cover transition-opacity duration-500 " + (k === i ? "opacity-100" : "opacity-0")} />
         ))}
+        <button type="button" aria-label="تكبير الصورة" onClick={(e) => { e.stopPropagation(); setOpen(true); }} className="absolute top-3 grid h-9 w-9 place-items-center rounded-full bg-white/85 text-lg text-navy shadow hover:bg-white ltr:right-3 rtl:left-3">⤢</button>
         {n > 1 && (
           <>
-            <button type="button" aria-label="السابق" onClick={() => go(-1)} className="absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-xl text-navy shadow hover:bg-white ltr:left-3 rtl:right-3">‹</button>
-            <button type="button" aria-label="التالي" onClick={() => go(1)} className="absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-xl text-navy shadow hover:bg-white ltr:right-3 rtl:left-3">›</button>
+            <button type="button" aria-label="السابق" onClick={(e) => { e.stopPropagation(); go(-1); }} className="absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-xl text-navy shadow hover:bg-white ltr:left-3 rtl:right-3">‹</button>
+            <button type="button" aria-label="التالي" onClick={(e) => { e.stopPropagation(); go(1); }} className="absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-xl text-navy shadow hover:bg-white ltr:right-3 rtl:left-3">›</button>
             <span className="absolute bottom-3 rounded-full bg-black/55 px-3 py-1 text-xs text-white ltr:right-3 rtl:left-3" dir="ltr">{i + 1} / {n}</span>
           </>
         )}
@@ -41,6 +58,23 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
               <img src={src} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
+        </div>
+      )}
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92" role="dialog" aria-modal="true" aria-label={title}
+          onClick={() => setOpen(false)}
+          onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => { const x = touchX.current; touchX.current = null; if (x == null) return; const dx = e.changedTouches[0].clientX - x; if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1); }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={images[i]} alt={title} className="max-h-[92vh] max-w-[96vw] select-none object-contain" onClick={(e) => e.stopPropagation()} />
+          <button type="button" aria-label="إغلاق" onClick={() => setOpen(false)} className="absolute top-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/30 ltr:right-4 rtl:left-4">✕</button>
+          {n > 1 && (
+            <>
+              <button type="button" aria-label="السابق" onClick={(e) => { e.stopPropagation(); step(-1); }} className="absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30 sm:grid ltr:left-4 rtl:right-4">‹</button>
+              <button type="button" aria-label="التالي" onClick={(e) => { e.stopPropagation(); step(1); }} className="absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/15 text-3xl text-white hover:bg-white/30 sm:grid ltr:right-4 rtl:left-4">›</button>
+              <span className="absolute bottom-4 rounded-full bg-white/15 px-4 py-1.5 text-sm text-white" dir="ltr">{i + 1} / {n}</span>
+            </>
+          )}
         </div>
       )}
     </div>

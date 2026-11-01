@@ -131,6 +131,34 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
   const derived = deriveFromUnits(form);
   const features = form.features ?? [];
   const [newFeature, setNewFeature] = useState("");
+  // «✨ اكتب لي الوصف»: drafts a tidy description from the facts typed in this form (and any rough notes in the box).
+  const [writing, setWriting] = useState(false);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const [beforeAi, setBeforeAi] = useState<string | null>(null);
+  async function writeDescription() {
+    if (!user) return;
+    if (!form.district_ar.trim() && !form.title_ar.trim()) { setAiMsg("اكتب اسم العقار أو الحي أولاً ليعرف المساعد عن ماذا يكتب."); return; }
+    setWriting(true); setAiMsg(null);
+    const AR_TYPE: Record<string, string> = { villa: "فيلا", palace: "قصر", apartment: "شقة", floor: "دور", penthouse: "بنتهاوس", townhouse: "تاون هاوس", building: "عمارة", land: "أرض", farm: "مزرعة", resthouse: "استراحة", other: "عقار" };
+    const range = (a: number, b: number | null | undefined, u: string) => (a && b && b !== a ? a + " – " + b + " " + u : a ? a + " " + u : "");
+    const facts: Record<string, unknown> = {
+      name: form.title_ar.trim() || undefined, type: AR_TYPE[form.type] || form.type, city: form.city_ar?.trim() || "الرياض", district: form.district_ar.trim() || undefined,
+      area: range(Number(form.area_from) || 0, form.area_to, "م²") || undefined,
+      rooms: form.rooms || undefined, bathrooms: form.bathrooms || undefined, living_rooms: form.living_rooms || undefined,
+      developer: form.developer?.trim() || undefined, handover: form.handover?.trim() || undefined, warranties: form.warranties_text?.trim() || undefined,
+      features: (form.features ?? []).length ? form.features : undefined,
+      units: units.filter((u) => u.name).map((u) => [u.name, u.area ? u.area + " م²" : "", u.rooms ? u.rooms + " غرف" : ""].filter(Boolean).join(" — ")),
+      notes: form.description_ar.trim() || undefined,
+    };
+    try {
+      const res = await fetch("/api/describe-offer", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await user.getIdToken()) }, body: JSON.stringify(facts) });
+      const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      if (!res.ok || !j.text) { setAiMsg(j.error === "no_key" ? "المساعد الذكي غير مفعّل بعد (مفتاح Claude غير مضاف)." : "تعذّر كتابة الوصف الآن، حاول بعد قليل."); return; }
+      setBeforeAi(form.description_ar);
+      field("description_ar", j.text);
+      setAiMsg("تمت الكتابة — راجع النص وعدّل ما تريد قبل الحفظ.");
+    } catch { setAiMsg("تعذّر الاتصال، حاول مرة أخرى."); } finally { setWriting(false); }
+  }
   const toggleFeature = (x: string) => field("features", features.includes(x) ? features.filter((y) => y !== x) : [...features, x]);
   const addFeature = () => { const v = newFeature.trim(); if (v && !features.includes(v)) field("features", [...features, v]); setNewFeature(""); };
 
@@ -224,8 +252,15 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
           </label>
         </div>
         <label className={labelClass}>
-          الوصف
-          <textarea rows={3} className={inputClass} placeholder="سطرين عن العقار وموقعه ومميزاته" value={form.description_ar} onChange={(e) => field("description_ar", e.target.value)} />
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span>الوصف</span>
+            <span className="flex items-center gap-2">
+              {beforeAi !== null && <button type="button" className="text-xs font-normal text-navy/60 underline" onClick={() => { field("description_ar", beforeAi); setBeforeAi(null); setAiMsg(null); }}>↩ تراجع</button>}
+              <button type="button" disabled={writing} onClick={writeDescription} className="rounded-full border border-navy/20 px-3 py-1 text-xs font-semibold text-navy transition-colors hover:bg-navy/5 disabled:opacity-50">{writing ? "جارٍ الكتابة…" : "✨ اكتب لي الوصف"}</button>
+            </span>
+          </span>
+          <textarea rows={form.description_ar.includes("\n") ? 9 : 3} className={inputClass} placeholder="سطرين عن العقار وموقعه ومميزاته — أو اترك المساعد يكتبه من البيانات اللي عبّيتها" value={form.description_ar} onChange={(e) => field("description_ar", e.target.value)} />
+          {aiMsg && <span className="text-xs font-normal text-navy/60">{aiMsg}</span>}
         </label>
         <label className="flex items-center gap-2 text-sm font-medium text-navy/70">
           <input type="checkbox" checked={form.featured} onChange={(e) => field("featured", e.target.checked)} className="h-4 w-4 accent-gold" />
