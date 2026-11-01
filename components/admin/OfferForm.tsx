@@ -25,6 +25,8 @@ const OFFER_TYPES: OfferType[] = [
   "penthouse",
   "townhouse",
   "land",
+  "palace",
+  "farm",
   "other",
 ];
 

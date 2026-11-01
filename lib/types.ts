@@ -10,6 +10,8 @@ export type OfferType =
   | "townhouse"
   | "penthouse"
   | "land"
+  | "palace"
+  | "farm"
   | "other";
 
 export type OfferStatus = "draft" | "published" | "archived";

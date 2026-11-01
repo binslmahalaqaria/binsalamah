@@ -14,8 +14,16 @@ import type { OfferType } from "@/lib/types";
 
 /** Property types in the order the owner set: فلل، شقق، أدوار، بنتهاوس، تاون هاوس، أرض، أخرى. */
 export const SEARCH_TYPES: OfferType[] = ["villa", "apartment", "floor", "penthouse", "townhouse", "land", "other"];
+/** «قصر» and «مزرعة» are not shown until at least one published offer of that type exists (client 2026-11-01). */
+export const OPTIONAL_TYPES: OfferType[] = ["palace", "farm"];
+/** Search types in display order: villa → palace, then the rest, farm before «other»; optional ones only when `present`. */
+export function visibleTypes(present: string[] = []): OfferType[] {
+  const has = (x: OfferType) => !OPTIONAL_TYPES.includes(x) || present.includes(x);
+  const base: OfferType[] = ["villa", "palace", "apartment", "floor", "penthouse", "townhouse", "land", "farm", "other"];
+  return base.filter(has);
+}
 
-export function SearchBar({ districts }: { districts: string[] }) {
+export function SearchBar({ districts, presentTypes = [] }: { districts: string[]; presentTypes?: string[] }) {
   const t = useTranslations("Site");
   const router = useRouter();
   const [type, setType] = useState("");
@@ -36,9 +44,9 @@ export function SearchBar({ districts }: { districts: string[] }) {
   return (
     <div className="relative z-10 mx-auto -mt-20 max-w-5xl px-4">
       <div className="grid gap-4 rounded-3xl bg-white p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.35)] sm:p-6">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0 sm:pb-0">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 lg:grid-cols-10 sm:overflow-visible sm:px-0 sm:pb-0">
           <button type="button" className={chip(!type)} onClick={() => setType("")}>{t("allTypes")}</button>
-          {SEARCH_TYPES.map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => setType(x)}>{t(`typesPlural.${x}`)}</button>)}
+          {visibleTypes(presentTypes).map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => setType(x)}>{t(`typesPlural.${x}`)}</button>)}
         </div>
         <ZonePicker zone={zone} selected={picked} districts={districts} onZone={setZone} onChange={setPicked} />
         <div className="grid gap-2">

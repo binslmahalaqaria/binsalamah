@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { OfferCard } from "@/components/OfferCard";
-import { SEARCH_TYPES } from "@/components/site/SearchBar";
+import { visibleTypes } from "@/components/site/SearchBar";
 import { PRICE_RANGES, allDistricts, districtKey, districtsIn } from "@/lib/districts";
 import { ZonePicker } from "@/components/site/ZonePicker";
 import { BudgetChips } from "@/components/site/BudgetChips";
@@ -52,7 +52,7 @@ export function OffersGrid({ offers, whatsappNumber, initial = {} }: { offers: O
       <div className="flex flex-col gap-4 rounded-3xl border border-navy/10 bg-white p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
           <button type="button" className={chip(!type)} onClick={() => set("type", "")}>{s("allTypes")}</button>
-          {SEARCH_TYPES.map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => set("type", x)}>{s(`typesPlural.${x}`)}</button>)}
+          {visibleTypes(offers.map((o) => o.type)).map((x) => <button key={x} type="button" className={chip(type === x)} onClick={() => set("type", x)}>{s(`typesPlural.${x}`)}</button>)}
         </div>
         <div className="grid gap-2"><span className="text-sm font-semibold text-navy">{s("budget")}</span><BudgetChips value={price} onChange={(v) => set("price", v)} /></div>
         <ZonePicker zone={zone} selected={picked} districts={districts} onZone={(z) => set("zone", z)} onChange={(p) => set("districts", p.join(","))} />

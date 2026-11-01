@@ -43,6 +43,8 @@
       "floor": "Floor",
       "townhouse": "Townhouse",
       "land": "Land",
+      "palace": "Palace",
+      "farm": "Farm",
       "other": "Other",
       "penthouse": "Penthouse"
     }
@@ -335,6 +337,8 @@
       "penthouse": "Penthouses",
       "townhouse": "Townhouses",
       "land": "Land",
+      "palace": "Palaces",
+      "farm": "Farms",
       "other": "Other"
     },
     "reqOtherType": "Specify the property type (e.g. building, office)",

@@ -45,7 +45,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   return (
     <>
       <Hero slides={slides} />
-      <SearchBar districts={districts} />
+      <SearchBar districts={districts} presentTypes={offers.map((o) => o.type)} />
 
       {/* Selected properties */}
       <section className="mx-auto max-w-6xl px-6 pt-20">
