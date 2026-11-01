@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { listOffers } from "@/lib/offers";
 import { activateOnSite } from "@/lib/crm/offer-from-property";
 import { useAuth } from "@/lib/auth-context";
-import { downloadAllImages } from "@/components/crm/downloadImages";
+import { downloadAllImages, shareAllImages } from "@/components/crm/downloadImages";
 import type { Offer } from "@/lib/types";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
@@ -146,6 +146,16 @@ export default function PropertiesPage() {
                         } catch (e) { toast(e instanceof Error ? e.message : "تعذّر تنزيل الصور"); }
                         finally { setZipping(null); }
                       }}>{zipping === p.id ? "جارٍ التجهيز…" : "⬇ كل الصور (" + (p.images || []).length + ")"}</button>
+                    )}
+                    {(p.images || []).length > 0 && (
+                      <button type="button" className="crm-btn sm" disabled={zipping === p.id} title="يفتح المشاركة (واتساب وغيره) بملف واحد فيه كل الصور، باسم العقار" onClick={async () => {
+                        setZipping(p.id);
+                        try {
+                          const r = await shareAllImages(p.images || [], (p.ref ? "#" + p.ref + " " : "") + p.title);
+                          toast(!r.ok ? "تعذّر تجهيز الملف" : r.shared ? "جاهز للمشاركة" : "نُزّل الملف — أرفقه في الواتساب أو الإيميل");
+                        } catch (e) { toast(e instanceof Error ? e.message : "تعذّر تجهيز الملف"); }
+                        finally { setZipping(null); }
+                      }}>📤 مشاركة الملف</button>
                     )}
                     {!p.waMessage && <span className="crm-hint">تلقائية من البيانات</span>}
                     {/* One inventory: a property is put on the website from here, its details copied into the website form. */}

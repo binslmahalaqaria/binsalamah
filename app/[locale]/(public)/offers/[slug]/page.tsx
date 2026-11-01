@@ -9,7 +9,6 @@ import { enquiryMessage, shortOfferUrl } from "@/lib/seo";
 import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
-import { PhotosDownload } from "@/components/site/PhotosDownload";
 import { UnitsTable } from "@/components/site/UnitsTable";
 import { FeatureTiles } from "@/components/site/FeatureTiles";
 import { IconArea, IconBath, IconBed, IconPin, IconSofa, IconShield } from "@/components/site/icons";
@@ -158,8 +157,6 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               <div className="h-2 overflow-hidden rounded-full bg-navy/10"><div className="h-full rounded-full bg-gold" style={{ width: `${sold}%` }} /></div>
             </div>
           )}
-
-          <PhotosDownload images={images} title={title} ar={ar} />
         </div>
 
         <aside className="grid content-start gap-4 lg:sticky lg:top-24 lg:self-start">
