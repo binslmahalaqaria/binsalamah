@@ -26,6 +26,7 @@ export const offerTypeEnum = z.enum([
   "townhouse",
   "penthouse",
   "land",
+  "building",
   "palace",
   "farm",
   "resthouse",

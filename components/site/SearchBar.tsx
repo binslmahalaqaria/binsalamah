@@ -15,11 +15,11 @@ import type { OfferType } from "@/lib/types";
 /** Property types in the order the owner set: فلل، شقق، أدوار، بنتهاوس، تاون هاوس، أرض، أخرى. */
 export const SEARCH_TYPES: OfferType[] = ["villa", "apartment", "floor", "penthouse", "townhouse", "land", "other"];
 /** «قصر» and «مزرعة» are not shown until at least one published offer of that type exists (client 2026-11-01). */
-export const OPTIONAL_TYPES: OfferType[] = ["palace", "farm", "resthouse"];
+export const OPTIONAL_TYPES: OfferType[] = ["palace", "building", "farm", "resthouse"];
 /** Search types in display order: villa → palace, then the rest, farm before «other»; optional ones only when `present`. */
 export function visibleTypes(present: string[] = []): OfferType[] {
   const has = (x: OfferType) => !OPTIONAL_TYPES.includes(x) || present.includes(x);
-  const base: OfferType[] = ["villa", "palace", "apartment", "floor", "penthouse", "townhouse", "land", "farm", "resthouse", "other"];
+  const base: OfferType[] = ["villa", "palace", "apartment", "floor", "penthouse", "townhouse", "building", "land", "farm", "resthouse", "other"];
   return base.filter(has);
 }
 

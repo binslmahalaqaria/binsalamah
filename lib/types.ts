@@ -10,6 +10,7 @@ export type OfferType =
   | "townhouse"
   | "penthouse"
   | "land"
+  | "building"
   | "palace"
   | "farm"
   | "resthouse"

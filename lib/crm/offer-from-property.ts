@@ -10,7 +10,7 @@ import { createOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
 import { canPublishOffer, deriveFromUnits, offerFormSchema } from "@/lib/validators";
 
-const TYPE: Record<string, OfferType> = { "فيلا": "villa", "فلل": "villa", "شقة": "apartment", "شقق": "apartment", "دور": "floor", "تاون هاوس": "townhouse", "بنتهاوس": "penthouse", "أرض": "land", "قصر": "palace", "مزرعة": "farm", "استراحة": "resthouse" };
+const TYPE: Record<string, OfferType> = { "فيلا": "villa", "فلل": "villa", "شقة": "apartment", "شقق": "apartment", "دور": "floor", "تاون هاوس": "townhouse", "بنتهاوس": "penthouse", "أرض": "land", "قصر": "palace", "مزرعة": "farm", "استراحة": "resthouse", "عمارة": "building" };
 const UNIT_STATUS: Record<string, UnitStatus> = { "محجوز": "reserved", "مباع": "sold" };
 
 export function toOffer(p: Property): Offer {
