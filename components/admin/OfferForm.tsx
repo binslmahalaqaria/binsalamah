@@ -20,13 +20,14 @@ const FEATURE_PRESETS = ["نظام منزل ذكي", "مصعد خاص", "مسب�
 
 const OFFER_TYPES: OfferType[] = [
   "villa",
+  "palace",
   "apartment",
   "floor",
   "penthouse",
   "townhouse",
   "land",
-  "palace",
   "farm",
+  "resthouse",
   "other",
 ];
 

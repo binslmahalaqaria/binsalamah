@@ -28,7 +28,8 @@ export const PROP_TONE: Record<string, Tone> = { "أُرسل": "muted", "بان�
 /** Viewing statuses. */
 export const VIEW_ST = ["مجدولة", "تمت", "مؤجلة", "ملغاة"] as const;
 export const VIEW_TONE: Record<string, Tone> = { "مجدولة": "accent", "تمت": "ok", "مؤجلة": "warm", "ملغاة": "muted" };
-export const PTYPES = ["فيلا", "قصر", "تاون هاوس", "شقة", "دور", "أرض", "عمارة", "مزرعة", "استراحة", "تجاري"] as const;
+/** Same types, same order as «إضافة عرض» on the website (components/admin/OfferForm.tsx). */
+export const PTYPES = ["فيلا", "قصر", "شقة", "دور", "بنتهاوس", "تاون هاوس", "أرض", "مزرعة", "استراحة", "أخرى"] as const;
 export const SOURCES = ["واتساب", "سناب", "تيك توك", "إعلان عقار", "إحالة", "اتصال", "الموقع الإلكتروني", "أخرى"] as const;
 export const PAY = ["كاش", "بنك", "بنك + كاش"] as const;
 export const PSTATUS = ["متاح", "محجوز", "مباع"] as const;

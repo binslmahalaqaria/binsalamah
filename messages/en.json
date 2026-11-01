@@ -45,6 +45,7 @@
       "land": "Land",
       "palace": "Palace",
       "farm": "Farm",
+      "resthouse": "Rest house",
       "other": "Other",
       "penthouse": "Penthouse"
     }
@@ -339,6 +340,7 @@
       "land": "Land",
       "palace": "Palaces",
       "farm": "Farms",
+      "resthouse": "Rest houses",
       "other": "Other"
     },
     "reqOtherType": "Specify the property type (e.g. building, office)",

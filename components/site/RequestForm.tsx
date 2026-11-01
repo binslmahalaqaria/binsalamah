@@ -21,13 +21,13 @@ import type { Offer } from "@/lib/types";
 
 /** Same types and order as the search bar; "أخرى" asks the visitor to name it. The CRM reads the lead in Arabic. */
 // The request form also offers «عمارة» (buildings), which the public offers search does not have.
-const FORM_TYPES = ["villa", "palace", "penthouse", "townhouse", "apartment", "floor", "building", "farm", "land", "other"] as const;
+const FORM_TYPES = ["villa", "palace", "penthouse", "townhouse", "apartment", "floor", "building", "farm", "resthouse", "land", "other"] as const;
 // Labels for the types the public search does not have (or that read better in the singular here).
 const FORM_LABEL: Partial<Record<(typeof FORM_TYPES)[number], [string, string]>> = {
-  palace: ["قصر", "Palace"], floor: ["دور", "Floor"], building: ["عمارة", "Building"], farm: ["مزرعة", "Farm"],
+  palace: ["قصر", "Palace"], floor: ["دور", "Floor"], building: ["عمارة", "Building"], farm: ["مزرعة", "Farm"], resthouse: ["استراحة", "Rest house"],
 };
 type FormType = (typeof FORM_TYPES)[number];
-const TYPE_AR: Record<FormType, string> = { apartment: "شقة", floor: "دور", villa: "فيلا", penthouse: "بنتهاوس", townhouse: "تاون هاوس", land: "أرض", building: "عمارة", palace: "قصر", farm: "مزرعة", other: "أخرى" };
+const TYPE_AR: Record<FormType, string> = { apartment: "شقة", floor: "دور", villa: "فيلا", penthouse: "بنتهاوس", townhouse: "تاون هاوس", land: "أرض", building: "عمارة", palace: "قصر", farm: "مزرعة", resthouse: "استراحة", other: "أخرى" };
 const PURPOSES = ["reqBuy", "reqInvest", "reqRent"] as const;
 const PURPOSE_AR = { reqBuy: "شراء للسكن", reqInvest: "شراء للاستثمار", reqRent: "إيجار" };
 /** How the buyer pays (client 2026-10-25); stored in the CRM as كاش / بنك / بنك + كاش. */

@@ -28,6 +28,7 @@ export const offerTypeEnum = z.enum([
   "land",
   "palace",
   "farm",
+  "resthouse",
   "other",
 ]);
 
