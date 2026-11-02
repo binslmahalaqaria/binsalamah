@@ -170,11 +170,15 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
               {s("ctaWa")}
             </WhatsAppLink>
             <a href="#interest" className="rounded-full border border-navy px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy hover:text-cream">{t("registerInterest")}</a>
-            {(offer.map_url || offer.brochure_url || offer.video_url) && (
+            {/* The map location and the project file are not published: the client asks for the file and the team sends it. */}
+            <WhatsAppLink whatsappNumber={whatsappNumber}
+              message={(ar ? "السلام عليكم، أرغب بالحصول على ملف العقار: " + offer.title_ar : "Hello, I would like to receive the property file: " + (offer.title_en || offer.title_ar)) + "\nhttps://" + shortOfferUrl(offer.slug)}
+              className="flex items-center justify-center gap-2 rounded-full border border-navy/20 px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy/5">
+              📄 {ar ? "اطلب ملف العقار" : "Request the property file"}
+            </WhatsAppLink>
+            {offer.video_url && (
               <div className="grid gap-2 border-t border-navy/10 pt-4 text-sm">
-                {offer.map_url && <a href={offer.map_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold"><IconPin /> {ar ? "الموقع على الخريطة" : "Location on map"}</a>}
-                {offer.brochure_url && <a href={offer.brochure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">📄 {ar ? "تحميل الملف التعريفي" : "Download brochure"}</a>}
-                {offer.video_url && <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">▶ {ar ? "مشاهدة الفيديو" : "Watch video"}</a>}
+                <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">▶ {ar ? "مشاهدة الفيديو" : "Watch video"}</a>
               </div>
             )}
           </div>
