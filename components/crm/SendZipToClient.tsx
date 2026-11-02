@@ -41,18 +41,25 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
   const typedPhone = useMemo(() => { const d = q.replace(/\D/g, ""); return d.length >= 9 ? intl(q) : null; }, [q]);
   const chosen = typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
 
-  async function sendNow(kind: "msg" | "drive" | "pdf") {
+  // What goes out: the property message, the Drive link (added to the same message), the project PDF (right after).
+  const [withMsg, setWithMsg] = useState(true);
+  const [withDrive, setWithDrive] = useState(!!p.driveLink);
+  const [withPdf, setWithPdf] = useState(!!p.pdfUrl);
+  const nl = String.fromCharCode(10);
+
+  async function sendNow() {
     if (!chosen || !source) return;
     const phone = intl(chosen.phone);
     if (!phone) { toast("رقم العميل غير صالح"); return; }
     const jid = phone + "@s.whatsapp.net";
     setBusy("جارٍ الإرسال إلى " + chosen.name + "…");
     try {
-      if (kind === "pdf") {
-        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع.pdf").replace(/\.pdf$/i, "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
-      } else {
-        const text = kind === "drive" ? "تفضل طال عمرك هذا رابط ملف الصور\n" + p.driveLink : propMsg(p);
-        await waApi("/api/send", { source: source.id, jid, text });
+      const parts: string[] = [];
+      if (withMsg) parts.push(propMsg(p));
+      if (withDrive && p.driveLink) parts.push("تفضل طال عمرك هذا رابط ملف الصور" + nl + p.driveLink);
+      if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
+      if (withPdf && p.pdfUrl) {
+        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
       }
       toast("أُرسل إلى " + chosen.name);
       onClose();
@@ -71,8 +78,13 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
           <button type="button" className="crm-btn ghost sm" onClick={onClose}>إغلاق</button>
         </div>
         <div className="grid content-start gap-2 overflow-y-auto p-3">
-          <span className="text-[13px] text-[var(--crm-ink-2)]">اختر العميل ثم اضغط ما تريد إرساله — يصل على واتساب العميل مباشرة.</span>
+          <span className="text-[13px] text-[var(--crm-ink-2)]">حدّد ما تريد إرساله، ثم اختر العميل — يصل على واتساب العميل مباشرة.</span>
           {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن. </span>}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px]">
+            <label className="flex items-center gap-1.5"><input type="checkbox" checked={withMsg} onChange={(e) => setWithMsg(e.target.checked)} /> رسالة العقار</label>
+            <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
+            <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
+          </div>
           <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => { setQ(e.target.value); setTyped(false); }} />
           {typedPhone && (
             <button type="button" onClick={() => { setTyped(true); setPick(null); }}
@@ -91,15 +103,7 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
-          {(["msg", "drive", "pdf"] as const).map((k) => {
-            const has = k === "msg" || (k === "drive" ? !!p.driveLink : !!p.pdfUrl);
-            const label = k === "msg" ? "رسالة العقار" : k === "drive" ? "رابط الصور" : "ملف PDF";
-            return (
-              <button key={k} type="button" className={"crm-btn " + (k === "msg" ? "primary" : "")} disabled={!!busy || !chosen || !source || !has}
-                title={has ? "" : k === "drive" ? "أضف رابط قوقل درايف في بيانات العقار" : "ارفع ملف المشروع في بيانات العقار"}
-                onClick={() => sendNow(k)}>{label}</button>
-            );
-          })}
+          <button type="button" className="crm-btn primary" disabled={!!busy || !chosen || !source || !(withMsg || (withDrive && p.driveLink) || (withPdf && p.pdfUrl))} onClick={sendNow}>إرسال{chosen ? " إلى " + chosen.name : ""}</button>
         </div>
       </div>
     </div>

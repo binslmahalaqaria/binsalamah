@@ -12,7 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { OWNERK, OWNERK_TONE, PSTATUS, PSTATUS_TONE } from "@/lib/crm/constants";
 import {
-  activeClients, availUnits, clientMatchesProp, nameOf, propAreas, propMsg, propPrice, unitsOf, unitView, can } from "@/lib/crm/logic";
+  activeClients, availUnits, clientMatchesProp, nameOf, propAreas, propPrice, unitsOf, unitView, can } from "@/lib/crm/logic";
 import type { Property } from "@/lib/crm/types";
 import { exportCsv, num } from "@/lib/crm/util";
 import { PropertyTabs } from "@/components/crm/PageTabs";
@@ -68,8 +68,6 @@ export default function PropertiesPage() {
       "المقطع": p.videoLink || "", "رسالة الواتساب": p.waMessage || "", "ملاحظات": p.notes || "", "أضافه": p.createdBy ? nameOf(data, p.createdBy) : "",
     }))) || toast("لا توجد بيانات للتصدير");
 
-  const copyWa = (p: Property) =>
-    navigator.clipboard?.writeText(propMsg(p)).then(() => toast("تم نسخ الرسالة، يرجى لصقها للعميل في واتساب"), () => toast("تعذّر النسخ"));
 
   return (
     <>
@@ -138,7 +136,6 @@ export default function PropertiesPage() {
                     {specs.map((s) => <span key={s} className="crm-chip">{s}</span>)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" className="crm-btn sm wa" onClick={() => copyWa(p)}>نسخ رسالة الواتساب</button>
                     {(p.images || []).length > 0 && (
                       <button type="button" className="crm-btn sm" disabled={zipping === p.id} onClick={async () => {
                         setZipping(p.id);
@@ -150,7 +147,6 @@ export default function PropertiesPage() {
                       }}>{zipping === p.id ? "جارٍ التجهيز…" : "⬇ كل الصور (" + (p.images || []).length + ")"}</button>
                     )}
                     <button type="button" className="crm-btn sm" title="يرسل رسالة العقار أو رابط الصور أو ملف PDF على واتساب العميل مباشرة" onClick={() => setSendZip(p)}>📤 إرسال للعميل</button>
-                    {!p.waMessage && <span className="crm-hint">تلقائية من البيانات</span>}
                     {/* One inventory: a property is put on the website from here, its details copied into the website form. */}
                     {data.isMgr && !previewAs && (web[p.id] ? (
                       <Link href={"/admin/offers/" + web[p.id].id + "/edit"} className="crm-btn sm">🌐 {web[p.id].status === "published" ? "معروض في الموقع" : "مسودة في الموقع"}</Link>
