@@ -32,7 +32,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, p.requestId)}>
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
-          <span className="text-[13.5px]">{pr?.title || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
+          <span className="text-[13.5px]">{pr?.ref ? "#" + pr.ref + " " : ""}{pr?.title || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
           <Pill tone={PROP_TONE[p.status]}>{p.status}</Pill>
           {orphan && <Pill tone="hot">{c ? "الطلب محذوف" : "العميل محذوف"}</Pill>}
         </div>
@@ -83,7 +83,7 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
           {past ? <Pill tone="hot">تمت الزيارة — اتصل وسجّل انطباعه</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
-          {fmtVisit(v.at)}{pr ? " · " + pr.title : ""}{v.feedback ? " · " + v.feedback : ""}{v.followUp ? " · المتابعة " + v.followUp : ""}
+          {fmtVisit(v.at)}{pr ? " · " + (pr.ref ? "#" + pr.ref + " " : "") + pr.title : ""}{v.feedback ? " · " + v.feedback : ""}{v.followUp ? " · المتابعة " + v.followUp : ""}
           {data.isMgr && v.assignee ? " · " + nameOf(data, v.assignee) : ""}
         </div>
       </div>

@@ -643,6 +643,21 @@ export async function assignPropRefs(d: CrmData) {
   }
 }
 
+/** Same for requests (ط-1, ط-2, …): any request without a number gets the next one, oldest first (counters/requests). */
+export async function assignRequestRefs(d: CrmData) {
+  const todo = d.requests.filter((r) => !r.ref).sort((x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || "")));
+  for (const r of todo) {
+    await runTransaction(db, async (tx) => {
+      const cRef = doc(db, "counters", "requests"), rRef = doc(db, "requests", r.id);
+      const [c, cur] = await Promise.all([tx.get(cRef), tx.get(rRef)]);
+      if (!cur.exists() || cur.data().ref) return;
+      const n = (c.exists() ? Number(c.data().last) || 0 : 0) + 1;
+      tx.set(cRef, { last: n }, { merge: true });
+      tx.update(rRef, { ref: n });
+    });
+  }
+}
+
 /**
  * Automatic feeding of numbers (client 2026-10-26): when an employee has called every number they were given
  * (none of their «للتواصل» numbers is still without a call), they get the next batch from the unassigned pool,

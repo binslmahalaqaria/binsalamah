@@ -35,7 +35,7 @@ export default function RequestsPage() {
 
   let all = visibleRequests(data).slice();
   const qq = q.trim();
-  if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); return [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
+  if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); const num = qq.replace(/^(ط|#)[-\s]*/, ""); return (/^\d+$/.test(num) && r.ref === Number(num)) || [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
   if (fType) all = all.filter((r) => typesOf(r).includes(fType));
   if (fPurpose) all = all.filter((r) => (r.purpose || "شراء") === fPurpose);
   if (fFollow) all = all.filter((r) => followState(data, r) === fFollow);
@@ -50,7 +50,7 @@ export default function RequestsPage() {
     exportCsv("الطلبات", visibleRequests(data).map((r) => {
       const c = clientById(data, r.clientId);
       return {
-        "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "",
+        "رقم الطلب": r.ref ? "ط-" + r.ref : "", "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "",
         "نوع العقار": typesOf(r).join("، "), "الأحياء": r.districts || "", "الميزانية": r.budget ?? "", "الدفع": r.payment || "", "البنك": r.bank || "",
         "أقل مساحة": r.areaMin ?? "", "أعلى مساحة": r.areaMax ?? "", "أقل غرف": r.bedroomsMin ?? "", "الدور": (r.floors || []).join("، "), "التفاصيل": r.requirements || "",
         "المسؤول": nameOf(data, r.assignee), "تاريخ الطلب": fmtStamp(r.createdAt), "ملاحظات": r.notes || "",
@@ -74,7 +74,7 @@ export default function RequestsPage() {
     return (
       <div key={r.id} className={"crm-row relative grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 " + GRID + (late ? " late" : "")}>
         <div className="col-span-2 min-w-0 cursor-pointer pe-24 sm:col-span-4 xl:col-span-1 xl:pe-0" onClick={() => c && openClient(c.id, r.id)}>
-          <b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
+          {r.ref ? <span className="num me-1.5 rounded-md bg-[var(--crm-surface-2)] px-1.5 py-0.5 text-[12.5px] text-[var(--crm-ink-2)]">ط-{r.ref}</span> : null}<b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
           <div className="text-[11.5px] text-[var(--crm-ink-3)]">سُجّل الطلب {fmtStamp(r.createdAt)}{r.source ? " · " + r.source : ""}</div>
           <div className="mt-1 flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !py-0.5 !ps-2.5 !pe-6 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
@@ -124,7 +124,7 @@ export default function RequestsPage() {
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button>} />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input className="crm-input min-w-[200px] flex-1" placeholder="ابحث باسم العميل أو الجوال أو الحي" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="crm-input min-w-[200px] flex-1" placeholder="ابحث باسم العميل أو الجوال أو الحي أو رقم الطلب" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="button" className="crm-btn" aria-expanded={showF} onClick={() => setShowF((v) => !v)}>
           فلترة{nF > 0 && <span className="num rounded-full bg-[var(--crm-ink)] px-1.5 text-[11px] text-white">{nF}</span>}
         </button>

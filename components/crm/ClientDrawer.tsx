@@ -127,6 +127,7 @@ export function ClientDrawer() {
                 const open = OPEN_REQ(r);
                 return (
                   <div key={r.id} className={"grid gap-2 rounded-xl border p-3 " + (drawer.req === r.id ? "border-[var(--crm-gold)]" : "border-[var(--crm-line)]") + (r.status === "ملغي" ? " opacity-70" : "")}>
+                    {r.ref ? <span className="num w-fit rounded-md bg-[var(--crm-surface-2)] px-1.5 py-0.5 text-[12.5px] text-[var(--crm-ink-2)]">طلب ط-{r.ref}</span> : null}
                     <Stepper st={r.status} />
                     <div className="flex flex-wrap gap-1.5"><DemandChips r={r} /></div>
                     {r.requirements && <div className="muted text-[13px]">{r.requirements}</div>}

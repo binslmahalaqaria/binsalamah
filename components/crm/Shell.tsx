@@ -15,7 +15,7 @@ import { useCrm } from "@/lib/crm/store";
 import { can, isActive, members, myTasksOpen, nameOf } from "@/lib/crm/logic";
 import { addDays, today } from "@/lib/crm/util";
 import { TO_CONTACT } from "@/lib/crm/constants";
-import { assignPropRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
+import { assignPropRefs, assignRequestRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { TaskAlerts } from "./TaskAlerts";
 import { ChatAlerts } from "./ChatAlerts";
 import { Logo } from "@/components/Logo";
@@ -127,6 +127,13 @@ export function CrmShell({ children }: { children: ReactNode }) {
     if (!loaded || previewAs) return;
     const t = setTimeout(() => runNoResponse(data, noRespDone.current).catch(() => {}), 6000);
     return () => clearTimeout(t);
+  }, [loaded, data, previewAs]);
+  // Request numbers (ط-1, ط-2, …), same idea.
+  const numberingReq = useRef(false);
+  useEffect(() => {
+    if (!loaded || previewAs || numberingReq.current || !data.requests.some((r) => !r.ref)) return;
+    numberingReq.current = true;
+    assignRequestRefs(data).catch(() => {}).finally(() => { numberingReq.current = false; });
   }, [loaded, data, previewAs]);
 
   // Numbers feed themselves: an employee who finished their numbers gets the next batch automatically.

@@ -133,6 +133,8 @@ export interface Demand {
 
 export interface Request extends Demand {
   id: string;
+  /** Sequential request number (ط-1, ط-2, …) given automatically, for quick look-up (client 2026-11-02). */
+  ref?: number;
   clientId: string;
   priority: string | null;
   source: string | null;
