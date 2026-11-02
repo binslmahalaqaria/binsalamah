@@ -31,7 +31,7 @@ export function toOffer(p: Property): Offer {
     images: (p.images || []).map((url, order) => ({ url, order })), cover_image: p.images?.[0] || "",
     sold_percentage: null, featured: false, units,
     features: String(p.features || "").split(/[،,\n]/).map((x) => x.trim()).filter(Boolean),
-    map_url: p.link || "", video_url: p.videoLink || "",
+    map_url: p.link || "", video_url: p.videoLink || "", brochure_url: p.pdfUrl || "",
   } as Offer;
 }
 

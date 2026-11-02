@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { createOffer, updateOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
-import { uploadOfferImage } from "@/lib/upload-image";
+import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
 import { allDistricts } from "@/lib/districts";
 import { offerFormSchema, canPublishOffer, deriveFromUnits, type OfferFormInput } from "@/lib/validators";
 import type { Offer, OfferType, OfferUnit, ProjectStage, UnitStatus } from "@/lib/types";
@@ -116,6 +116,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   function field<K extends keyof OfferFormInput>(key: K, value: OfferFormInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -410,8 +411,22 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
           <label className={labelClass}>رابط الموقع على الخريطة
             <input className={inputClass} dir="ltr" placeholder="https://maps.google.com/…" value={form.map_url ?? ""} onChange={(e) => field("map_url", e.target.value)} />
           </label>
-          <label className={labelClass}>رابط الملف التعريفي (PDF)
-            <input className={inputClass} dir="ltr" placeholder="https://…" value={form.brochure_url ?? ""} onChange={(e) => field("brochure_url", e.target.value)} />
+          <label className={labelClass}>ملف المشروع (PDF)
+            {form.brochure_url ? (
+              <span className="flex flex-wrap items-center gap-2">
+                <a href={form.brochure_url} target="_blank" rel="noreferrer" className="rounded-lg border border-navy/15 px-3 py-2 text-sm text-navy hover:bg-navy/5">📄 عرض الملف</a>
+                <button type="button" className="text-xs font-normal text-navy/60 underline" onClick={() => field("brochure_url", "")}>إزالة</button>
+              </span>
+            ) : (
+              <input type="file" accept="application/pdf" disabled={pdfBusy} className={inputClass} onChange={async (e) => {
+                const file = e.target.files?.[0]; e.target.value = "";
+                if (!file) return;
+                if (file.type !== "application/pdf" || file.size > 15 * 1024 * 1024) { alert("اختر ملف PDF أقل من 15 م.ب"); return; }
+                setPdfBusy(true);
+                try { field("brochure_url", (await uploadOfferPdf(file)).url); } catch { alert("تعذّر رفع الملف"); } finally { setPdfBusy(false); }
+              }} />
+            )}
+            {pdfBusy && <span className="text-xs font-normal text-navy/60">جارٍ الرفع…</span>}
           </label>
           <label className={labelClass}>رابط الفيديو
             <input className={inputClass} dir="ltr" placeholder="https://youtube.com/…" value={form.video_url ?? ""} onChange={(e) => field("video_url", e.target.value)} />
