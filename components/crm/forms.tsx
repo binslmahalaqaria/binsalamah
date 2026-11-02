@@ -20,7 +20,7 @@ import {
   ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Pill, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
-import { uploadOfferImage } from "@/lib/upload-image";
+import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
 import { downloadAllImages } from "./downloadImages";
 import { activateOnSite } from "@/lib/crm/offer-from-property";
 import { listOffers } from "@/lib/offers";
@@ -422,10 +422,12 @@ export function PropertyForm({ id }: { id?: string }) {
     waMessage: s(r.waMessage), units: (r.units || []).map((u) => ({ ...u })) as Unit[],
     features: s(r.features), city: r.city || "الرياض", buildArea: s(r.buildArea), livingRooms: s(r.livingRooms), floors: s(r.floors),
     facing: s(r.facing), streetWidth: s(r.streetWidth), age: s(r.age), videoLink: s(r.videoLink), notes: s(r.notes),
+    driveLink: s(r.driveLink), pdfUrl: s(r.pdfUrl), pdfName: s(r.pdfName),
   });
   const [busy, setBusy] = useState(false);
   const [waArmed, setWaArmed] = useState(false);
   const [uploading, setUploading] = useState(0);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [zipping, setZipping] = useState(false);
   const { user } = useAuth();
   const [activating, setActivating] = useState(false);
@@ -479,6 +481,7 @@ export function PropertyForm({ id }: { id?: string }) {
         features: f.features.trim() || null, city: f.city.trim() || null, buildArea: num(f.buildArea), livingRooms: num(f.livingRooms),
         floors: num(f.floors), facing: f.facing || null, streetWidth: num(f.streetWidth), age: f.age.trim() || null,
         videoLink: f.videoLink.trim() || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
+        driveLink: f.driveLink.trim() || null, pdfUrl: f.pdfUrl || null, pdfName: f.pdfUrl ? f.pdfName || null : null,
       };
       if (rec) await writeProperty(rec.id, { ...body, updatedBy: data.uid });
       else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
@@ -527,6 +530,26 @@ export function PropertyForm({ id }: { id?: string }) {
         <Field label="دورات المياه"><input inputMode="decimal" value={f.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} /></Field>
         {needsFloor([f.type]) && <Field label="الدور"><Select value={f.floor} onChange={(v) => set("floor", v)} options={FLOORS} blank="—" /></Field>}
         <Field label="السعر"><Select value={f.priceNote} onChange={(v) => set("priceNote", v)} options={["قابل للتفاوض", "نهائي"]} blank="—" /></Field>
+        <Field label="رابط صور قوقل درايف" full><input dir="ltr" value={f.driveLink} placeholder="https://drive.google.com/…" onChange={(e) => set("driveLink", e.target.value)} /></Field>
+        <Field label="ملف المشروع (PDF)" full>
+          {f.pdfUrl ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <a className="crm-btn sm" href={f.pdfUrl} target="_blank" rel="noreferrer">📄 {f.pdfName || "ملف المشروع"}</a>
+              <button type="button" className="crm-btn sm ghost" onClick={() => setF((p) => ({ ...p, pdfUrl: "", pdfName: "" }))}>إزالة</button>
+            </div>
+          ) : (
+            <input type="file" accept="application/pdf" disabled={pdfBusy} onChange={async (e) => {
+              const file = e.target.files?.[0]; e.target.value = "";
+              if (!file) return;
+              if (file.type !== "application/pdf") return toast("اختر ملف PDF");
+              if (file.size > 15 * 1024 * 1024) return toast("الملف أكبر من 15 م.ب");
+              setPdfBusy(true);
+              try { const r = await uploadOfferPdf(file); setF((p) => ({ ...p, pdfUrl: r.url, pdfName: file.name })); }
+              catch { toast("تعذّر رفع الملف"); } finally { setPdfBusy(false); }
+            }} />
+          )}
+          {pdfBusy && <span className="crm-hint">جارٍ الرفع…</span>}
+        </Field>
         <Field label="رابط الموقع (خرائط)" full><input dir="ltr" value={f.link} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set("link", e.target.value)} /></Field>
 
         <Sec>الصور</Sec>

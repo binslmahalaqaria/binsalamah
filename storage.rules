@@ -9,6 +9,14 @@ service firebase.storage {
       return request.auth != null &&
         firestore.get(/databases/(default)/documents/staff/$(request.auth.uid)).data.active == true;
     }
+    // Project files (PDF) sent to clients: staff upload, up to 15 MB.
+    match /offers/files/{name} {
+      allow read: if true;
+      allow delete: if isActiveStaff();
+      allow create, update: if isActiveStaff()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
     match /offers/{allPaths=**} {
       allow read: if true;
       allow delete: if isActiveStaff();

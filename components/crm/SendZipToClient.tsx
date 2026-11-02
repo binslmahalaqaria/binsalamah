@@ -1,20 +1,16 @@
 "use client";
 
 /**
- * «📤 إرسال للعميل» on a property card (client 2026-11-01): all the property's photos as ONE file (ZIP named after the
- * property), sent straight to a client's WhatsApp through the CRM's linked number — nothing is saved on the employee's
- * phone. Pick the client, press send. If WhatsApp is not linked/connected, the ZIP can still be shared from the device.
+ * «📤 إرسال للعميل» on a property card: pick a client (or type a number) and send, straight to their WhatsApp through the
+ * CRM's linked number, one of: the property message, the Google Drive link of the photos, or the project PDF file.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { visibleClients } from "@/lib/crm/logic";
 import { intl } from "@/lib/crm/util";
 import { seesAllOf, waApi, type WaSource } from "@/lib/crm/wa";
-import { buildImagesZip, shareAllImages } from "./downloadImages";
+import { propMsg } from "@/lib/crm/logic";
 import type { Property } from "@/lib/crm/types";
-
-const toDataUrl = (blob: Blob) =>
-  new Promise<string>((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result)); f.onerror = () => rej(new Error("read")); f.readAsDataURL(blob); });
 
 export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => void }) {
   const { data, toast } = useCrm();
@@ -45,21 +41,20 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
   const typedPhone = useMemo(() => { const d = q.replace(/\D/g, ""); return d.length >= 9 ? intl(q) : null; }, [q]);
   const chosen = typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
 
-  async function sendNow() {
+  async function sendNow(kind: "msg" | "drive" | "pdf") {
     if (!chosen || !source) return;
     const phone = intl(chosen.phone);
     if (!phone) { toast("رقم العميل غير صالح"); return; }
-    setBusy("جارٍ تجهيز الملف…");
+    const jid = phone + "@s.whatsapp.net";
+    setBusy("جارٍ الإرسال إلى " + chosen.name + "…");
     try {
-      const { blob, fileName, ok, failed } = await buildImagesZip(p.images || [], name);
-      if (!blob) { toast("تعذّر تجهيز الصور"); return; }
-      if (blob.size > 15 * 1024 * 1024) { toast("الملف كبير (" + Math.round(blob.size / 1048576) + " م.ب) ويفوق حد واتساب — اختر صوراً أقل أو استخدم «مشاركة من جوالي»"); return; }
-      setBusy("جارٍ الإرسال إلى " + chosen.name + "…");
-      await waApi("/api/send-media", {
-        source: source.id, jid: phone + "@s.whatsapp.net", dataUrl: await toDataUrl(blob), fileName,
-        caption: "صور " + p.title + (p.district ? " — حي " + p.district : ""),
-      });
-      toast("أُرسل الملف إلى " + chosen.name + (failed ? " (تعذّر " + failed + " من " + (ok + failed) + " صورة)" : ""));
+      if (kind === "pdf") {
+        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع.pdf").replace(/\.pdf$/i, "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
+      } else {
+        const text = kind === "drive" ? "تفضل طال عمرك هذا رابط ملف الصور\n" + p.driveLink : propMsg(p);
+        await waApi("/api/send", { source: source.id, jid, text });
+      }
+      toast("أُرسل إلى " + chosen.name);
       onClose();
     } catch {
       toast("تعذّر الإرسال — تأكد أن واتساب الشركة متصل");
@@ -72,12 +67,12 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onClick={onClose}>
       <div className="crm-card grid max-h-[90vh] w-full max-w-lg grid-rows-[auto_1fr_auto] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] px-4 py-3">
-          <b className="truncate">📤 إرسال صور «{p.title}» للعميل</b>
+          <b className="truncate">📤 إرسال «{p.title}» للعميل</b>
           <button type="button" className="crm-btn ghost sm" onClick={onClose}>إغلاق</button>
         </div>
         <div className="grid content-start gap-2 overflow-y-auto p-3">
-          <span className="text-[13px] text-[var(--crm-ink-2)]">يُرسل ملف واحد فيه {(p.images || []).length} صورة، باسم العقار، على واتساب العميل مباشرة — بدون ما يُحفظ على جوالك.</span>
-          {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن. تقدر تستخدم «مشاركة من جوالي» تحت.</span>}
+          <span className="text-[13px] text-[var(--crm-ink-2)]">اختر العميل ثم اضغط ما تريد إرساله — يصل على واتساب العميل مباشرة.</span>
+          {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن. </span>}
           <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => { setQ(e.target.value); setTyped(false); }} />
           {typedPhone && (
             <button type="button" onClick={() => { setTyped(true); setPick(null); }}
@@ -96,12 +91,15 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
-          <button type="button" className="crm-btn sm" disabled={!!busy} onClick={async () => {
-            setBusy("جارٍ التجهيز…");
-            try { const r = await shareAllImages(p.images || [], name); toast(!r.ok ? "تعذّر تجهيز الملف" : r.shared ? "جاهز للمشاركة" : "نُزّل الملف — أرفقه في الواتساب"); }
-            catch (e) { toast(e instanceof Error ? e.message : "تعذّر تجهيز الملف"); } finally { setBusy(null); }
-          }}>مشاركة من جوالي</button>
-          <button type="button" className="crm-btn primary" disabled={!!busy || !chosen || !source} onClick={sendNow}>إرسال{chosen ? " إلى " + chosen.name : ""}</button>
+          {(["msg", "drive", "pdf"] as const).map((k) => {
+            const has = k === "msg" || (k === "drive" ? !!p.driveLink : !!p.pdfUrl);
+            const label = k === "msg" ? "رسالة العقار" : k === "drive" ? "رابط الصور" : "ملف PDF";
+            return (
+              <button key={k} type="button" className={"crm-btn " + (k === "msg" ? "primary" : "")} disabled={!!busy || !chosen || !source || !has}
+                title={has ? "" : k === "drive" ? "أضف رابط قوقل درايف في بيانات العقار" : "ارفع ملف المشروع في بيانات العقار"}
+                onClick={() => sendNow(k)}>{label}</button>
+            );
+          })}
         </div>
       </div>
     </div>

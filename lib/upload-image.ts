@@ -27,3 +27,12 @@ export async function uploadOfferImage(file: File): Promise<{ url: string; path:
   await uploadBytes(r, blob, { contentType: blob.type || "image/jpeg", cacheControl: "public,max-age=31536000" });
   return { url: await getDownloadURL(r), path };
 }
+
+/** Project file (PDF) for sending to clients on WhatsApp — stored under offers/files/, up to 15 MB. */
+export async function uploadOfferPdf(file: File): Promise<{ url: string; path: string }> {
+  const safe = file.name.replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "-").slice(0, 40) || "project";
+  const path = `offers/files/${Date.now().toString(36)}-${safe}.pdf`;
+  const r = ref(storage, path);
+  await uploadBytes(r, file, { contentType: "application/pdf" });
+  return { url: await getDownloadURL(r), path };
+}

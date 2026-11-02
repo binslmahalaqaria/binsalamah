@@ -87,6 +87,11 @@ export interface Property {
   link: string | null;
   images: string[];
   videoLink: string | null;
+  /** Google Drive folder/link with the property's photos — sent to the client as a link (client 2026-11-02). */
+  driveLink?: string | null;
+  /** Project file (PDF) uploaded to Firebase Storage, sent to the client's WhatsApp as a document. */
+  pdfUrl?: string | null;
+  pdfName?: string | null;
   ownerKind: string | null;
   contactName: string | null;
   contactPhone: string | null;
