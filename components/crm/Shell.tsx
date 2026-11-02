@@ -17,6 +17,7 @@ import { addDays, today } from "@/lib/crm/util";
 import { TO_CONTACT } from "@/lib/crm/constants";
 import { assignPropRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { TaskAlerts } from "./TaskAlerts";
+import { ChatAlerts } from "./ChatAlerts";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./ui";
 import { ClientDrawer } from "./ClientDrawer";
@@ -270,6 +271,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       {can(data, "assistant") && <Assistant />}
       <ModalHost />
       <TaskAlerts />
+      <ChatAlerts />
       {toastMsg && <div className="crm-toast" role="status">{toastMsg}</div>}
     </div>
   );

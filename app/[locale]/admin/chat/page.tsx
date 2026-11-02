@@ -7,7 +7,8 @@
  * link a client. Unread private messages are counted per colleague.
  */
 import { useEffect, useRef, useState } from "react";
-import { clock } from "@/lib/crm/util";
+import { clock, fmtStamp } from "@/lib/crm/util";
+import { isOnline } from "@/lib/crm/presence";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, isMgrId, members, nameOf, visibleClients } from "@/lib/crm/logic";
 import { markDmRead, sendChat, sendDm, write } from "@/lib/crm/actions";
@@ -27,6 +28,12 @@ export default function ChatPage() {
   const atBottom = useRef(true);
   const myName = nameOf(data, data.uid);
   const me = data.uid;
+
+  // Re-evaluate online/offline as time passes (the staff list itself only changes when someone writes).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(iv); }, []);
+  const online = (id: string) => isOnline(data.staff.find((s) => s.id === id), now);
+  const lastSeenOf = (id: string) => data.staff.find((s) => s.id === id)?.lastSeen;
 
   const msgs: Msg[] = peer === CHANNEL ? chat : dms.filter((m) => m.members.includes(peer));
 
@@ -79,7 +86,7 @@ export default function ChatPage() {
           {previewAs ? <p className="crm-hint m-0 px-3.5 pb-3">الرسائل الخاصة لا تظهر في وضع المعاينة.</p>
             : people.map((id) => {
               const l = lastWith(id);
-              return <Conv key={id} on={peer === id} onClick={() => setPeer(id)} name={nameOf(data, id)} sub={l ? (l.by === me ? "أنت: " : "") + l.text : isMgrId(data, id) ? "مدير" : "ابدأ محادثة"} badge={unreadFrom(id)} icon={nameOf(data, id).slice(0, 1)} />;
+              return <Conv key={id} on={peer === id} onClick={() => setPeer(id)} name={nameOf(data, id)} sub={l ? (l.by === me ? "أنت: " : "") + l.text : isMgrId(data, id) ? "مدير" : "ابدأ محادثة"} badge={unreadFrom(id)} icon={nameOf(data, id).slice(0, 1)} online={online(id)} />;
             })}
         </div>
 
@@ -88,7 +95,14 @@ export default function ChatPage() {
           <div className="flex items-center gap-2 border-b border-[var(--crm-line)] px-3.5 py-2.5">
             {peer !== CHANNEL && <button type="button" className="crm-btn ghost sm md:hidden" onClick={() => setPeer(CHANNEL)}>رجوع</button>}
             <b className="flex-1">{title}</b>
-            <span className="text-[12px] text-[var(--crm-ink-3)]">{peer === CHANNEL ? "تظهر لجميع أعضاء الفريق" : "🔒 بينك وبين " + title + " فقط"}</span>
+            <span className="text-[12px] text-[var(--crm-ink-3)]">
+              {peer === CHANNEL ? "تظهر لجميع أعضاء الفريق · " + people.filter(online).length + " متصل" : (
+                <>
+                  <span className={online(peer) ? "font-semibold text-[var(--crm-ok)]" : ""}>{online(peer) ? "● متصل الآن" : "○ غير متصل" + (lastSeenOf(peer) ? " · آخر ظهور " + fmtStamp(lastSeenOf(peer)) : "")}</span>
+                  {" · 🔒 بينكما فقط"}
+                </>
+              )}
+            </span>
           </div>
           <div ref={box} className="flex h-[min(60vh,560px)] flex-col gap-2 overflow-y-auto p-3.5"
             onScroll={(e) => { const el = e.currentTarget; atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}>
@@ -135,11 +149,11 @@ export default function ChatPage() {
   );
 }
 
-function Conv({ on, onClick, name, sub, badge, icon }: { on: boolean; onClick: () => void; name: string; sub: string; badge: number; icon: string }) {
+function Conv({ on, onClick, name, sub, badge, icon, online }: { on: boolean; onClick: () => void; name: string; sub: string; badge: number; icon: string; online?: boolean }) {
   return (
     <button type="button" onClick={onClick}
       className={"flex items-center gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 text-start hover:bg-[var(--crm-surface-2)] " + (on ? "bg-[var(--crm-surface-2)]" : "")}>
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--crm-ink)] text-[14px] font-semibold text-white">{icon}</span>
+      <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--crm-ink)] text-[14px] font-semibold text-white">{icon}{online !== undefined && <i className={"absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-white " + (online ? "bg-[var(--crm-ok)]" : "bg-[#b5b5b5]")} />}</span>
       <span className="grid min-w-0 flex-1">
         <b className="truncate text-[14px]">{name}</b>
         <span className="truncate text-[12.5px] text-[var(--crm-ink-3)]">{sub}</span>

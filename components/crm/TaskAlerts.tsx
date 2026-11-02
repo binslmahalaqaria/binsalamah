@@ -19,7 +19,7 @@ function unlock() {
     if (ctx.state === "suspended") void ctx.resume();
   } catch { /* no sound available */ }
 }
-function chime() {
+export function chime() {
   try {
     if (!ctx || ctx.state !== "running") return;
     const t0 = ctx.currentTime;
