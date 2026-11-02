@@ -55,11 +55,11 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
     setBusy("جارٍ الإرسال إلى " + chosen.name + "…");
     try {
       const parts: string[] = [];
-      if (withMsg) parts.push(propMsg(p));
-      if (withDrive && p.driveLink) parts.push("تفضل طال عمرك هذا رابط ملف الصور" + nl + p.driveLink);
+      if (withMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
+      if (withDrive && p.driveLink) parts.push("رابط صور العقار:" + nl + p.driveLink);
       if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
       if (withPdf && p.pdfUrl) {
-        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
+        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "ملف المشروع" });
       }
       toast("أُرسل إلى " + chosen.name);
       onClose();
