@@ -56,10 +56,10 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
     try {
       const parts: string[] = [];
       if (withMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
-      if (withDrive && p.driveLink) parts.push("رابط صور العقار:" + nl + p.driveLink);
+      if (withDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
       if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
       if (withPdf && p.pdfUrl) {
-        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "ملف المشروع" });
+        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
       }
       toast("أُرسل إلى " + chosen.name);
       onClose();
