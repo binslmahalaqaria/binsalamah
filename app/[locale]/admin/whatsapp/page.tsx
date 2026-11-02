@@ -258,10 +258,10 @@ function WhatsAppInbox() {
     }
   }
   /** One item of a property sent from the inventory: a photo by link, or the details text. */
-  async function sendItem(item: { url: string } | { text: string }) {
+  async function sendItem(item: { url: string; fileName?: string; caption?: string } | { text: string }) {
     if (!cur) return;
     stick.current = true;
-    if ("url" in item) await api("/api/send-media", { source: cur.source, jid: cur.jid, url: item.url });
+    if ("url" in item) await api("/api/send-media", { source: cur.source, jid: cur.jid, url: item.url, fileName: item.fileName, caption: item.caption });
     else await api("/api/send", { source: cur.source, jid: cur.jid, text: item.text });
     await reload(cur);
   }

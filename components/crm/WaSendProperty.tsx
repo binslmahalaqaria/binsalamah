@@ -16,7 +16,7 @@ export function WaSendProperty({ client, onClose, send }: {
   client: Client | null;
   onClose: () => void;
   /** Sends one item to the open chat: a photo by link, or a text message. */
-  send: (item: { url: string } | { text: string }) => Promise<void>;
+  send: (item: { url: string; fileName?: string; caption?: string } | { text: string }) => Promise<void>;
 }) {
   const { data, toast, openModal } = useCrm();
   const [q, setQ] = useState("");
@@ -24,6 +24,8 @@ export function WaSendProperty({ client, onClose, send }: {
   const [imgs, setImgs] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [withPdf, setWithPdf] = useState(false);
+  const [withDrive, setWithDrive] = useState(false);
 
   const req = client ? reqsOf(data, client).find((r) => !["تم البيع", "ملغي"].includes(r.status || "")) : undefined;
   const matched = useMemo(() => (req ? matchesForReq(data, req).map((x) => x.p) : []), [data, req]);
@@ -38,6 +40,8 @@ export function WaSendProperty({ client, onClose, send }: {
     setPick(p);
     setImgs((p.images || []).slice(0, 4));
     setMsg(propMsg(p));
+    setWithPdf(false);
+    setWithDrive(false);
   };
 
   async function go() {
@@ -50,6 +54,14 @@ export function WaSendProperty({ client, onClose, send }: {
       if (msg.trim()) {
         setBusy("جارٍ إرسال التفاصيل…");
         await send({ text: msg.trim() });
+      }
+      if (withDrive && pick.driveLink) {
+        setBusy("جارٍ إرسال رابط الصور…");
+        await send({ text: "تفضل طال عمرك هذا رابط ملف الصور" + String.fromCharCode(10) + pick.driveLink });
+      }
+      if (withPdf && pick.pdfUrl) {
+        setBusy("جارٍ إرسال ملف المشروع…");
+        await send({ url: pick.pdfUrl, fileName: (pick.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
       }
       if (req) await reqSent(data, req.id, pick.id).catch(() => {});
       toast("أُرسل العقار للعميل" + (req ? " وسُجّل في طلبه — حدّد موعد الزيارة" : ""));
@@ -109,13 +121,19 @@ export function WaSendProperty({ client, onClose, send }: {
               <label>نص الرسالة (يمكنك تعديله)</label>
               <textarea rows={8} value={msg} onChange={(e) => setMsg(e.target.value)} />
             </div>
+            {(pick.pdfUrl || pick.driveLink) && (
+              <div className="flex flex-wrap gap-4 text-[13.5px]">
+                {pick.pdfUrl && <label className="flex items-center gap-1.5"><input type="checkbox" checked={withPdf} onChange={(e) => setWithPdf(e.target.checked)} /> 📄 إرفاق ملف المشروع (PDF)</label>}
+                {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" checked={withDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال رابط الصور (درايف)</label>}
+              </div>
+            )}
             {pick.videoLink && <span className="text-[12.5px] text-[var(--crm-ink-3)]">رابط الفيديو موجود داخل النص.</span>}
           </div>
         )}
 
         <div className="flex items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
-          {pick && <button type="button" className="crm-btn primary" disabled={!!busy || (!imgs.length && !msg.trim())} onClick={go}>إرسال للعميل</button>}
+          {pick && <button type="button" className="crm-btn primary" disabled={!!busy || (!imgs.length && !msg.trim() && !withPdf && !withDrive)} onClick={go}>إرسال للعميل</button>}
         </div>
       </div>
     </div>
