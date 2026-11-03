@@ -28,7 +28,7 @@ export default function TasksPage() {
   const t = today();
   const me = data.uid;
   const mine = data.tasks.filter((x) => x.assignee === me);
-  const given = data.tasks.filter((x) => x.createdBy === me && x.assignee !== me);
+  const given = data.tasks.filter((x) => x.createdBy === me && x.assignee !== me && !x.kind);
   const team = data.isMgr ? data.tasks : [];
   let list = tab === "mine" ? mine : tab === "given" ? given : team;
   if (tab === "team" && who) list = list.filter((x) => x.assignee === who);

@@ -12,11 +12,13 @@ import {
 import {
   applyUpdate, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
-import type { HrFile } from "@/lib/crm/types";
+import type { Client, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
 import { ConfirmButton, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
+import { SendZipToClient } from "./SendZipToClient";
+import { SentMarks } from "./SentBadge";
 
 export function ModalHost() {
   const { modal } = useCrm();
@@ -322,6 +324,7 @@ function TransferModal({ reqId }: { reqId: string }) {
 /* ---------- matching ---------- */
 function ReqMatchesModal({ reqId }: { reqId: string }) {
   const { data, closeModal, toast, openModal } = useCrm();
+  const [sendP, setSendP] = useState<Property | null>(null);
   const r = data.requests.find((x) => x.id === reqId);
   if (!r) return null;
   const c = clientById(data, r.clientId);
@@ -341,10 +344,11 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
                   <span className="num min-w-[42px] font-heading text-[var(--crm-gold-ink)]">{m.score}%</span>
                   <span><b>{p.title}</b>{m.unit && <span className="muted"> ({m.unit.name})</span>} · <span className="text-[var(--crm-gold-ink)]">{money(m.unit ? m.unit.price ?? p.price : p.price)}</span></span>
                   <span className="muted text-[12.5px]">{m.why.join(" · ")}</span>
+                  <SentMarks c={c} p={p} />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>أرسل إليه</a>}
-                  <button type="button" className="crm-btn sm" onClick={() => navigator.clipboard?.writeText(propMsg(p)).then(() => toast("تم نسخ الرسالة، يرجى لصقها للعميل في واتساب"))}>نسخ الرسالة</button>
+                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => setSendP(p)}>📤 إرسال للعميل</button>}
+                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>من جوالي</a>}
                 </div>
               </div>
             );
@@ -353,6 +357,7 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
       ) : (
         <div className="crm-empty">لا يوجد عقار متاح يطابق هذا الطلب حالياً.</div>
       )}
+      {sendP && c && <SendZipToClient p={sendP} client={c} reqId={r.id} onClose={() => setSendP(null)} onSent={() => openModal({ kind: "visit", reqId: r.id, propertyId: sendP.id })} />}
     </ModalFrame>
   );
 }
@@ -360,6 +365,7 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
 function PropReqsModal({ propId }: { propId: string }) {
   const { data, closeModal, openModal, toast } = useCrm();
   const p = propById(data, propId);
+  const [sendTo, setSendTo] = useState<{ c: Client; reqId: string } | null>(null);
   if (!p) return null;
   const rs = visibleRequests(data)
     .filter(OPEN_REQ)
@@ -380,7 +386,11 @@ function PropReqsModal({ propId }: { propId: string }) {
                   <span><b className="link" onClick={() => openModal({ kind: "request", id: r.id })}>{c?.name || ""}</b> <Pill tone={REQ_TONE[r.status || "جديد"]}>{r.status || "جديد"}</Pill></span>
                   <span className="muted text-[12.5px]">{m!.why.join(" · ")}</span>
                 </div>
-                {wa && <a className="crm-btn sm wa" href={wa} target="_blank" rel="noopener" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>أرسل إليه</a>}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <SentMarks c={c} p={p} />
+                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => setSendTo({ c, reqId: r.id })}>📤 إرسال للعميل</button>}
+                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>من جوالي</a>}
+                </div>
               </div>
             );
           })}
@@ -388,6 +398,7 @@ function PropReqsModal({ propId }: { propId: string }) {
       ) : (
         <div className="crm-empty">لا توجد طلبات مفتوحة تناسب هذا العقار.</div>
       )}
+      {sendTo && <SendZipToClient p={p} client={sendTo.c} reqId={sendTo.reqId} onClose={() => setSendTo(null)} onSent={() => openModal({ kind: "visit", reqId: sendTo.reqId, propertyId: p.id })} />}
     </ModalFrame>
   );
 }

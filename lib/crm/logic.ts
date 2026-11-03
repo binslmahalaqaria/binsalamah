@@ -683,3 +683,24 @@ export const findByPhone = (d: CrmData, norm: (p: string | null | undefined) => 
 };
 export const isLate = (date: string | null | undefined) => (dayDiff(date) ?? 0) < 0;
 export { PSTATUS };
+
+/* ---------- what was sent to a client (client 2026-11-03) ---------- */
+export const SENT_KINDS = [["msg", "الرسالة"], ["drive", "رابط الصور"], ["pdf", "الملف"]] as const;
+/** The kinds a property can send: the message always; the Drive link and the PDF only when the property has them. */
+export const sendableKinds = (p: Property | undefined | null) =>
+  SENT_KINDS.map(([k]) => k).filter((k) => k === "msg" || (k === "drive" ? !!p?.driveLink : !!p?.pdfUrl));
+/** Summary for badges: which kinds went out to this client (any property) and whether some property got everything it has. */
+export function sentSummary(d: CrmData, c: Client | undefined | null) {
+  const sp = c?.sentProps;
+  if (!sp) return null;
+  const kinds = new Set<string>();
+  let all = false;
+  for (const [pid, v] of Object.entries(sp)) {
+    const got = SENT_KINDS.map(([k]) => k).filter((k) => !!v?.[k]);
+    got.forEach((k) => kinds.add(k));
+    const can = sendableKinds(propById(d, pid));
+    if (got.length >= 2 && can.every((k) => got.includes(k))) all = true;
+  }
+  if (!kinds.size) return null;
+  return { kinds: SENT_KINDS.filter(([k]) => kinds.has(k)).map(([, l]) => l), all };
+}

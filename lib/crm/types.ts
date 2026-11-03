@@ -19,6 +19,8 @@ export interface LogEntry {
 
 export interface Client {
   id: string;
+  /** What was sent to this client per property from the CRM's «إرسال للعميل»: msg = property message, drive = photos link, pdf = project file (ISO time each). */
+  sentProps?: Record<string, { msg?: string; drive?: string; pdf?: string }> | null;
   /** When the fourth-attempt WhatsApp message was sent; 48 h without a reply → «لا يوجد رد». */
   waSentAt?: string | null;
   name: string;

@@ -11,6 +11,7 @@ import type { Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, num, splitList, today, money } from "@/lib/crm/util";
 import { zoneOf } from "@/lib/districts";
 import { Empty, Kebab, PageHeader, Select } from "@/components/crm/ui";
+import { SentBadge } from "@/components/crm/SentBadge";
 import { RequestTabs } from "@/components/crm/PageTabs";
 import { changeStage, reqMenu } from "@/components/crm/bits";
 
@@ -77,6 +78,7 @@ export default function RequestsPage() {
           {r.ref ? <span className="num me-1.5 rounded-md bg-[var(--crm-surface-2)] px-1.5 py-0.5 text-[12.5px] text-[var(--crm-ink-2)]">ط-{r.ref}</span> : null}<b className="font-heading text-[15px] hover:underline">{c ? c.name : "عميل محذوف"}</b>
           <div className="text-[11.5px] text-[var(--crm-ink-3)]">سُجّل الطلب {fmtStamp(r.createdAt)}{r.source ? " · " + r.source : ""}</div>
           <div className="mt-1 flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <SentBadge c={c} />
             <select className={"crm-pill cursor-pointer !rounded-full !border-transparent !py-0.5 !ps-2.5 !pe-6 !text-[12px] tone-" + REQ_TONE[st]} value={st} aria-label="المرحلة"
               onChange={(e) => changeStage(data, r, e.target.value, openModal, toast)}>
               {REQ.map((x) => <option key={x} value={x}>{lbl(x)}</option>)}

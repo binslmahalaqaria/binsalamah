@@ -10,16 +10,17 @@ import { visibleClients } from "@/lib/crm/logic";
 import { intl } from "@/lib/crm/util";
 import { seesAllOf, waApi, type WaSource } from "@/lib/crm/wa";
 import { propMsg } from "@/lib/crm/logic";
-import type { Property } from "@/lib/crm/types";
+import { markSent, reqSent } from "@/lib/crm/actions";
+import type { Client, Property } from "@/lib/crm/types";
 
-export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => void }) {
+/** `client` fixes the recipient (from a request's matching list); `reqId` also records the offer on that request. */
+export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Property; onClose: () => void; client?: Client; reqId?: string; onSent?: () => void }) {
   const { data, toast } = useCrm();
   const [q, setQ] = useState("");
   const [pick, setPick] = useState<string | null>(null);
   const [typed, setTyped] = useState(false); // sending to the number typed in the search box (not a saved client)
   const [busy, setBusy] = useState<string | null>(null);
   const [source, setSource] = useState<WaSource | null | undefined>(undefined); // undefined = still checking, null = none connected
-  const name = (p.ref ? "#" + p.ref + " " : "") + p.title;
 
   useEffect(() => {
     waApi<{ sources: WaSource[] }>("/api/sources")
@@ -39,7 +40,7 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
   }, [data, q]);
   // A number typed in the box (any format) can be sent to even if it is not a saved client.
   const typedPhone = useMemo(() => { const d = q.replace(/\D/g, ""); return d.length >= 9 ? intl(q) : null; }, [q]);
-  const chosen = typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
+  const chosen = client ? client : typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
 
   // What goes out: the property message, the Drive link (added to the same message), the project PDF (right after).
   const [withMsg, setWithMsg] = useState(true);
@@ -62,6 +63,15 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
         await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
       }
       toast("أُرسل إلى " + chosen.name);
+      // Mark what went out on the client (saved clients only; a typed number has no file).
+      const sentKinds = ([withMsg && "msg", withDrive && p.driveLink && "drive", withPdf && p.pdfUrl && "pdf"].filter(Boolean)) as ("msg" | "drive" | "pdf")[];
+      if (chosen.id !== "typed") {
+        try {
+          if (reqId) await reqSent(data, reqId, p.id);
+          await markSent(data, chosen.id, p, sentKinds);
+        } catch { /* the message went out; only the record failed */ }
+      }
+      onSent?.();
       onClose();
     } catch {
       toast("تعذّر الإرسال — تأكد أن واتساب الشركة متصل");
@@ -71,7 +81,7 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-3" onClick={onClose}>
       <div className="crm-card grid max-h-[90vh] w-full max-w-lg grid-rows-[auto_1fr_auto] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] px-4 py-3">
           <b className="truncate">📤 إرسال «{p.title}» للعميل</b>
@@ -85,6 +95,8 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
             <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
             <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
           </div>
+          {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span></b> : (
+          <>
           <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => { setQ(e.target.value); setTyped(false); }} />
           {typedPhone && (
             <button type="button" onClick={() => { setTyped(true); setPick(null); }}
@@ -100,6 +112,8 @@ export function SendZipToClient({ p, onClose }: { p: Property; onClose: () => vo
               <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>
             </button>
           )) : !typedPhone && <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا الاسم. اكتب رقم الجوال للإرسال مباشرة.</p>}
+          </>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}

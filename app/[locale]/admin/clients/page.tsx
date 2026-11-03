@@ -10,6 +10,7 @@ import { assignClient } from "@/lib/crm/actions";
 import type { Client } from "@/lib/crm/types";
 import { exportCsv, fmtStamp, fmtVisit, num, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Empty, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
+import { SentBadge } from "@/components/crm/SentBadge";
 import { TempPill } from "@/components/crm/bits";
 import { ClientTabs } from "@/components/crm/PageTabs";
 import { TransferClients } from "@/components/crm/TransferClients";
@@ -74,6 +75,7 @@ export default function ClientsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <b className="font-heading text-[15.5px]">{c.name}</b>
             <TempPill t={c.temp} />
+            <SentBadge c={c} />
             {c.status && c.status !== "نشط" && <Pill tone="muted">{c.status}</Pill>}
             {c.unseen && c.assignee === data.uid && <Pill tone="hot">جديد</Pill>}
           </div>

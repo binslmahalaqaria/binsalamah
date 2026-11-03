@@ -15,7 +15,7 @@ import { isCall, CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, T
 import {
   answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
-import type { AttendanceDay, Client, LogEntry, Proposal, Request, Unit, Viewing } from "./types";
+import type { AttendanceDay, Client, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
 import { syncWebOffer } from "./web-sync";
 import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
@@ -376,6 +376,21 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   await recordProposal(d, r, pid);
   void early;
   await write("requests", reqId, { sent, updatedAt: nowStamp() }, "update");
+}
+
+/** Records on the client what was sent for a property (message / photos link / file) and writes it to the client's log. */
+export async function markSent(d: CrmData, clientId: string, p: Property, kinds: ("msg" | "drive" | "pdf")[]) {
+  const c = clientById(d, clientId);
+  if (!c || !kinds.length) return;
+  const at = nowStamp();
+  const cur = (c.sentProps || {})[p.id] || {};
+  const next = { ...cur, ...Object.fromEntries(kinds.map((k) => [k, at])) };
+  const names = { msg: "الرسالة", drive: "رابط الصور", pdf: "الملف" } as const;
+  await write("clients", c.id, {
+    sentProps: { ...(c.sentProps || {}), [p.id]: next },
+    log: pushLog(c, { at, byId: d.uid, type: "تم إرسال التفاصيل", text: "أُرسل «" + (p.ref ? "#" + p.ref + " " : "") + p.title + "»: " + kinds.map((k) => names[k]).join(" + "), call: false }),
+    updatedAt: at,
+  }, "update");
 }
 
 /** Assigns a client and its open requests (plus `reqId`, if given) to a staff member. */
