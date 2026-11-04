@@ -13,13 +13,13 @@ import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { CALL_TARGET, MISSED, PRIO, REQ_TONE, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  activityFor, attToday, calledToday, fmtDur, hoursOf, isActive, lateMin, members, missedStreak, nameOf, propById, reqsOf,
+  activityFor, attToday, calledToday, fmtDur, goalOf, hoursOf, isActive, lateMin, members, missedStreak, nameOf, propById, reqsOf,
   visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
 import { applyUpdate, checkIO, markTasksSeen } from "@/lib/crm/actions";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
 import type { Client, Request, Task } from "@/lib/crm/types";
-import { addDays, ageDays, fmtVisit, hm, relDay, today, weekdayLong } from "@/lib/crm/util";
+import { addDays, ageDays, fmtVisit, hm, num, relDay, today, weekdayLong, ym } from "@/lib/crm/util";
 import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
@@ -233,15 +233,17 @@ export default function HomeDashboard() {
       {/* Call target */}
       <div className="crm-card mb-3 grid gap-2.5 px-4 py-3.5">
         {ids.map((id) => {
-          const n = doneBy(id), pct = Math.min(100, Math.round((n / CALL_TARGET) * 100));
+          // The daily call target is the «مكالمات في اليوم» goal set for this person in الفريق ← الأهداف (10 when none is set).
+          const target = num(goalOf(data, id, ym())?.calls) || CALL_TARGET;
+          const n = doneBy(id), pct = Math.min(100, Math.round((n / target) * 100));
           return (
             <div key={id} className="grid gap-1.5">
               <div className="flex items-baseline gap-2 text-sm">
                 {team && <b className="min-w-[90px]">{nameOf(data, id)}</b>}
-                <span><b className="num font-heading text-lg">{n}</b> من <b className="num font-heading text-lg">{CALL_TARGET}</b> مكالمات اليوم</span>
-                {n >= CALL_TARGET ? <Pill tone="ok">تم تحقيق الهدف</Pill> : <span className="text-[12.5px] text-[var(--crm-ink-3)]">باقي {CALL_TARGET - n}</span>}
+                <span><b className="num font-heading text-lg">{n}</b> من <b className="num font-heading text-lg">{target}</b> مكالمات اليوم</span>
+                {n >= target ? <Pill tone="ok">تم تحقيق الهدف</Pill> : <span className="text-[12.5px] text-[var(--crm-ink-3)]">باقي {target - n}</span>}
               </div>
-              <div className={"crm-bar " + (n >= CALL_TARGET ? "ok" : "")}><i style={{ width: pct + "%" }} /></div>
+              <div className={"crm-bar " + (n >= target ? "ok" : "")}><i style={{ width: pct + "%" }} /></div>
             </div>
           );
         })}
