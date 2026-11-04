@@ -1,25 +1,31 @@
 "use client";
 
 /**
- * «📤 إرسال للعميل» on a property card: pick a client (or type a number) and send, straight to their WhatsApp through the
- * CRM's linked number, one of: the property message, the Google Drive link of the photos, or the project PDF file.
+ * «📤 إرسال للعميل» on a property card: pick up to 5 clients (saved ones, or numbers typed in the box) and send, straight
+ * to their WhatsApp through the CRM's linked number, any of: the property message, the Google Drive link of the photos,
+ * the project PDF. Each saved client is then marked with what they received (see SentBadge). From a request's matching
+ * list the recipient is fixed (`client`) and the send is also recorded on that request.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { visibleClients } from "@/lib/crm/logic";
+import { visibleClients, propMsg } from "@/lib/crm/logic";
 import { intl } from "@/lib/crm/util";
 import { seesAllOf, waApi, type WaSource } from "@/lib/crm/wa";
-import { propMsg } from "@/lib/crm/logic";
 import { markSent, reqSent } from "@/lib/crm/actions";
 import type { Client, Property } from "@/lib/crm/types";
+
+const MAX = 5;
+interface Who { key: string; id: string; name: string; phone: string }
+type Kind = "msg" | "drive" | "pdf";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** `client` fixes the recipient (from a request's matching list); `reqId` also records the offer on that request. */
 export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Property; onClose: () => void; client?: Client; reqId?: string; onSent?: () => void }) {
   const { data, toast } = useCrm();
   const [q, setQ] = useState("");
-  const [pick, setPick] = useState<string | null>(null);
-  const [typed, setTyped] = useState(false); // sending to the number typed in the search box (not a saved client)
+  const [sel, setSel] = useState<Who[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [done, setDone] = useState<{ name: string; ok: boolean }[] | null>(null);
   const [source, setSource] = useState<WaSource | null | undefined>(undefined); // undefined = still checking, null = none connected
 
   useEffect(() => {
@@ -40,84 +46,126 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
   }, [data, q]);
   // A number typed in the box (any format) can be sent to even if it is not a saved client.
   const typedPhone = useMemo(() => { const d = q.replace(/\D/g, ""); return d.length >= 9 ? intl(q) : null; }, [q]);
-  const chosen = client ? client : typed && typedPhone ? { id: "typed", name: q.trim(), phone: q.trim() } : data.clients.find((c) => c.id === pick) || null;
+
+  const has = (key: string) => sel.some((w) => w.key === key);
+  const toggle = (w: Who) => {
+    if (has(w.key)) return setSel(sel.filter((x) => x.key !== w.key));
+    if (sel.length >= MAX) return toast("الحد الأقصى " + MAX + " عملاء في المرة الواحدة");
+    setSel([...sel, w]);
+  };
+  const recipients: Who[] = client ? [{ key: client.id, id: client.id, name: client.name, phone: String(client.phone || "") }] : sel;
 
   // What goes out: the property message, the Drive link (added to the same message), the project PDF (right after).
   const [withMsg, setWithMsg] = useState(true);
   const [withDrive, setWithDrive] = useState(!!p.driveLink);
   const [withPdf, setWithPdf] = useState(!!p.pdfUrl);
   const nl = String.fromCharCode(10);
+  const anything = withMsg || (withDrive && !!p.driveLink) || (withPdf && !!p.pdfUrl);
+
+  // «onSent» (e.g. opening the visit booking) runs when the result panel is closed, so it is not cut off.
+  const close = () => { onClose(); if (done?.some((x) => x.ok)) onSent?.(); };
 
   async function sendNow() {
-    if (!chosen || !source) return;
-    const phone = intl(chosen.phone);
-    if (!phone) { toast("رقم العميل غير صالح"); return; }
-    const jid = phone + "@s.whatsapp.net";
-    setBusy("جارٍ الإرسال إلى " + chosen.name + "…");
-    try {
-      const parts: string[] = [];
-      if (withMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
-      if (withDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
-      if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
-      if (withPdf && p.pdfUrl) {
-        await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
-      }
-      toast("أُرسل إلى " + chosen.name);
-      // Mark what went out on the client (saved clients only; a typed number has no file).
-      const sentKinds = ([withMsg && "msg", withDrive && p.driveLink && "drive", withPdf && p.pdfUrl && "pdf"].filter(Boolean)) as ("msg" | "drive" | "pdf")[];
-      if (chosen.id !== "typed") {
+    if (!recipients.length || !source) return;
+    const kinds = ([withMsg && "msg", withDrive && p.driveLink && "drive", withPdf && p.pdfUrl && "pdf"].filter(Boolean)) as Kind[];
+    const results: { name: string; ok: boolean }[] = [];
+    for (let i = 0; i < recipients.length; i++) {
+      const w = recipients[i];
+      setBusy("جارٍ الإرسال " + (i + 1) + " من " + recipients.length + " — " + w.name + "…");
+      const phone = intl(w.phone);
+      let ok = false;
+      if (phone) {
+        const jid = phone + "@s.whatsapp.net";
         try {
-          if (reqId) await reqSent(data, reqId, p.id);
-          await markSent(data, chosen.id, p, sentKinds);
-        } catch { /* the message went out; only the record failed */ }
+          const parts: string[] = [];
+          if (withMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
+          if (withDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
+          if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
+          if (withPdf && p.pdfUrl) {
+            await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
+          }
+          ok = true;
+          // Mark what went out on the client (saved clients only; a typed number has no file).
+          if (w.id !== "typed") {
+            try {
+              if (reqId) await reqSent(data, reqId, p.id);
+              await markSent(data, w.id, p, kinds);
+            } catch { /* the message went out; only the record failed */ }
+          }
+        } catch { /* reported below */ }
       }
-      onSent?.();
-      onClose();
-    } catch {
-      toast("تعذّر الإرسال — تأكد أن واتساب الشركة متصل");
-    } finally {
-      setBusy(null);
+      results.push({ name: w.name, ok });
+      if (i < recipients.length - 1) await sleep(2000); // a short gap between people, like a person would
     }
+    setBusy(null);
+    setDone(results);
+    const n = results.filter((x) => x.ok).length;
+    toast(n === results.length ? "أُرسل إلى " + n + (n === 1 ? " عميل" : " عملاء") : "أُرسل إلى " + n + " من " + results.length + " — راجع القائمة");
   }
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-3" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-3" onClick={busy ? undefined : close}>
       <div className="crm-card grid max-h-[90vh] w-full max-w-lg grid-rows-[auto_1fr_auto] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] px-4 py-3">
-          <b className="truncate">📤 إرسال «{p.title}» للعميل</b>
-          <button type="button" className="crm-btn ghost sm" onClick={onClose}>إغلاق</button>
+          <b className="truncate">📤 إرسال «{p.title}» للعملاء</b>
+          <button type="button" className="crm-btn ghost sm" disabled={!!busy} onClick={close}>إغلاق</button>
         </div>
-        <div className="grid content-start gap-2 overflow-y-auto p-3">
-          <span className="text-[13px] text-[var(--crm-ink-2)]">حدّد ما تريد إرساله، ثم اختر العميل — يصل على واتساب العميل مباشرة.</span>
-          {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن. </span>}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px]">
-            <label className="flex items-center gap-1.5"><input type="checkbox" checked={withMsg} onChange={(e) => setWithMsg(e.target.checked)} /> رسالة العقار</label>
-            <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
-            <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
+
+        {done ? (
+          <div className="grid content-start gap-2 overflow-y-auto p-3">
+            <b className="text-[15px]">{done.every((x) => x.ok) ? "✓ تم الإرسال" : "انتهى الإرسال"}</b>
+            {done.map((x, i) => (
+              <div key={i} className={"flex items-center justify-between gap-2 rounded-lg border p-2 " + (x.ok ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-danger)] bg-[var(--crm-surface-2)]")}>
+                <b className="truncate text-[14px]">{x.name}</b>
+                <span className="text-[13px]">{x.ok ? "✓ أُرسل" : "✗ تعذّر الإرسال"}</span>
+              </div>
+            ))}
+            <span className="text-[12.5px] text-[var(--crm-ink-3)]">من أُرسل له صارت عنده علامة «أُرسل» في العملاء والطلبات.</span>
           </div>
-          {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span></b> : (
-          <>
-          <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => { setQ(e.target.value); setTyped(false); }} />
-          {typedPhone && (
-            <button type="button" onClick={() => { setTyped(true); setPick(null); }}
-              className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (typed ? "border-[#00a884] bg-[#e7fce3]" : "border-dashed border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
-              <b className="text-[14px]">إرسال إلى هذا الرقم</b>
-              <span className="num text-[13px]" dir="ltr">{q.trim()}</span>
-            </button>
-          )}
-          {clients.length ? clients.map((c) => (
-            <button key={c.id} type="button" onClick={() => { setPick(c.id); setTyped(false); }}
-              className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (pick === c.id ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
-              <b className="truncate text-[14px]">{c.name}</b>
-              <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>
-            </button>
-          )) : !typedPhone && <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا الاسم. اكتب رقم الجوال للإرسال مباشرة.</p>}
-          </>
-          )}
-        </div>
+        ) : (
+          <div className="grid content-start gap-2 overflow-y-auto p-3">
+            <span className="text-[13px] text-[var(--crm-ink-2)]">حدّد ما تريد إرساله، ثم اختر حتى {MAX} عملاء — يصل على واتساب كل واحد مباشرة.</span>
+            {source === null && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">واتساب الشركة غير متصل الآن.</span>}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px]">
+              <label className="flex items-center gap-1.5"><input type="checkbox" checked={withMsg} onChange={(e) => setWithMsg(e.target.checked)} /> رسالة العقار</label>
+              <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
+              <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
+            </div>
+            {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span></b> : (
+              <>
+                {sel.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {sel.map((w) => (
+                      <button key={w.key} type="button" onClick={() => toggle(w)} className="rounded-full bg-[#e7fce3] px-2.5 py-1 text-[13px] font-semibold text-[#008069]">{w.name} ✕</button>
+                    ))}
+                    <span className="self-center text-[12.5px] text-[var(--crm-ink-3)]">{sel.length} من {MAX}</span>
+                  </div>
+                )}
+                <input placeholder="اكتب اسم العميل أو رقم جواله…" value={q} onChange={(e) => setQ(e.target.value)} />
+                {typedPhone && (
+                  <button type="button" onClick={() => toggle({ key: "n:" + typedPhone, id: "typed", name: q.trim(), phone: q.trim() })}
+                    className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (has("n:" + typedPhone) ? "border-[#00a884] bg-[#e7fce3]" : "border-dashed border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
+                    <b className="text-[14px]">إرسال إلى هذا الرقم</b>
+                    <span className="num text-[13px]" dir="ltr">{q.trim()}</span>
+                  </button>
+                )}
+                {clients.length ? clients.map((c) => (
+                  <button key={c.id} type="button" onClick={() => toggle({ key: c.id, id: c.id, name: c.name, phone: String(c.phone || "") })}
+                    className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (has(c.id) ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
+                    <b className="truncate text-[14px]">{has(c.id) ? "✓ " : ""}{c.name}</b>
+                    <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>
+                  </button>
+                )) : !typedPhone && <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا الاسم. اكتب رقم الجوال للإرسال مباشرة.</p>}
+              </>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
-          <button type="button" className="crm-btn primary" disabled={!!busy || !chosen || !source || !(withMsg || (withDrive && p.driveLink) || (withPdf && p.pdfUrl))} onClick={sendNow}>إرسال{chosen ? " إلى " + chosen.name : ""}</button>
+          {done
+            ? <button type="button" className="crm-btn primary" onClick={close}>تم</button>
+            : <button type="button" className="crm-btn primary" disabled={!!busy || !recipients.length || !source || !anything} onClick={sendNow}>إرسال{recipients.length > 1 ? " إلى " + recipients.length + " عملاء" : recipients.length === 1 ? " إلى " + recipients[0].name : ""}</button>}
         </div>
       </div>
     </div>
