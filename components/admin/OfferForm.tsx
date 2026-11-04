@@ -201,7 +201,15 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
     if (!user) return;
     setError(null);
 
-    const parsed = offerFormSchema.safeParse(deriveFromUnits(form));
+    // Blank unit rows are ignored; a half-filled one is reported by its number.
+    const used = (form.units || []).filter((u) => u.name?.trim() || u.area || u.price);
+    const bad = used.findIndex((u) => !u.name?.trim() || !(u.area > 0) || !(u.price > 0));
+    if (bad >= 0) {
+      const u = used[bad];
+      setError("الوحدة رقم " + (bad + 1) + ": " + (!u.name?.trim() ? "اسم الوحدة مطلوب" : !(u.area > 0) ? "المساحة مطلوبة" : "السعر مطلوب") + " — عبّيها أو احذف الوحدة");
+      return;
+    }
+    const parsed = offerFormSchema.safeParse(deriveFromUnits({ ...form, units: used }));
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid form data");
       return;

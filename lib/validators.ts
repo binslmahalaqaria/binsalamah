@@ -35,10 +35,10 @@ export const offerTypeEnum = z.enum([
 ]);
 
 export const offerUnitSchema = z.object({
-  name: z.string().trim().min(1, "Unit name is required"),
+  name: z.string().trim().min(1, "اسم الوحدة مطلوب"),
   name_en: z.string().trim().nullable().optional(),
-  area: z.number().positive("Unit area is required"),
-  price: z.number().positive("Unit price is required"),
+  area: z.number().positive("مساحة الوحدة مطلوبة"),
+  price: z.number().positive("سعر الوحدة مطلوب"),
   rooms: z.number().int().positive().nullable().optional(),
   living_rooms: z.number().int().positive().nullable().optional(),
   bathrooms: z.number().int().positive().nullable().optional(),
