@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { createOffer, updateOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
+import { expandToImages } from "@/lib/extract-images";
 import { allDistricts } from "@/lib/districts";
 import { offerFormSchema, canPublishOffer, deriveFromUnits, type OfferFormInput } from "@/lib/validators";
 import type { Offer, OfferType, OfferUnit, ProjectStage, UnitStatus } from "@/lib/types";
@@ -168,7 +169,9 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
   async function uploadFiles(files: FileList | null) {
     if (!files?.length) return;
     setError(null);
-    const list = Array.from(files);
+    const { images: list, empty } = await expandToImages(files);
+    if (empty.length) setError("ما لقيت صور داخل: " + empty.join("، "));
+    if (!list.length) return;
     setUploading(list.length);
     for (const file of list) {
       try {
@@ -271,7 +274,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
 
       <Section title={t("sectionImages")} hint="ارفع الصور من جهازك أو جوالك — الصورة الأولى هي الغلاف. تُصغَّر تلقائياً لتبقى سرعة الموقع عالية.">
         <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy/20 px-4 py-6 text-sm font-medium text-navy transition-colors hover:border-navy/50 hover:bg-navy/[0.02]">
-          <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
+          <input type="file" accept="image/*,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
           {uploading ? "جارٍ رفع " + uploading + " صورة…" : "📷 رفع صور"}
         </label>
         {images.some((r) => r.url.trim()) && (

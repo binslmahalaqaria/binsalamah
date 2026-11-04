@@ -21,6 +21,7 @@ import {
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
+import { expandToImages } from "@/lib/extract-images";
 import { downloadAllImages } from "./downloadImages";
 import { activateOnSite } from "@/lib/crm/offer-from-property";
 import { listOffers } from "@/lib/offers";
@@ -438,7 +439,8 @@ export function PropertyForm({ id }: { id?: string }) {
   }, [rec, data.isMgr]);
   // Photos from the phone/computer go to Firebase Storage (offers/…, public read, staff-only write).
   const uploadFiles = async (files: FileList | null) => {
-    const list = Array.from(files || []).filter((x) => x.type.startsWith("image/"));
+    const { images: list, empty } = await expandToImages(files);
+    if (empty.length) toast("ما لقيت صور داخل: " + empty.join("، "));
     if (!list.length) return;
     setUploading(list.length);
     const urls: string[] = [];
@@ -572,7 +574,7 @@ export function PropertyForm({ id }: { id?: string }) {
           )}
           <div className="flex flex-wrap gap-2">
             <label className={"crm-btn primary cursor-pointer" + (uploading ? " pointer-events-none opacity-60" : "")}>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
+              <input type="file" accept="image/*,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
               {uploading ? "جارٍ رفع " + uploading + " صورة…" : "📷 رفع صور"}
             </label>
             <input className="crm-input min-w-[180px] flex-1" dir="ltr" value={f.newImg} placeholder="أو الصق رابط صورة https://…" onChange={(e) => set("newImg", e.target.value)} />
