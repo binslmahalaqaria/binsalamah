@@ -379,7 +379,7 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
 }
 
 /** Records on the client what was sent for a property (message / photos link / file) and writes it to the client's log. */
-export async function markSent(d: CrmData, clientId: string, p: Property, kinds: ("msg" | "drive" | "pdf")[]) {
+export async function markSent(d: CrmData, clientId: string, p: Property, kinds: ("msg" | "drive" | "pdf")[], withLog = true) {
   const c = clientById(d, clientId);
   if (!c || !kinds.length) return;
   const at = nowStamp();
@@ -388,7 +388,8 @@ export async function markSent(d: CrmData, clientId: string, p: Property, kinds:
   const names = { msg: "الرسالة", drive: "رابط الصور", pdf: "الملف" } as const;
   await write("clients", c.id, {
     sentProps: { ...(c.sentProps || {}), [p.id]: next },
-    log: pushLog(c, { at, byId: d.uid, type: "تم إرسال التفاصيل", text: "أُرسل «" + (p.ref ? "#" + p.ref + " " : "") + p.title + "»: " + kinds.map((k) => names[k]).join(" + "), call: false }),
+    // When the send was also recorded on a request (reqSent), that already wrote the log entry — writing it again here would overwrite it.
+    ...(withLog ? { log: pushLog(c, { at, byId: d.uid, type: "تم إرسال التفاصيل", text: "أُرسل «" + (p.ref ? "#" + p.ref + " " : "") + p.title + "»: " + kinds.map((k) => names[k]).join(" + "), call: false }) } : {}),
     updatedAt: at,
   }, "update");
 }

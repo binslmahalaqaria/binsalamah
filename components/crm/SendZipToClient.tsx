@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { visibleClients, propMsg } from "@/lib/crm/logic";
+import { visibleClients, propMsg, reqsOf, OPEN_REQ } from "@/lib/crm/logic";
 import { intl } from "@/lib/crm/util";
 import { seesAllOf, waApi, type WaSource } from "@/lib/crm/wa";
 import { markSent, reqSent } from "@/lib/crm/actions";
@@ -87,9 +87,15 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
           ok = true;
           // Mark what went out on the client (saved clients only; a typed number has no file).
           if (w.id !== "typed") {
+            // Sent from any section: the client's open request moves to «أرسلنا خيارات» and the offer is recorded.
+            let logged = false;
             try {
-              if (reqId) await reqSent(data, reqId, p.id);
-              await markSent(data, w.id, p, kinds);
+              const cl = data.clients.find((c) => c.id === w.id);
+              const rid = reqId || (cl ? reqsOf(data, cl).find((x) => OPEN_REQ(x))?.id : undefined);
+              if (rid) { await reqSent(data, rid, p.id); logged = true; }
+            } catch { /* the message went out; only the record failed */ }
+            try {
+              await markSent(data, w.id, p, kinds, !logged);
             } catch { /* the message went out; only the record failed */ }
           }
         } catch { /* reported below */ }
