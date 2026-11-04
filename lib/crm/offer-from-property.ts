@@ -41,10 +41,16 @@ export async function activateOnSite(p: Property, uid: string, idToken: string):
   const o = toOffer(p);
   const images = (p.images || []).filter(Boolean).map((url, order) => ({ url, order }));
   if (!images.length) return "أضف صورة واحدة على الأقل للعقار قبل التفعيل في الموقع";
+  // Units: blank rows are dropped; a half-filled one is named so it can be fixed in the property.
+  o.units = (o.units || []).filter((u) => u.name?.trim() || u.area || u.price);
+  const badUnit = o.units.map((u, i) => ({ u, i })).filter(({ u }) => !u.name?.trim() || !(u.area > 0) || !(u.price > 0));
+  if (badUnit.length) {
+    return "أكمل بيانات الوحدات في العقار: " + badUnit.slice(0, 6).map(({ u, i }) => "«" + (u.name?.trim() || "وحدة " + (i + 1)) + "» ينقصها " + [!(u.area > 0) && "المساحة", !(u.price > 0) && "السعر", !u.name?.trim() && "الاسم"].filter(Boolean).join(" و")).join("، ") + (badUnit.length > 6 ? " …" : "");
+  }
   const parsed = offerFormSchema.safeParse(deriveFromUnits({ ...o, description_ar: o.description_ar || p.title } as never));
   if (!parsed.success) {
     const miss = parsed.error.issues.map((i) => String(i.path[0])).filter(Boolean);
-    const AR: Record<string, string> = { price_from: "السعر", area_from: "المساحة", district_ar: "الحي", title_ar: "الاسم", city_ar: "المدينة", type: "النوع", map_url: "رابط الموقع", video_url: "رابط الفيديو" };
+    const AR: Record<string, string> = { price_from: "السعر", area_from: "المساحة", district_ar: "الحي", title_ar: "الاسم", city_ar: "المدينة", type: "النوع", units: "الوحدات", map_url: "رابط الموقع", video_url: "رابط الفيديو" };
     return "أكمل بيانات العقار أولاً: " + Array.from(new Set(miss.map((m) => AR[m] || m))).join("، ");
   }
   if (!canPublishOffer({ ...parsed.data, images })) return "أضف صورة واحدة على الأقل";
