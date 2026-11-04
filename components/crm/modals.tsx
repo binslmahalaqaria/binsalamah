@@ -12,7 +12,7 @@ import {
 import {
   applyUpdate, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
-import type { Client, HrFile, Property } from "@/lib/crm/types";
+import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
 import { ConfirmButton, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { DemandChips } from "./bits";
@@ -411,10 +411,13 @@ function GoalModal({ uid, month }: { uid: string; month: string }) {
   const pg = goalOf(data, uid, prev);
   const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(GOALK.map(([k]) => [k, g?.[k] != null ? String(g[k]) : ""])));
   const [note, setNote] = useState(g?.note || "");
+  const [custom, setCustom] = useState<CustomGoal[]>(() => (g?.custom || []).map((x) => ({ ...x })));
+  const setC = (i: number, patch: Partial<CustomGoal>) => setCustom(custom.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   async function save(all: boolean) {
-    const body = Object.fromEntries(GOALK.map(([k]) => [k, num(v[k])]));
+    const clean = custom.filter((x) => x.title.trim()).map((x) => ({ id: x.id, title: x.title.trim(), target: x.target || null, done: x.done || 0, unit: (x.unit || "").trim() }));
+    const body = { ...Object.fromEntries(GOALK.map(([k]) => [k, num(v[k])])), custom: clean };
     const ids = all ? members(data) : [uid];
-    for (const id of ids) await write("goals", month + "_" + id, { uid: id, month, ...body, note: note.trim(), updatedAt: nowStamp(), by: data.uid });
+    for (const id of ids) await write("goals", month + "_" + id, { uid: id, month, ...body, ...(id !== uid ? { custom: clean.map((x) => ({ ...x, done: 0 })) } : {}), note: note.trim(), updatedAt: nowStamp(), by: data.uid });
     toast(all ? "تم تحديد الأهداف لجميع أعضاء الفريق" : "تم حفظ أهداف " + nameOf(data, uid));
     closeModal();
   }
@@ -433,6 +436,19 @@ function GoalModal({ uid, month }: { uid: string; month: string }) {
           <Field key={k} label={l}><input inputMode="numeric" placeholder="—" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>
         ))}
         <Field label="ملاحظة للموظف (تظهر أعلى أهدافه)" full><input value={note} placeholder="مثال: التركيز على النرجس والملقا" onChange={(e) => setNote(e.target.value)} /></Field>
+      </div>
+      <div className="mt-3 grid gap-2 border-t border-[var(--crm-line)] pt-3">
+        <b className="text-[14px]">أهداف إضافية (تكتبها أنت)</b>
+        {custom.map((x, i) => (
+          <div key={x.id} className="grid grid-cols-[minmax(0,1fr)_72px_72px_auto] items-center gap-1.5 max-sm:grid-cols-2">
+            <input className="max-sm:col-span-2" placeholder="الهدف، مثال: زيارة 5 مشاريع جديدة" value={x.title} onChange={(e) => setC(i, { title: e.target.value })} />
+            <input inputMode="numeric" placeholder="المطلوب" value={x.target ?? ""} onChange={(e) => setC(i, { target: num(e.target.value) })} />
+            <input inputMode="numeric" placeholder="المنجز" value={x.done || ""} onChange={(e) => setC(i, { done: num(e.target.value) || 0 })} />
+            <button type="button" className="crm-btn ghost sm" onClick={() => setCustom(custom.filter((_, j) => j !== i))}>حذف</button>
+          </div>
+        ))}
+        <div><button type="button" className="crm-btn sm" onClick={() => setCustom([...custom, { id: Math.random().toString(36).slice(2, 8), title: "", target: null, done: 0 }])}>+ إضافة هدف</button></div>
+        <span className="crm-hint">اكتب الهدف بكلماتك، وحدّد العدد المطلوب (أو اتركه فارغاً لهدف بدون رقم) وحدّث «المنجز» متى ما تقدّم الموظف.</span>
       </div>
       <p className="crm-hint mt-2">اترك الحقل فارغاً إذا لم ترغب في تحديد هدف له.</p>
     </ModalFrame>

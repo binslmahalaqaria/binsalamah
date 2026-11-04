@@ -221,9 +221,13 @@ export interface Goal {
   deals: number | null;
   commission: number | null;
   note: string;
+  /** Goals the manager writes himself (client 2026-11-04): a title, an optional target and the progress so far. */
+  custom?: CustomGoal[];
   by?: string;
   updatedAt?: string;
 }
+
+export interface CustomGoal { id: string; title: string; target: number | null; done: number; unit?: string }
 
 export interface HrDoc {
   name: string;

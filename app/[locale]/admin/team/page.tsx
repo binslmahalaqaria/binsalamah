@@ -155,8 +155,8 @@ function Goals() {
         {data.isMgr && <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "goal", uid: ids.find((id) => !isMgrId(data, id)) || ids[0], month })}>تحديد الأهداف</button>}
       </div>
       <div className="crm-card overflow-x-auto px-2 py-1.5">
-        <table className="crm-table min-w-[820px]">
-          <thead><tr><th>الموظف</th>{GOALK.map((x) => <th key={x[0]}>{x[2]}</th>)}<th>الوضع</th>{data.isMgr && <th />}</tr></thead>
+        <table className="crm-table min-w-[980px]">
+          <thead><tr><th>الموظف</th>{GOALK.map((x) => <th key={x[0]}>{x[2]}</th>)}<th>أهداف إضافية</th><th>الوضع</th>{data.isMgr && <th />}</tr></thead>
           <tbody>
             {ids.map((id) => {
               const g = goalOf(data, id, month);
@@ -178,6 +178,18 @@ function Goals() {
                 <tr key={id}>
                   <td><b className="link" onClick={() => { setViewAs(id); router.push("/admin"); }}>{nameOf(data, id)}</b>{isMgrId(data, id) && <span className="muted text-xs"> مدير</span>}{g?.note && <div className="muted text-xs">{g.note}</div>}</td>
                   {cells}
+                  <td>
+                    {g?.custom?.length ? (
+                      <div className="grid min-w-[150px] gap-1.5 text-[12.5px]">
+                        {g.custom.map((x) => (
+                          <div key={x.id} className="grid gap-0.5">
+                            <span>{x.title}{x.target ? <> — <b className="num">{x.done || 0}</b> / <span className="num">{x.target}</span>{x.unit ? " " + x.unit : ""}</> : null}</span>
+                            {x.target ? <div className={"crm-bar h-1.5 " + ((x.done || 0) >= x.target ? "ok" : "")}><i style={{ width: Math.min(100, Math.round(((x.done || 0) / x.target) * 100)) + "%" }} /></div> : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : <span className="muted text-[12px]">—</span>}
+                  </td>
                   <td>{!g ? <Pill tone="muted">لم تُحدَّد له أهداف</Pill> : w === "bad" ? <Pill tone="hot">متأخر</Pill> : w === "warn" ? <Pill tone="warm">يحتاج إلى متابعة</Pill> : <Pill tone="ok">على المسار الصحيح</Pill>}</td>
                   {data.isMgr && <td><button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "goal", uid: id, month })}>{g ? "تعديل" : "حدد"}</button></td>}
                 </tr>
