@@ -10,6 +10,7 @@ import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
 import { UnitsTable } from "@/components/site/UnitsTable";
+import { parseWarranties } from "@/lib/warranties";
 import { IconArea, IconBath, IconBed, IconPin, IconSofa } from "@/components/site/icons";
 
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
@@ -76,15 +77,8 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
   // Warranties are free text (one per line); older offers may still carry the structured list.
   const warrantyLines = ((!ar && offer.warranties_text_en) || offer.warranties_text || "").split("\n").map((l) => l.trim()).filter(Boolean)
     .concat(offer.warranties_text ? [] : (offer.warranties ?? []).map((w) => (ar ? `${w.item}: ${w.years} سنوات` : `${w.item}: ${w.years} years`)));
-  // «المواسير: 50 سنة» → a circle with the years and the item under it; lines without a number get a tick.
-  const AR_DIG = "٠١٢٣٤٥٦٧٨٩";
-  const warranties = warrantyLines.map((l) => {
-    const norm = l.replace(/[٠-٩]/g, (d) => String(AR_DIG.indexOf(d)));
-    const m = /(\d+)\s*(?:سنة|سنوات|سنين|years?|yrs?)?/i.exec(norm);
-    const years = m && /سنة|سنوات|سنين|year|yr/i.test(norm) ? m[1] : null;
-    const label = (years ? norm.replace(m![0], "") : l).replace(/^[\s:：\-–—،,]+|[\s:：\-–—،,]+$/g, "").replace(/\s{2,}/g, " ");
-    return { years, label: label || l };
-  });
+  // Each «item … N years» pair in the text becomes its own tile (see lib/warranties.ts).
+  const warranties = parseWarranties(warrantyLines);
   const living = offer.living_rooms ?? (Math.max(0, ...(offer.units ?? []).map((u) => u.living_rooms ?? 0)) || null);
   const facts = [
     { icon: <IconArea />, label: ar ? "المساحة" : "Area", value: <>{range(offer.area_from, offer.area_to)} {s("area")}</> },
