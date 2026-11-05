@@ -31,9 +31,9 @@ export function WaSendProperty({ client, onClose, send }: {
   const matched = useMemo(() => (req ? matchesForReq(data, req).map((x) => x.p) : []), [data, req]);
   const list = useMemo(() => {
     const s = q.trim().replace(/^#/, "");
-    if (/^\d+$/.test(s)) return all.filter((p) => p.ref === Number(s));
     const avail = data.props.filter((p) => (p.status || "متاح") !== "مباع");
     const all = [...matched, ...avail.filter((p) => !matched.includes(p))];
+    if (/^\d+$/.test(s)) return all.filter((p) => p.ref === Number(s));
     return s ? all.filter((p) => [p.title, p.district, p.type, p.city].filter(Boolean).join(" ").includes(s)) : all;
   }, [data.props, matched, q]);
 
