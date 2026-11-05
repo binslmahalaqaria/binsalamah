@@ -30,7 +30,8 @@ export function WaSendProperty({ client, onClose, send }: {
   const req = client ? reqsOf(data, client).find((r) => !["تم البيع", "ملغي"].includes(r.status || "")) : undefined;
   const matched = useMemo(() => (req ? matchesForReq(data, req).map((x) => x.p) : []), [data, req]);
   const list = useMemo(() => {
-    const s = q.trim();
+    const s = q.trim().replace(/^#/, "");
+    if (/^\d+$/.test(s)) return all.filter((p) => p.ref === Number(s));
     const avail = data.props.filter((p) => (p.status || "متاح") !== "مباع");
     const all = [...matched, ...avail.filter((p) => !matched.includes(p))];
     return s ? all.filter((p) => [p.title, p.district, p.type, p.city].filter(Boolean).join(" ").includes(s)) : all;
@@ -88,7 +89,7 @@ export function WaSendProperty({ client, onClose, send }: {
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onClick={onClose}>
       <div className="crm-card grid max-h-[90vh] w-full max-w-2xl grid-rows-[auto_1fr_auto] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] px-4 py-3">
-          <b>{pick ? "إرسال: " + pick.title : "🏠 اختر عقاراً من المخزون"}</b>
+          <b>{pick ? "إرسال: " + (pick.ref ? "#" + pick.ref + " " : "") + pick.title : "🏠 اختر عقاراً من المخزون"}</b>
           <button type="button" className="crm-btn ghost sm" onClick={pick ? () => setPick(null) : onClose}>{pick ? "رجوع" : "إغلاق"}</button>
         </div>
 
@@ -101,7 +102,7 @@ export function WaSendProperty({ client, onClose, send }: {
                 className="flex items-center gap-3 rounded-lg border border-[var(--crm-line)] p-2 text-start hover:bg-[var(--crm-surface-2)]">
                 {p.images?.[0] ? <img src={p.images[0]} alt="" className="h-14 w-20 shrink-0 rounded object-cover" /> : <span className="grid h-14 w-20 shrink-0 place-items-center rounded bg-[var(--crm-surface-2)] text-xl">🏠</span>}
                 <span className="grid min-w-0 flex-1">
-                  <b className="truncate text-[14px]">{p.title}{matched.includes(p) && <span className="ms-2 rounded-full bg-[#e7fce3] px-2 text-[11px] font-normal text-[#008069]">مطابق</span>}</b>
+                  <b className="truncate text-[14px]">{p.ref ? <span className="num me-1.5 rounded-md bg-[var(--crm-surface-2)] px-1.5 py-0.5 text-[12.5px] font-normal">#{p.ref}</span> : null}{p.title}{matched.includes(p) && <span className="ms-2 rounded-full bg-[#e7fce3] px-2 text-[11px] font-normal text-[#008069]">مطابق</span>}</b>
                   <span className="truncate text-[12.5px] text-[var(--crm-ink-3)]">{[p.type, p.district && "حي " + p.district, propPrice(p), (p.images?.length || 0) + " صور"].filter(Boolean).join(" · ")}</span>
                 </span>
               </button>

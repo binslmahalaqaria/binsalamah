@@ -124,7 +124,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
     <div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-3" onClick={busy ? undefined : close}>
       <div className="crm-card grid max-h-[90vh] w-full max-w-lg grid-rows-[auto_1fr_auto] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-[var(--crm-line)] px-4 py-3">
-          <b className="truncate">📤 إرسال «{p.title}» للعملاء</b>
+          <b className="truncate">📤 إرسال «{p.ref ? "#" + p.ref + " " : ""}{p.title}» للعملاء</b>
           <button type="button" className="crm-btn ghost sm" disabled={!!busy} onClick={close}>إغلاق</button>
         </div>
 
