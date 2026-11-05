@@ -13,6 +13,7 @@ import { AutoAssign, Escalation, ListEditor, NumberFeedCard, PermsEditor } from 
 import { DemoData } from "@/components/crm/DemoData";
 import { ImportOld } from "@/components/crm/ImportOld";
 import { ResetData } from "@/components/crm/ResetData";
+import { RenameNarjis } from "@/components/crm/RenameNarjis";
 import { CompanyDocs } from "@/components/crm/CompanyDocs";
 import { ZatcaLink } from "@/components/crm/ZatcaLink";
 import { SiteSwitch } from "@/components/crm/SiteSwitch";
@@ -55,6 +56,7 @@ export default function SetupPage() {
           <CompanyDocs />
           <ZatcaLink />
           <DemoData />
+          <RenameNarjis />
           <ImportOld />
           <ResetData />
         </div>
