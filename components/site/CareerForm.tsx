@@ -15,15 +15,8 @@ import { PhoneInput } from "@/components/site/PhoneInput";
 const EXP = ["0", "1-2", "3-5", "6-10", "10+"];
 const CITIES = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "القصيم", "أبها", "الطائف", "تبوك", "حائل"];
 
-/** Saudi mobile → «05xxxxxxxx»; international number written with + or 00 → «+<digits>» (8–15 digits); anything else → null. */
-const saudiMobile = (s: string) => {
-  const t = s.trim();
-  const intl = /^(?:\+|00)(?!966)([1-9]\d{7,14})$/.exec(t.replace(/[\s\-()]/g, ""));
-  if (intl) return "+" + intl[1];
-  const d = t.replace(/[^\d]/g, "").replace(/^00/, "");
-  const m = /^(?:966|0)?(5\d{8})$/.exec(d);
-  return m ? "0" + m[1] : null;
-};
+/** Any number the visitor types is accepted (only an empty field is refused). */
+const saudiMobile = (s: string) => s.trim() || null;
 
 export function CareerForm() {
   const t = useTranslations("Site");

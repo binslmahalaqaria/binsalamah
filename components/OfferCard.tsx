@@ -50,6 +50,7 @@ export function OfferCard({ offer, whatsappNumber }: { offer: Offer; whatsappNum
           {soldOut ? s("soldOut") : s("available")}
         </span>
         <span className="absolute end-3 top-3 rounded-full bg-navy/80 px-3 py-1 text-xs font-semibold text-cream backdrop-blur">{typeLabel}</span>
+        {offer.ribbon?.trim() && <span className="absolute inset-x-0 bottom-0 bg-[#333333]/90 px-3 py-1.5 text-center text-[13px] font-semibold tracking-wide text-white backdrop-blur-sm">{offer.ribbon.trim()}</span>}
       </Link>
 
       <div className="flex flex-1 flex-col gap-3 p-5">

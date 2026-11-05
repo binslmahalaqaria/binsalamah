@@ -4,16 +4,13 @@ import { z } from "zod";
  * Validation schemas. Keep in sync with CLAUDE.md §5 and TESTING.md.
  */
 
-// Accepts 05XXXXXXXX or +9665XXXXXXXX / 9665XXXXXXXX Saudi mobile formats.
-// Saudi mobile (05… / +9665…) or an international number written with a leading + (8–15 digits).
-const saudiPhoneRegex = /^(?:(?:\+?966|0)5\d{8}|\+[1-9]\d{7,14})$/;
 
 export const leadFormSchema = z.object({
   customer_name: z.string().trim().min(2, "Name is required"),
   phone: z
     .string()
     .trim()
-    .regex(saudiPhoneRegex, "Enter a valid phone number"),
+    .min(1, "رقم الجوال مطلوب"),
   message: z.string().trim().max(1000).optional(),
   related_offer_id: z.string().nullable().optional(),
 });
@@ -77,6 +74,7 @@ export const offerFormSchema = z.object({
   map_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   brochure_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   video_url: z.string().trim().url().nullable().optional().or(z.literal("")),
+  ribbon: z.string().trim().max(40).nullable().optional(),
 });
 
 /**

@@ -87,6 +87,7 @@ function toFormInput(offer?: Offer | null): OfferFormInput {
     map_url: offer?.map_url ?? "",
     brochure_url: offer?.brochure_url ?? "",
     video_url: offer?.video_url ?? "",
+    ribbon: offer?.ribbon ?? "",
   };
 }
 
@@ -438,6 +439,9 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
               }} />
             )}
             {pdfBusy && <span className="text-xs font-normal text-navy/60">جارٍ الرفع…</span>}
+          </label>
+          <label className={labelClass}>شريط على العقار (يظهر على صورته في القوائم)
+            <input className={inputClass} maxLength={40} placeholder="مثال: حصري — وحدات محدودة — جديد" value={form.ribbon ?? ""} onChange={(e) => field("ribbon", e.target.value)} />
           </label>
           <label className={labelClass}>رابط الفيديو
             <input className={inputClass} dir="ltr" placeholder="https://youtube.com/…" value={form.video_url ?? ""} onChange={(e) => field("video_url", e.target.value)} />

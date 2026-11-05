@@ -91,6 +91,8 @@ export interface Offer {
   map_url?: string | null;
   brochure_url?: string | null;
   video_url?: string | null;
+  /** Short strip shown across the property's photo on the cards (e.g. «حصري», «وحدات محدودة»). */
+  ribbon?: string | null;
   status: OfferStatus;
   featured: boolean;
   created_at: number; // epoch millis (server timestamp resolved on read)

@@ -14,6 +14,10 @@ import { IconArea, IconBath, IconBed, IconPin, IconSofa } from "@/components/sit
 
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
 
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="flex items-center gap-3 font-heading text-xl font-bold text-navy">{children}<span className="h-2 w-12 rounded-full bg-navy/20" /></h2>
+);
+
 const num = (n: number) => n.toLocaleString("en-US");
 const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
 
@@ -72,6 +76,15 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
   // Warranties are free text (one per line); older offers may still carry the structured list.
   const warrantyLines = ((!ar && offer.warranties_text_en) || offer.warranties_text || "").split("\n").map((l) => l.trim()).filter(Boolean)
     .concat(offer.warranties_text ? [] : (offer.warranties ?? []).map((w) => (ar ? `${w.item}: ${w.years} سنوات` : `${w.item}: ${w.years} years`)));
+  // «المواسير: 50 سنة» → a circle with the years and the item under it; lines without a number get a tick.
+  const AR_DIG = "٠١٢٣٤٥٦٧٨٩";
+  const warranties = warrantyLines.map((l) => {
+    const norm = l.replace(/[٠-٩]/g, (d) => String(AR_DIG.indexOf(d)));
+    const m = /(\d+)\s*(?:سنة|سنوات|سنين|years?|yrs?)?/i.exec(norm);
+    const years = m && /سنة|سنوات|سنين|year|yr/i.test(norm) ? m[1] : null;
+    const label = (years ? norm.replace(m![0], "") : l).replace(/^[\s:：\-–—،,]+|[\s:：\-–—،,]+$/g, "").replace(/\s{2,}/g, " ");
+    return { years, label: label || l };
+  });
   const living = offer.living_rooms ?? (Math.max(0, ...(offer.units ?? []).map((u) => u.living_rooms ?? 0)) || null);
   const facts = [
     { icon: <IconArea />, label: ar ? "المساحة" : "Area", value: <>{range(offer.area_from, offer.area_to)} {s("area")}</> },
@@ -97,6 +110,7 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-navy px-3 py-1 text-xs font-semibold text-cream">{t(`types.${offer.type}`)}</span>
               <span className={"rounded-full px-3 py-1 text-xs font-semibold " + (sold === 100 ? "bg-red-600 text-white" : "bg-gold/20 text-navy")}>{sold === 100 ? s("soldOut") : s("available")}</span>
+              {offer.ribbon?.trim() && <span className="rounded-full bg-[#333333] px-3 py-1 text-xs font-semibold text-white">{offer.ribbon.trim()}</span>}
               {sold !== null && sold > 0 && sold < 100 && <span className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy/70">{ar ? "تم بيع " : "Sold "}{sold}%</span>}
             </div>
             <h1 className="font-heading text-3xl font-bold text-navy sm:text-4xl">{title}</h1>
@@ -136,21 +150,39 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
           )}
 
           {!!offer.features?.length && (
-            <div className="grid gap-2">
-              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "المميزات" : "Features"}</h2>
-              <ul className="flex flex-wrap gap-2">
+            <div className="grid gap-4">
+              <SectionTitle>{ar ? "خصائص المشروع" : "Project features"}</SectionTitle>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {offer.features.map((k, i) => (
-                  <li key={k + i} className="rounded-full border border-navy/10 bg-white px-3.5 py-1.5 text-sm text-navy/80">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</li>
+                  <li key={k + i} className="flex flex-col items-center gap-3 rounded-xl bg-navy/[0.04] px-3 py-5 text-center">
+                    <span className="grid h-9 w-9 place-items-center rounded-full bg-navy text-white">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                    </span>
+                    <span className="text-[13px] font-semibold leading-snug text-navy/70">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {warrantyLines.length > 0 && (
-            <div className="grid gap-2">
-              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "الضمانات" : "Warranties"}</h2>
-              <ul className="grid gap-1 text-sm text-navy/75">
-                {warrantyLines.map((l, i) => <li key={i} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-navy/40" />{l}</li>)}
+          {warranties.length > 0 && (
+            <div className="grid gap-4">
+              <SectionTitle>{ar ? "الضمانات" : "Warranties"}</SectionTitle>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {warranties.map((w, i) => (
+                  <li key={i} className="flex flex-col items-center gap-3 rounded-xl bg-navy/[0.04] px-3 py-5 text-center">
+                    {w.years ? (
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-navy leading-none text-white">
+                        <span><b className="block text-[15px]">{w.years}</b><span className="block text-[9px] opacity-80">{ar ? "سنوات" : "years"}</span></span>
+                      </span>
+                    ) : (
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-navy text-white">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      </span>
+                    )}
+                    <span className="text-[13px] font-semibold leading-snug text-navy/70">{w.label}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
