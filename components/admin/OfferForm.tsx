@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { createOffer, updateOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
+import { WarrantiesEditor } from "@/components/admin/WarrantiesEditor";
 import { expandToImages } from "@/lib/extract-images";
 import { allDistricts } from "@/lib/districts";
 import { offerFormSchema, canPublishOffer, deriveFromUnits, type OfferFormInput } from "@/lib/validators";
@@ -397,10 +398,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
           </label>
         </div>
 
-        <label className={labelClass}>الضمانات
-          <textarea rows={5} className={inputClass} value={form.warranties_text ?? ""} onChange={(e) => field("warranties_text", e.target.value)}
-            placeholder={"اكتب الضمانات كما تريد، كل ضمان في سطر. مثال:\nضمان الهيكل الإنشائي 10 سنوات\nضمان العزل المائي 10 سنوات\nضمان السباكة والكهرباء 5 سنوات"} />
-        </label>
+        <WarrantiesEditor value={form.warranties_text ?? ""} onChange={(t) => field("warranties_text", t)} />
 
         <div className="grid gap-2">
           <span className="text-sm font-medium text-navy/70">المميزات</span>
