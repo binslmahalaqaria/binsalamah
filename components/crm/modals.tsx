@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  applyUpdate, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  applyUpdate, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -35,6 +35,7 @@ export function ModalHost() {
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
     case "reqMatches": return <ReqMatchesModal reqId={modal.reqId} />;
     case "propReqs": return <PropReqsModal propId={modal.propId} />;
+    case "offersSent": return <OffersSentModal reqId={modal.reqId} />;
     case "transfer": return <TransferModal reqId={modal.reqId} />;
     case "goal": return <GoalModal key={modal.uid + modal.month} uid={modal.uid} month={modal.month} />;
     case "hr": return <HrModal uid={modal.uid} />;
@@ -283,6 +284,52 @@ function CancelModal({ reqId, to }: { reqId: string; to?: string }) {
         يعود الطلب إلى مرحلة <b>{dest}</b>، ويُستبعد من المبيعات والعمولات.
       </p>
       <Field label="السبب (اختياري)"><input value={note} placeholder="مثال: تراجع العميل" onChange={(e) => setNote(e.target.value)} /></Field>
+    </ModalFrame>
+  );
+}
+
+/* ---------- which offers were sent (manual «تم إرسال عروض») ---------- */
+function OffersSentModal({ reqId }: { reqId: string }) {
+  const { data, closeModal, toast } = useCrm();
+  const r = data.requests.find((x) => x.id === reqId);
+  const [q, setQ] = useState("");
+  const [pick, setPick] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const matched = useMemo(() => (r ? matchesForReq(data, r).map((x) => x.p.id) : []), [data, r]);
+  if (!r) return null;
+  const c = clientById(data, r.clientId);
+  const s = q.trim().replace(/^#/, "");
+  const avail = data.props.filter((p) => (p.status || "متاح") !== "مباع");
+  const all = [...avail.filter((p) => matched.includes(p.id)), ...avail.filter((p) => !matched.includes(p.id))];
+  const list = !s ? all : /^d+$/.test(s) ? all.filter((p) => p.ref === Number(s)) : all.filter((p) => [p.title, p.district, p.type].filter(Boolean).join(" ").includes(s));
+  const done = new Set(r.sent || []);
+  return (
+    <ModalFrame title={"عروض أُرسلت إلى " + (c?.name || "")} onClose={closeModal} width={520}
+      footer={<div className="flex gap-2">
+        <button type="button" className="crm-btn primary" disabled={busy} onClick={async () => {
+          setBusy(true);
+          try {
+            for (const id of pick) await reqSent(data, r.id, id);
+            if (!pick.length) await setReqStage(r.id, "أرسلنا خيارات", data);
+            toast("انتقل الطلب إلى: تم إرسال عروض" + (pick.length ? " (" + pick.length + " عرض)" : ""));
+            closeModal();
+          } catch { toast("تعذّر الحفظ، يرجى المحاولة مجدداً"); setBusy(false); }
+        }}>حفظ</button>
+        <button type="button" className="crm-btn" onClick={closeModal}>رجوع</button>
+      </div>}>
+      <p className="crm-hint m-0">اختر العقارات اللي أرسلتها للعميل (يُسجَّل كل واحد كعرض). إذا ما كان مناسباً رجّع الطلب إلى «جاري البحث».</p>
+      <input placeholder="ابحث بالاسم أو الحي أو رقم العقار…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="grid max-h-[46vh] gap-1 overflow-y-auto">
+        {list.map((p) => (
+          <label key={p.id} className="flex items-center gap-2 rounded-lg border border-[var(--crm-line)] p-2 text-[13.5px]">
+            <input type="checkbox" checked={pick.includes(p.id)} onChange={(e) => setPick(e.target.checked ? [...pick, p.id] : pick.filter((x) => x !== p.id))} />
+            <span className="min-w-0 flex-1 truncate">{p.ref ? "#" + p.ref + " " : ""}{p.title}{p.district ? " · " + p.district : ""}</span>
+            {matched.includes(p.id) && <span className="text-[11px] text-[#008069]">مطابق</span>}
+            {done.has(p.id) && <span className="text-[11px] text-[var(--crm-ink-3)]">أُرسل سابقاً</span>}
+          </label>
+        ))}
+        {!list.length && <p className="m-0 py-4 text-center text-[var(--crm-ink-3)]">لا توجد عقارات.</p>}
+      </div>
     </ModalFrame>
   );
 }

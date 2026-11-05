@@ -37,6 +37,7 @@ export type Modal =
   | { kind: "reqMatches"; reqId: string }
   | { kind: "propReqs"; propId: string }
   | { kind: "transfer"; reqId: string }
+  | { kind: "offersSent"; reqId: string }
   | { kind: "viewResult"; viewingId: string }
   | { kind: "goal"; uid: string; month: string }
   | { kind: "hr"; uid: string }

@@ -374,8 +374,8 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
   const sent = [...new Set((r.sent || []).concat(pid))];
   await recordProposal(d, r, pid);
-  void early;
-  await write("requests", reqId, { sent, updatedAt: nowStamp() }, "update");
+  // The first offer sent moves the request to «تم إرسال عروض»; if it is not suitable the employee returns it to «جاري البحث».
+  await write("requests", reqId, { sent, ...(early ? { status: "أرسلنا خيارات" } : {}), updatedAt: nowStamp() }, "update");
 }
 
 /** Records on the client what was sent for a property (message / photos link / file) and writes it to the client's log. */

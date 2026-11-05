@@ -228,6 +228,8 @@ export function changeStage(d: CrmData, r: Request, to: string, open: (m: Modal)
   // Every move into a deposit or sale goes through its form (amount, unit, sale date, reservation).
   if (SOLD_ST.includes(to)) return open({ kind: "close", reqId: r.id, to });
   if (SOLD_ST.includes(from) && !SOLD_ST.includes(to)) return open({ kind: "cancel", reqId: r.id, to });
+  // Choosing «تم إرسال عروض» by hand asks which offers were sent.
+  if (to === "أرسلنا خيارات" && OPEN_REQ(r) && ["جديد", "جاري البحث"].includes(from)) return open({ kind: "offersSent", reqId: r.id });
   setReqStage(r.id, to, d).then(() => toast("انتقل الطلب إلى: " + lbl(to)));
 }
 
