@@ -34,7 +34,7 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
   const go = (d: number) => setI((i + d + n) % n);
   return (
     <div className="grid gap-3">
-      <div className="relative aspect-[16/10] cursor-zoom-in overflow-hidden rounded-3xl bg-navy/5" onClick={() => setOpen(true)}>
+      <div className="relative aspect-[4/3] cursor-zoom-in overflow-hidden rounded-3xl bg-navy/5 sm:aspect-[16/10] lg:aspect-[3/2]" onClick={() => setOpen(true)}>
         {images.map((src, k) => (
           // Plain <img>: offer photos are arbitrary external URLs (CLAUDE.md §12).
           // eslint-disable-next-line @next/next/no-img-element

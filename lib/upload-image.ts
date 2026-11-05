@@ -6,7 +6,7 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "./firebase";
 
-async function shrink(file: File, max = 2000): Promise<Blob> {
+async function shrink(file: File, max = 3200): Promise<Blob> {
   if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
   const bmp = await createImageBitmap(file).catch(() => null);
   if (!bmp) return file;
@@ -14,8 +14,10 @@ async function shrink(file: File, max = 2000): Promise<Blob> {
   const c = document.createElement("canvas");
   c.width = Math.round(bmp.width * k);
   c.height = Math.round(bmp.height * k);
-  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
-  const out = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.82));
+  const g = c.getContext("2d")!;
+  g.imageSmoothingQuality = "high";
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  const out = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.93));
   return out && out.size < file.size ? out : file;
 }
 
