@@ -16,7 +16,7 @@ import {
   answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
 import type { AttendanceDay, Client, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
-import { syncWebOffer } from "./web-sync";
+import { pushPropertyToOffers } from "./web-sync";
 import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
 const LOG_MAX = 80;
@@ -36,7 +36,7 @@ export async function write(col: string, id: string | null, data: object, mode: 
 /** Property writes also update the property's website listing, if it has one (lib/crm/web-sync.ts). */
 export async function writeProperty(id: string, data: { units?: Unit[]; status?: string | null } & Record<string, unknown>) {
   await write("properties", id, data, "update");
-  await syncWebOffer(id, data).catch(() => {});
+  await pushPropertyToOffers(id).catch(() => {});
 }
 /**
  * One client per phone number, enforced by the database (client 2026-10-21): every new client also

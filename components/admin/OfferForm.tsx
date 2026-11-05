@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { createOffer, updateOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
+import { pushOfferToProperty } from "@/lib/crm/web-sync";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
 import { WarrantiesEditor } from "@/components/admin/WarrantiesEditor";
 import { expandToImages } from "@/lib/extract-images";
@@ -236,6 +237,9 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
       } else {
         await createOffer({ ...data, images: cleanImages, ...(prefill?.property_id ? { property_id: prefill.property_id } : {}) }, status, user.uid);
       }
+      // A listing tied to a CRM property: the shared fields are written to the property too.
+      const pid = offer?.property_id || prefill?.property_id;
+      if (pid) await pushOfferToProperty(pid, { ...data, images: cleanImages } as never).catch(() => {});
       router.push("/admin/offers");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save offer");
