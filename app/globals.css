@@ -279,3 +279,13 @@ body {
   /* keep content clear of the fixed bottom navigation */
   .crm-shell-pad { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
+
+/* Wide CRM tables: tighter cells, and the sideways scrollbar is always visible so the last column (left side) is never hidden unnoticed. */
+.crm .overflow-x-auto { scrollbar-width: thin; scrollbar-color: #9a9a9a #ececec; }
+.crm .overflow-x-auto::-webkit-scrollbar { height: 10px; }
+.crm .overflow-x-auto::-webkit-scrollbar-track { background: #ececec; border-radius: 6px; }
+.crm .overflow-x-auto::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 6px; }
+@media (min-width: 641px) {
+  .crm-table { font-size: 13px; }
+  .crm-table th, .crm-table td { padding-inline: 5px; }
+}
