@@ -25,7 +25,7 @@ import { ConfirmButton, Empty, Pill } from "@/components/crm/ui";
 import { sendDocWhatsApp } from "@/components/crm/shareDoc";
 import { zatcaSubmit } from "@/lib/crm/zatca";
 
-const INK = "#333333", GOLD = "#b79579";
+const INK = "#333333", GOLD = "#8c8c8c";
 const sar = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const greg = (iso: string) => { const d = new Date(iso); return d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear(); };
 const time = (iso: string) => new Date(iso).toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" });

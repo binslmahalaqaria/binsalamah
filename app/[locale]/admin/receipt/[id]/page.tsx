@@ -20,7 +20,7 @@ import { tafqit } from "@/lib/crm/tafqit";
 import { Empty } from "@/components/crm/ui";
 
 const METHODS = ["تحويل بنكي", "نقداً", "شيك", "نقاط بيع (مدى)"];
-const INK = "#333333", GOLD = "#b79579", STAMP = "#1e3a8a";
+const INK = "#333333", GOLD = "#8c8c8c", STAMP = "#1e3a8a";
 const sar = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ريال";
 const hijri = (d: Date) => d.toLocaleDateString("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" });
 const greg = (d: Date) => d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear();

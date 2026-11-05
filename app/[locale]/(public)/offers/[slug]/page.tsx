@@ -10,8 +10,7 @@ import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
 import { UnitsTable } from "@/components/site/UnitsTable";
-import { FeatureTiles } from "@/components/site/FeatureTiles";
-import { IconArea, IconBath, IconBed, IconPin, IconSofa, IconShield } from "@/components/site/icons";
+import { IconArea, IconBath, IconBed, IconPin, IconSofa } from "@/components/site/icons";
 
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
 
@@ -98,63 +97,61 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-navy px-3 py-1 text-xs font-semibold text-cream">{t(`types.${offer.type}`)}</span>
               <span className={"rounded-full px-3 py-1 text-xs font-semibold " + (sold === 100 ? "bg-red-600 text-white" : "bg-gold/20 text-navy")}>{sold === 100 ? s("soldOut") : s("available")}</span>
+              {sold !== null && sold > 0 && sold < 100 && <span className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy/70">{ar ? "تم بيع " : "Sold "}{sold}%</span>}
             </div>
             <h1 className="font-heading text-3xl font-bold text-navy sm:text-4xl">{title}</h1>
             <p className="flex items-center gap-1.5 text-navy/60"><IconPin /> {district}{city ? (ar ? "، " : ", ") + city : ""}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {facts.map((f) => (
-              <div key={f.label} className="flex flex-col gap-1.5 rounded-2xl border border-navy/10 bg-white p-4">
-                <span className="flex items-center gap-1.5 text-xs text-navy/50"><span className="text-gold">{f.icon}</span>{f.label}</span>
-                <span className="font-heading text-lg font-bold text-navy">{f.value}</span>
+          {/* One compact strip: key facts and project details together. */}
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-navy/10 bg-navy/10 sm:grid-cols-3 lg:grid-cols-4">
+            {[
+              ...facts.filter((f) => f.label !== (ar ? "الموقع" : "Location")).map((f) => [f.label, f.value, f.icon] as const),
+              ...(offer.developer ? [[ar ? "المطوّر" : "Developer", (!ar && offer.developer_en) || offer.developer, null] as const] : []),
+              ...(offer.stage ? [[ar ? "حالة المشروع" : "Status", ar ? STAGE[offer.stage].ar : STAGE[offer.stage].en, null] as const] : []),
+              ...(offer.handover ? [[ar ? "موعد التسليم" : "Handover", (!ar && offer.handover_en) || offer.handover, null] as const] : []),
+            ].map(([label, value, icon]) => (
+              <div key={label} className="bg-white px-4 py-3">
+                <dt className="flex items-center gap-1.5 text-xs text-navy/50">{icon ? <span className="text-gold">{icon}</span> : null}{label}</dt>
+                <dd className="mt-0.5 font-heading font-bold text-navy">{value}</dd>
               </div>
             ))}
-          </div>
+          </dl>
 
           {!!offer.units?.length && <UnitsTable units={offer.units} enquiry={enquiry} whatsappNumber={whatsappNumber} />}
 
           {description && (
-            <div className="grid gap-3">
-              <h2 className="font-heading text-xl font-bold text-navy">{ar ? "عن العقار" : "About this property"}</h2>
-              <p className="whitespace-pre-line leading-loose text-navy/75">{description}</p>
-            </div>
-          )}
-
-          {(offer.developer || offer.stage || offer.handover || warrantyLines.length > 0) && (
-            <div className="grid gap-3">
-              <h2 className="font-heading text-xl font-bold text-navy">{ar ? "معلومات المشروع" : "Project information"}</h2>
-              {(offer.developer || offer.stage || offer.handover) && <dl className="grid gap-px overflow-hidden rounded-2xl border border-navy/10 bg-navy/10 sm:grid-cols-3">
-                {[
-                  offer.developer ? [ar ? "المطوّر" : "Developer", (!ar && offer.developer_en) || offer.developer] : null,
-                  offer.stage ? [ar ? "حالة المشروع" : "Status", ar ? STAGE[offer.stage].ar : STAGE[offer.stage].en] : null,
-                  offer.handover ? [ar ? "موعد التسليم" : "Handover", (!ar && offer.handover_en) || offer.handover] : null,
-                ].filter(Boolean).map((r) => (
-                  <div key={r![0]} className="bg-white p-4"><dt className="text-xs text-navy/50">{r![0]}</dt><dd className="mt-1 font-semibold text-navy">{r![1]}</dd></div>
-                ))}
-              </dl>}
-              {warrantyLines.length > 0 && (
-                <div className="rounded-2xl border border-navy/10 bg-white p-5">
-                  <h3 className="mb-2 flex items-center gap-2 font-bold text-navy"><span className="text-gold"><IconShield /></span>{ar ? "الضمانات" : "Warranties"}</h3>
-                  <ul className="grid gap-1.5 text-navy/75">
-                    {warrantyLines.map((l, i) => <li key={i} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />{l}</li>)}
-                  </ul>
-                </div>
-              )}
+            <div className="grid gap-2">
+              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "عن العقار" : "About this property"}</h2>
+              {description.length > 320 ? (
+                <details className="group">
+                  <summary className="cursor-pointer list-none leading-loose text-navy/75 [&::-webkit-details-marker]:hidden">
+                    <span className="whitespace-pre-line group-open:hidden">{description.slice(0, 300).trimEnd()}… </span>
+                    <span className="text-sm font-semibold text-navy underline group-open:hidden">{ar ? "المزيد" : "Read more"}</span>
+                  </summary>
+                  <p className="whitespace-pre-line leading-loose text-navy/75">{description}</p>
+                </details>
+              ) : <p className="whitespace-pre-line leading-loose text-navy/75">{description}</p>}
             </div>
           )}
 
           {!!offer.features?.length && (
-            <div className="grid gap-3">
-              <h2 className="font-heading text-xl font-bold text-navy">{ar ? "المميزات" : "Features"}</h2>
-              <FeatureTiles ar={ar} items={offer.features.map((k, i) => ({ key: k, text: !ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k }))} />
+            <div className="grid gap-2">
+              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "المميزات" : "Features"}</h2>
+              <ul className="flex flex-wrap gap-2">
+                {offer.features.map((k, i) => (
+                  <li key={k + i} className="rounded-full border border-navy/10 bg-white px-3.5 py-1.5 text-sm text-navy/80">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</li>
+                ))}
+              </ul>
             </div>
           )}
 
-          {sold !== null && (
-            <div className="grid gap-2 rounded-2xl bg-navy/[0.03] p-5">
-              <div className="flex justify-between text-sm"><span className="text-navy/60">{ar ? "نسبة البيع" : "Sold"}</span><b className="text-navy">{sold}%</b></div>
-              <div className="h-2 overflow-hidden rounded-full bg-navy/10"><div className="h-full rounded-full bg-gold" style={{ width: `${sold}%` }} /></div>
+          {warrantyLines.length > 0 && (
+            <div className="grid gap-2">
+              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "الضمانات" : "Warranties"}</h2>
+              <ul className="grid gap-1 text-sm text-navy/75">
+                {warrantyLines.map((l, i) => <li key={i} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-navy/40" />{l}</li>)}
+              </ul>
             </div>
           )}
         </div>
@@ -174,11 +171,11 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             <WhatsAppLink whatsappNumber={whatsappNumber}
               message={(ar ? "السلام عليكم، أرغب بالحصول على ملف العقار: " + offer.title_ar : "Hello, I would like to receive the property file: " + (offer.title_en || offer.title_ar)) + "\nhttps://" + shortOfferUrl(offer.slug)}
               className="flex items-center justify-center gap-2 rounded-full border border-navy/20 px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy/5">
-              📄 {ar ? "اطلب ملف العقار" : "Request the property file"}
+              {ar ? "اطلب ملف العقار" : "Request the property file"}
             </WhatsAppLink>
             {offer.video_url && (
               <div className="grid gap-2 border-t border-navy/10 pt-4 text-sm">
-                <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">▶ {ar ? "مشاهدة الفيديو" : "Watch video"}</a>
+                <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">{ar ? "مشاهدة الفيديو" : "Watch video"}</a>
               </div>
             )}
           </div>

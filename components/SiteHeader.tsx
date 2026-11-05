@@ -11,7 +11,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 /**
  * Site header in the style of thiraa.sa / rakez.sa:
  *  - on the home page, over the hero photo: the official lockup centred between
- *    two thin gold rules, the menu centred underneath, all in white;
+ *    the menu centred underneath, all in white;
  *  - after scrolling (and on every other page): a charcoal bar with rounded bottom
  *    corners, the white lockup centred between thin rules and the menu beneath (thiraa.sa).
  */
@@ -39,7 +39,7 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
     { href: "/#request", label: st("request") },
   ];
   const navLink = (light: boolean) =>
-    "relative py-1 text-[14px] transition-colors after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:scale-x-0 after:bg-gold after:transition-transform hover:after:scale-x-100 " +
+    "relative py-1 text-[14px] transition-colors after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:scale-x-0 after:bg-cream/60 after:transition-transform hover:after:scale-x-100 " +
     (light ? "text-cream/90 hover:text-cream" : "text-navy/80 hover:text-navy");
 
   const burger = (light: boolean) => (
@@ -57,14 +57,12 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
         <header className="absolute inset-x-0 top-0 z-[1000]">
           <div className="mx-auto max-w-7xl px-6 pt-6">
             <div className="flex items-center gap-6">
-              <span className="hidden h-px flex-1 bg-gold/60 lg:block" />
               <div className="flex flex-1 justify-start lg:flex-none lg:justify-center"><Logo variant="light" height={60} /></div>
-              <span className="hidden h-px flex-1 bg-gold/60 lg:block" />
               {burger(true)}
             </div>
             <nav className="mt-5 hidden items-center justify-center gap-10 lg:flex">
               {links.map((l) => <Link key={l.href} href={l.href} className={navLink(true)}>{l.label}</Link>)}
-              <WhatsAppLink whatsappNumber={whatsappNumber} className="rounded-full border border-gold/70 px-5 py-1.5 text-[13px] text-cream transition-colors hover:bg-gold hover:text-navy">{t("contact")}</WhatsAppLink>
+              <WhatsAppLink whatsappNumber={whatsappNumber} className="rounded-full border border-cream/40 px-5 py-1.5 text-[13px] text-cream transition-colors hover:bg-cream hover:text-navy">{t("contact")}</WhatsAppLink>
               <LanguageSwitcher variant="light" />
             </nav>
           </div>
@@ -75,9 +73,7 @@ export function SiteHeader({ whatsappNumber }: { whatsappNumber: string }) {
         <header className={(home ? "fixed animate-[fadeDown_.35s_ease-out]" : "sticky") + " inset-x-0 top-0 z-[1000] rounded-b-[26px] bg-[#333333] text-cream shadow-[0_18px_40px_-24px_rgba(0,0,0,0.6)]"}>
           <div className={"mx-auto max-w-7xl px-6 transition-[padding] duration-300 " + (scrolled ? "pt-2.5 pb-2.5 lg:pb-3" : "pt-4 pb-4 lg:pb-3.5")}>
             <div className="flex items-center gap-6">
-              <span className="hidden h-px flex-1 bg-[#b79579]/45 lg:block" />
               <div className="flex flex-1 justify-start lg:flex-none lg:justify-center"><Logo variant="light" height={scrolled ? 38 : 48} /></div>
-              <span className="hidden h-px flex-1 bg-[#b79579]/45 lg:block" />
               {burger(true)}
             </div>
             <div className="mt-3 hidden items-center justify-between lg:flex">

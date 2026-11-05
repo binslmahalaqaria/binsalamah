@@ -31,7 +31,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
       <section className="relative isolate -mt-6 overflow-hidden bg-[#262524] px-6 pt-24 pb-28 text-center text-cream">
         <div aria-hidden className="absolute -inset-1/2 -z-10 -rotate-[18deg] bg-[url(/brand/pattern-footer.png)] bg-[length:96px_96px] opacity-60" />
         <div className="mx-auto max-w-3xl">
-          <span className="text-sm tracking-[0.2em] text-[#b79579]">{s("heroKicker")}</span>
+          <span className="text-sm tracking-[0.2em] text-[#b8b8b8]">{s("heroKicker")}</span>
           <h1 className="mt-3 font-heading text-4xl font-bold sm:text-5xl">{t("title")}</h1>
           <p className="mt-3 text-cream/70">{s("featuredSub")}</p>
         </div>

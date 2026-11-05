@@ -17,7 +17,7 @@ export function Splash() {
       <style>{`
         .bs-splash{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;overflow:hidden;
           background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);animation:bs-out .7s ease 1.7s forwards}
-        .bs-splash .bs-rule{display:block;height:1px;margin:22px auto 0;background:linear-gradient(90deg,transparent,#b79579,transparent);animation:bs-rule 1s ease .35s both}
+        .bs-splash .bs-rule{display:block;height:1px;margin:22px auto 0;background:linear-gradient(90deg,transparent,#b8b8b8,transparent);animation:bs-rule 1s ease .35s both}
         @keyframes bs-rule{from{width:0;opacity:0}to{width:220px;opacity:1}}
         .bs-splash .bs-logo{position:relative;animation:bs-in .8s ease both}
         @keyframes bs-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
