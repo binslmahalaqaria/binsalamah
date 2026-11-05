@@ -151,7 +151,7 @@ export default function PropertiesPage() {
                         finally { setZipping(null); }
                       }}>{zipping === p.id ? "جارٍ التجهيز…" : "⬇ كل الصور (" + (p.images || []).length + ")"}</button>
                     )}
-                    <button type="button" className="crm-btn sm" title="يرسل رسالة العقار أو رابط الصور أو ملف PDF على واتساب العميل مباشرة" onClick={() => setSendZip(p)}>📤 إرسال للعميل</button>
+                    <button type="button" className="crm-btn sm" title="يرسل رسالة العقار أو الفيديوهات والصور أو ملف PDF على واتساب العميل مباشرة" onClick={() => setSendZip(p)}>📤 إرسال للعميل</button>
                     {/* One inventory: a property is put on the website from here, its details copied into the website form. */}
                     {data.isMgr && !previewAs && (web[p.id] ? (
                       <Link href={"/admin/offers/" + web[p.id].id + "/edit"} className="crm-btn sm">🌐 {web[p.id].status === "published" ? "معروض في الموقع" : "مسودة في الموقع"}</Link>

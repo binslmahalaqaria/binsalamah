@@ -548,7 +548,7 @@ export function PropertyForm({ id }: { id?: string }) {
         <Field label="دورات المياه"><input inputMode="decimal" value={f.bathrooms} onChange={(e) => set("bathrooms", e.target.value)} /></Field>
         {needsFloor([f.type]) && <Field label="الدور"><Select value={f.floor} onChange={(v) => set("floor", v)} options={FLOORS} blank="—" /></Field>}
         <Field label="السعر"><Select value={f.priceNote} onChange={(v) => set("priceNote", v)} options={["قابل للتفاوض", "نهائي"]} blank="—" /></Field>
-        <Field label="رابط صور قوقل درايف" full><input dir="ltr" value={f.driveLink} placeholder="https://drive.google.com/…" onChange={(e) => set("driveLink", e.target.value)} /></Field>
+        <Field label="الفيديوهات والصور (رابط قوقل درايف)" full><input dir="ltr" value={f.driveLink} placeholder="https://drive.google.com/…" onChange={(e) => set("driveLink", e.target.value)} /></Field>
         <Field label="ملف المشروع (PDF)" full>
           {f.pdfUrl ? (
             <div className="flex flex-wrap items-center gap-2">

@@ -685,7 +685,7 @@ export const isLate = (date: string | null | undefined) => (dayDiff(date) ?? 0) 
 export { PSTATUS };
 
 /* ---------- what was sent to a client (client 2026-11-03) ---------- */
-export const SENT_KINDS = [["msg", "الرسالة"], ["drive", "رابط الصور"], ["pdf", "الملف"]] as const;
+export const SENT_KINDS = [["msg", "الرسالة"], ["drive", "الفيديوهات والصور"], ["pdf", "الملف"]] as const;
 /** The kinds a property can send: the message always; the Drive link and the PDF only when the property has them. */
 export const sendableKinds = (p: Property | undefined | null) =>
   SENT_KINDS.map(([k]) => k).filter((k) => k === "msg" || (k === "drive" ? !!p?.driveLink : !!p?.pdfUrl));

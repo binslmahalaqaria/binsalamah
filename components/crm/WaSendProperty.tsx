@@ -67,8 +67,8 @@ export function WaSendProperty({ client, onClose, send }: {
         await send({ text: msg.trim() });
       }
       if (sendDrive && pick.driveLink) {
-        setBusy("جارٍ إرسال رابط الصور…");
-        await send({ text: "تفضل طال عمرك هذا رابط ملف الصور" + String.fromCharCode(10) + pick.driveLink });
+        setBusy("جارٍ إرسال الفيديوهات والصور…");
+        await send({ text: "الفيديوهات والصور:" + String.fromCharCode(10) + pick.driveLink });
       }
       if (sendPdf && pick.pdfUrl) {
         setBusy("جارٍ إرسال ملف المشروع…");
@@ -137,7 +137,7 @@ export function WaSendProperty({ client, onClose, send }: {
             {(pick.pdfUrl || pick.driveLink) && (
               <div className="flex flex-wrap gap-4 text-[13.5px]">
                 {pick.pdfUrl && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotPdf} checked={withPdf && !gotPdf} onChange={(e) => setWithPdf(e.target.checked)} /> 📄 إرفاق ملف المشروع (PDF){gotPdf && " — أُرسل سابقاً"}</label>}
-                {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotDrive} checked={withDrive && !gotDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال رابط الصور (درايف){gotDrive && " — أُرسل سابقاً"}</label>}
+                {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotDrive} checked={withDrive && !gotDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال الفيديوهات والصور (درايف){gotDrive && " — أُرسل سابقاً"}</label>}
               </div>
             )}
             {withPdf && !gotPdf && !!pick.pdfUrl && <input placeholder="نص مع الملف (اختياري)" value={pdfCaption} onChange={(e) => setPdfCaption(e.target.value)} />}

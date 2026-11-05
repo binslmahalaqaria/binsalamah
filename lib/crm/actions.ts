@@ -385,7 +385,7 @@ export async function markSent(d: CrmData, clientId: string, p: Property, kinds:
   const at = nowStamp();
   const cur = (c.sentProps || {})[p.id] || {};
   const next = { ...cur, ...Object.fromEntries(kinds.map((k) => [k, at])) };
-  const names = { msg: "الرسالة", drive: "رابط الصور", pdf: "الملف" } as const;
+  const names = { msg: "الرسالة", drive: "الفيديوهات والصور", pdf: "الملف" } as const;
   await write("clients", c.id, {
     sentProps: { ...(c.sentProps || {}), [p.id]: next },
     // When the send was also recorded on a request (reqSent), that already wrote the log entry — writing it again here would overwrite it.
