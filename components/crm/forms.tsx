@@ -470,6 +470,22 @@ export function PropertyForm({ id }: { id?: string }) {
       "\n\nللاستفسار والزيارة تواصل معنا.");
   }
 
+  // Saved advertisers = the distinct developers/individuals already on properties (one entry per phone, else per name).
+  const advertisers = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; phone: string; kind: string; n: number }>();
+    for (const p of data.props) {
+      if (!p.contactName && !p.contactPhone) continue;
+      const ph = normPhone(p.contactPhone || "");
+      const key = ph || "n:" + (p.contactName || "").trim();
+      const cur = m.get(key);
+      if (cur) cur.n++;
+      else m.set(key, { key, name: p.contactName || "", phone: p.contactPhone || "", kind: p.ownerKind || "", n: 1 });
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  }, [data.props]);
+  const typedPhone = normPhone(f.contactPhone || "");
+  const dupAdv = typedPhone ? advertisers.find((a) => normPhone(a.phone) === typedPhone && a.name.trim() !== f.contactName.trim()) : undefined;
+
   async function save() {
     if (!f.title.trim()) return toast("يرجى تعبئة حقل: اسم العقار");
     setBusy(true);
@@ -617,8 +633,14 @@ export function PropertyForm({ id }: { id?: string }) {
 
         <Sec>المسؤول عن العقار</Sec>
         <Field label="نوع المعلن"><Select value={f.ownerKind} onChange={(v) => set("ownerKind", v)} options={OWNERK} /></Field>
-        <Field label="اسم المعلن (المالك أو المسوق)"><input value={f.contactName} onChange={(e) => set("contactName", e.target.value)} /></Field>
-        <Field label="جوال المعلن"><input dir="ltr" value={f.contactPhone} placeholder="05xxxxxxxx" onChange={(e) => set("contactPhone", e.target.value)} /></Field>
+        <Field label="معلن محفوظ (يُسجَّل مرة وحدة)" hint={<span className="crm-hint">اختر المطور أو الفرد من المحفوظين بدل ما تكتبه من جديد. الجديد يُحفظ تلقائياً مع أول عقار.</span>}>
+          <select value="" onChange={(e) => { const a = advertisers.find((x) => x.key === e.target.value); if (a) setF((p) => ({ ...p, ownerKind: a.kind || p.ownerKind, contactName: a.name, contactPhone: a.phone })); }}>
+            <option value="">— اختر —</option>
+            {advertisers.map((a) => <option key={a.key} value={a.key}>{a.name || "بدون اسم"}{a.kind ? " · " + a.kind : ""}{a.phone ? " · " + a.phone : ""} ({a.n} عقار)</option>)}
+          </select>
+        </Field>
+        <Field label={f.ownerKind === "مطور" ? "اسم المطور (المشروع باسمه)" : "اسم المعلن (المالك أو المسوق)"}><input value={f.contactName} onChange={(e) => set("contactName", e.target.value)} /></Field>
+        <Field label="جوال المعلن" hint={dupAdv ? <span className="crm-hint text-[var(--crm-warn)]">مسجّل من قبل باسم «{dupAdv.name}» — اختره من «معلن محفوظ» بدل ما تكرره.</span> : undefined}><input dir="ltr" value={f.contactPhone} placeholder="05xxxxxxxx" onChange={(e) => set("contactPhone", e.target.value)} /></Field>
         <Field label="السعي / الاتفاق"><input value={f.commissionNote} placeholder="2.5% على المشتري" onChange={(e) => set("commissionNote", e.target.value)} /></Field>
 
         <Sec>رسالة الواتساب الجاهزة</Sec>
