@@ -301,7 +301,7 @@ function OffersSentModal({ reqId }: { reqId: string }) {
   const s = q.trim().replace(/^#/, "");
   const avail = data.props.filter((p) => (p.status || "متاح") !== "مباع");
   const all = [...avail.filter((p) => matched.includes(p.id)), ...avail.filter((p) => !matched.includes(p.id))];
-  const list = !s ? all : /^d+$/.test(s) ? all.filter((p) => p.ref === Number(s)) : all.filter((p) => [p.title, p.district, p.type].filter(Boolean).join(" ").includes(s));
+  const list = !s ? all : /^[0-9]+$/.test(s) ? all.filter((p) => p.ref === Number(s)) : all.filter((p) => [p.title, p.district, p.type].filter(Boolean).join(" ").includes(s));
   const done = new Set(r.sent || []);
   return (
     <ModalFrame title={"عروض أُرسلت إلى " + (c?.name || "")} onClose={closeModal} width={520}
