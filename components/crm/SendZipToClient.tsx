@@ -18,6 +18,7 @@ const MAX = 5;
 interface Who { key: string; id: string; name: string; phone: string }
 type Kind = "msg" | "drive" | "pdf";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const KIND_AR: Record<Kind, string> = { msg: "الرسالة", drive: "رابط الصور", pdf: "الملف" };
 
 /** `client` fixes the recipient (from a request's matching list); `reqId` also records the offer on that request. */
 export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Property; onClose: () => void; client?: Client; reqId?: string; onSent?: () => void }) {
@@ -25,7 +26,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Who[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [done, setDone] = useState<{ name: string; ok: boolean }[] | null>(null);
+  const [done, setDone] = useState<{ name: string; ok: boolean; why?: string }[] | null>(null);
   const [source, setSource] = useState<WaSource | null | undefined>(undefined); // undefined = still checking, null = none connected
 
   useEffect(() => {
@@ -65,23 +66,33 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
   // «onSent» (e.g. opening the visit booking) runs when the result panel is closed, so it is not cut off.
   const close = () => { onClose(); if (done?.some((x) => x.ok)) onSent?.(); };
 
+  /** What this person already received for this property (saved clients only; a typed number has no record). */
+  const sentOf = (id: string): Partial<Record<Kind, string>> => (data.clients.find((c) => c.id === id)?.sentProps || {})[p.id] || {};
+  const gotLine = (id: string) => (["msg", "drive", "pdf"] as Kind[]).filter((k) => sentOf(id)[k]).map((k) => KIND_AR[k]).join(" + ");
+
   async function sendNow() {
     if (!recipients.length || !source) return;
-    const kinds = ([withMsg && "msg", withDrive && p.driveLink && "drive", withPdf && p.pdfUrl && "pdf"].filter(Boolean)) as Kind[];
-    const results: { name: string; ok: boolean }[] = [];
+    const allKinds = ([withMsg && "msg", withDrive && p.driveLink && "drive", withPdf && p.pdfUrl && "pdf"].filter(Boolean)) as Kind[];
+    const results: { name: string; ok: boolean; why?: string }[] = [];
     for (let i = 0; i < recipients.length; i++) {
       const w = recipients[i];
       setBusy("جارٍ الإرسال " + (i + 1) + " من " + recipients.length + " — " + w.name + "…");
       const phone = intl(w.phone);
       let ok = false;
+      // Each thing goes to a client once (message, photos link, file): what he already received is skipped; nothing left = refused.
+      const got = sentOf(w.id);
+      const kinds = allKinds.filter((k) => !got[k]);
+      const skipped = allKinds.filter((k) => got[k]);
+      if (!kinds.length) { results.push({ name: w.name, ok: false, why: "أُرسل له سابقاً: " + skipped.map((k) => KIND_AR[k]).join(" + ") }); continue; }
+      const sMsg = kinds.includes("msg"), sDrive = kinds.includes("drive"), sPdf = kinds.includes("pdf");
       if (phone) {
         const jid = phone + "@s.whatsapp.net";
         try {
           const parts: string[] = [];
-          if (withMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
-          if (withDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
+          if (sMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
+          if (sDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
           if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
-          if (withPdf && p.pdfUrl) {
+          if (sPdf && p.pdfUrl) {
             await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
           }
           ok = true;
@@ -100,7 +111,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
           }
         } catch { /* reported below */ }
       }
-      results.push({ name: w.name, ok });
+      results.push({ name: w.name, ok, why: ok && skipped.length ? "لم يُعد إرسال: " + skipped.map((k) => KIND_AR[k]).join(" + ") + " (أُرسل سابقاً)" : undefined });
       if (i < recipients.length - 1) await sleep(2000); // a short gap between people, like a person would
     }
     setBusy(null);
@@ -123,7 +134,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
             {done.map((x, i) => (
               <div key={i} className={"flex items-center justify-between gap-2 rounded-lg border p-2 " + (x.ok ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-danger)] bg-[var(--crm-surface-2)]")}>
                 <b className="truncate text-[14px]">{x.name}</b>
-                <span className="text-[13px]">{x.ok ? "✓ أُرسل" : "✗ تعذّر الإرسال"}</span>
+                <span className="text-end text-[13px]">{x.ok ? "✓ أُرسل" : "✗ تعذّر الإرسال"}{x.why && <span className="block text-[12px] text-[var(--crm-ink-3)]">{x.why}</span>}</span>
               </div>
             ))}
             <span className="text-[12.5px] text-[var(--crm-ink-3)]">من أُرسل له صارت عنده علامة «أُرسل» في العملاء والطلبات.</span>
@@ -137,7 +148,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
               <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
               <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
             </div>
-            {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span></b> : (
+            {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span>{gotLine(client.id) && <span className="block text-[12px] font-normal text-[var(--crm-ink-3)]">أُرسل له سابقاً: {gotLine(client.id)} — لن يُعاد إرساله</span>}</b> : (
               <>
                 {sel.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
@@ -158,7 +169,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
                 {clients.length ? clients.map((c) => (
                   <button key={c.id} type="button" onClick={() => toggle({ key: c.id, id: c.id, name: c.name, phone: String(c.phone || "") })}
                     className={"flex items-center justify-between gap-2 rounded-lg border p-2 text-start " + (has(c.id) ? "border-[#00a884] bg-[#e7fce3]" : "border-[var(--crm-line)] hover:bg-[var(--crm-surface-2)]")}>
-                    <b className="truncate text-[14px]">{has(c.id) ? "✓ " : ""}{c.name}</b>
+                    <b className="truncate text-[14px]">{has(c.id) ? "✓ " : ""}{c.name}{gotLine(c.id) && <span className="ms-2 text-[11.5px] font-normal text-[var(--crm-ink-3)]">أُرسل له: {gotLine(c.id)}</span>}</b>
                     <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>
                   </button>
                 )) : !typedPhone && <p className="m-0 py-6 text-center text-[var(--crm-ink-3)]">لا يوجد عميل بهذا الاسم. اكتب رقم الجوال للإرسال مباشرة.</p>}

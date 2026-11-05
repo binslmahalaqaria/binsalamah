@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { matchesForReq, propMsg, propPrice, reqsOf } from "@/lib/crm/logic";
-import { reqSent } from "@/lib/crm/actions";
+import { markSent, reqSent } from "@/lib/crm/actions";
 import type { Client, Property } from "@/lib/crm/types";
 
 export function WaSendProperty({ client, onClose, send }: {
@@ -44,26 +44,35 @@ export function WaSendProperty({ client, onClose, send }: {
     setWithDrive(false);
   };
 
+  // Each thing goes to a client once (details + photos, photos link, file): what he already got is not sent again.
+  const got = (pick && client?.sentProps?.[pick.id]) || {};
+  const gotMsg = !!got.msg, gotDrive = !!got.drive, gotPdf = !!got.pdf;
+  const sendMsg = !gotMsg && (imgs.length > 0 || !!msg.trim());
+  const sendDrive = withDrive && !gotDrive && !!pick?.driveLink;
+  const sendPdf = withPdf && !gotPdf && !!pick?.pdfUrl;
+
   async function go() {
     if (!pick) return;
+    if (!sendMsg && !sendDrive && !sendPdf) return toast("تعذّر الإرسال: أُرسل لهذا العميل سابقاً");
     try {
-      for (let i = 0; i < imgs.length; i++) {
+      for (let i = 0; i < (sendMsg ? imgs.length : 0); i++) {
         setBusy("جارٍ إرسال الصور " + (i + 1) + " من " + imgs.length + "…");
         await send({ url: imgs[i] });
       }
-      if (msg.trim()) {
+      if (sendMsg && msg.trim()) {
         setBusy("جارٍ إرسال التفاصيل…");
         await send({ text: msg.trim() });
       }
-      if (withDrive && pick.driveLink) {
+      if (sendDrive && pick.driveLink) {
         setBusy("جارٍ إرسال رابط الصور…");
         await send({ text: "تفضل طال عمرك هذا رابط ملف الصور" + String.fromCharCode(10) + pick.driveLink });
       }
-      if (withPdf && pick.pdfUrl) {
+      if (sendPdf && pick.pdfUrl) {
         setBusy("جارٍ إرسال ملف المشروع…");
         await send({ url: pick.pdfUrl, fileName: (pick.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
       }
       if (req) await reqSent(data, req.id, pick.id).catch(() => {});
+      if (client) await markSent(data, client.id, pick, [sendMsg && "msg", sendDrive && "drive", sendPdf && "pdf"].filter(Boolean) as ("msg" | "drive" | "pdf")[], !req).catch(() => {});
       toast("أُرسل العقار للعميل" + (req ? " وسُجّل في طلبه — حدّد موعد الزيارة" : ""));
       onClose();
       // The next step after sending the property is the visit: open the booking straight away.
@@ -117,14 +126,15 @@ export function WaSendProperty({ client, onClose, send }: {
                 </div>
               </div>
             ) : <span className="text-[13px] text-[var(--crm-ink-3)]">لا توجد صور لهذا العقار — تُرسل التفاصيل فقط.</span>}
+            {gotMsg && <span className="rounded-lg bg-[var(--crm-warn-soft)] p-2 text-[13px] text-[var(--crm-warn)]">التفاصيل والصور أُرسلت لهذا العميل سابقاً ولن تُعاد — يمكنك إرسال الرابط أو الملف فقط.</span>}
             <div className="crm-field">
               <label>نص الرسالة (يمكنك تعديله)</label>
               <textarea rows={8} value={msg} onChange={(e) => setMsg(e.target.value)} />
             </div>
             {(pick.pdfUrl || pick.driveLink) && (
               <div className="flex flex-wrap gap-4 text-[13.5px]">
-                {pick.pdfUrl && <label className="flex items-center gap-1.5"><input type="checkbox" checked={withPdf} onChange={(e) => setWithPdf(e.target.checked)} /> 📄 إرفاق ملف المشروع (PDF)</label>}
-                {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" checked={withDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال رابط الصور (درايف)</label>}
+                {pick.pdfUrl && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotPdf} checked={withPdf && !gotPdf} onChange={(e) => setWithPdf(e.target.checked)} /> 📄 إرفاق ملف المشروع (PDF){gotPdf && " — أُرسل سابقاً"}</label>}
+                {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotDrive} checked={withDrive && !gotDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال رابط الصور (درايف){gotDrive && " — أُرسل سابقاً"}</label>}
               </div>
             )}
             {pick.videoLink && <span className="text-[12.5px] text-[var(--crm-ink-3)]">رابط الفيديو موجود داخل النص.</span>}
@@ -133,7 +143,7 @@ export function WaSendProperty({ client, onClose, send }: {
 
         <div className="flex items-center justify-end gap-2 border-t border-[var(--crm-line)] px-4 py-3">
           {busy && <span className="me-auto text-[13px] text-[var(--crm-ink-3)]">{busy}</span>}
-          {pick && <button type="button" className="crm-btn primary" disabled={!!busy || (!imgs.length && !msg.trim() && !withPdf && !withDrive)} onClick={go}>إرسال للعميل</button>}
+          {pick && <button type="button" className="crm-btn primary" disabled={!!busy || (!sendMsg && !sendDrive && !sendPdf)} onClick={go}>إرسال للعميل</button>}
         </div>
       </div>
     </div>
