@@ -14,7 +14,7 @@ import { OWNERK, OWNERK_TONE, PSTATUS, PSTATUS_TONE } from "@/lib/crm/constants"
 import {
   activeClients, availUnits, clientMatchesProp, nameOf, propAreas, propPrice, unitsOf, unitView, can } from "@/lib/crm/logic";
 import type { Property } from "@/lib/crm/types";
-import { exportCsv, num } from "@/lib/crm/util";
+import { exportCsv, normPhone, num } from "@/lib/crm/util";
 import { PropertyTabs } from "@/components/crm/PageTabs";
 import { ContactIcons, Empty, PageHeader, Pill, Select } from "@/components/crm/ui";
 
@@ -40,11 +40,15 @@ export default function PropertiesPage() {
   let list = data.props.slice();
   const qq = q.trim();
   // «#12» or «12» finds property number 12.
-  const refQ = /^#?d+$/.test(qq) ? Number(qq.replace("#", "")) : 0;
+  const refQ = /^#?[0-9]+$/.test(qq) ? Number(qq.replace("#", "")) : 0;
   if (qq) list = list.filter((p) => (refQ && p.ref === refQ) || [p.title, p.district, p.city, p.contactName, p.contactPhone, p.features, p.notes].join(" ").includes(qq));
   if (F.status) list = list.filter((p) => (p.status || "متاح") === F.status);
   if (F.type) list = list.filter((p) => p.type === F.type);
   if (F.kind) list = list.filter((p) => p.ownerKind === F.kind);
+  const advKey = (p: Property) => normPhone(p.contactPhone || "") || (p.contactName ? "n:" + p.contactName.trim() : "");
+  const advs = new Map<string, { label: string; n: number }>();
+  for (const p of data.props) { const k = advKey(p); if (!k) continue; const a = advs.get(k); if (a) a.n++; else advs.set(k, { label: p.contactName || p.contactPhone || "", n: 1 }); }
+  if (F.adv) list = list.filter((p) => advKey(p) === F.adv);
   if (F.by) list = list.filter((p) => (F.by === "none" ? !p.createdBy : p.createdBy === F.by));
   if (F.purpose) list = list.filter((p) => (p.purpose || "بيع") === F.purpose);
   if (F.district) list = list.filter((p) => String(p.district || "").includes(F.district));
@@ -86,6 +90,7 @@ export default function PropertiesPage() {
           <Select value={F.status} onChange={(v) => set("status", v)} options={PSTATUS} blank="كل الحالات" />
           <Select value={F.type} onChange={(v) => set("type", v)} options={data.propTypes} blank="كل الأنواع" />
           <Select value={F.kind} onChange={(v) => set("kind", v)} options={OWNERK} blank="مالك / مطور / مسوق" />
+          <Select value={F.adv} onChange={(v) => set("adv", v)} options={[...advs.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label, "ar")).map(([k, a]) => [k, a.label + " (" + a.n + ")"] as [string, string])} blank="كل المعلنين / المطورين" />
           <Select value={F.by} onChange={(v) => set("by", v)} options={[...data.staff.filter((s) => data.props.some((p) => p.createdBy === s.id)).map((s) => [s.id, "أضافه: " + s.name] as [string, string]), ["none", "أضافه: غير مسجّل"]]} blank="أضافه: الكل" />
           <Select value={F.purpose} onChange={(v) => set("purpose", v)} options={["بيع", "إيجار"]} blank="بيع وإيجار" />
           <input className="w-[150px]" placeholder="الحي" value={F.district || ""} onChange={(e) => set("district", e.target.value)} />
