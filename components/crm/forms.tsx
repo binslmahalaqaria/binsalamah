@@ -423,7 +423,7 @@ export function PropertyForm({ id }: { id?: string }) {
     waMessage: s(r.waMessage), units: (r.units || []).map((u) => ({ ...u })) as Unit[],
     features: s(r.features), city: r.city || "الرياض", buildArea: s(r.buildArea), livingRooms: s(r.livingRooms), floors: s(r.floors),
     facing: s(r.facing), streetWidth: s(r.streetWidth), age: s(r.age), videoLink: s(r.videoLink), notes: s(r.notes),
-    driveLink: s(r.driveLink), pdfUrl: s(r.pdfUrl), pdfName: s(r.pdfName),
+    driveLink: s(r.driveLink), pdfUrl: s(r.pdfUrl), pdfName: s(r.pdfName), pdfCaption: s(r.pdfCaption),
   });
   const [busy, setBusy] = useState(false);
   const [waArmed, setWaArmed] = useState(false);
@@ -499,7 +499,7 @@ export function PropertyForm({ id }: { id?: string }) {
         features: f.features.trim() || null, city: f.city.trim() || null, buildArea: num(f.buildArea), livingRooms: num(f.livingRooms),
         floors: num(f.floors), facing: f.facing || null, streetWidth: num(f.streetWidth), age: f.age.trim() || null,
         videoLink: f.videoLink.trim() || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
-        driveLink: f.driveLink.trim() || null, pdfUrl: f.pdfUrl || null, pdfName: f.pdfUrl ? f.pdfName || null : null,
+        driveLink: f.driveLink.trim() || null, pdfUrl: f.pdfUrl || null, pdfName: f.pdfUrl ? f.pdfName || null : null, pdfCaption: f.pdfUrl ? f.pdfCaption.trim() || null : null,
       };
       if (rec) await writeProperty(rec.id, { ...body, updatedBy: data.uid });
       else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
@@ -568,6 +568,7 @@ export function PropertyForm({ id }: { id?: string }) {
           )}
           {pdfBusy && <span className="crm-hint">جارٍ الرفع…</span>}
         </Field>
+        {f.pdfUrl && <Field label="نص يُرسل مع الملف (اختياري)" full><input value={f.pdfCaption} placeholder="اتركه فارغاً لإرسال الملف بدون نص" onChange={(e) => set("pdfCaption", e.target.value)} /></Field>}
         <Field label="رابط الموقع (خرائط)" full><input dir="ltr" value={f.link} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set("link", e.target.value)} /></Field>
 
         <Sec>الصور</Sec>

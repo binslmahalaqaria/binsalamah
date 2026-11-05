@@ -26,6 +26,7 @@ export function WaSendProperty({ client, onClose, send }: {
   const [busy, setBusy] = useState<string | null>(null);
   const [withPdf, setWithPdf] = useState(false);
   const [withDrive, setWithDrive] = useState(false);
+  const [pdfCaption, setPdfCaption] = useState("");
 
   const req = client ? reqsOf(data, client).find((r) => !["تم البيع", "ملغي"].includes(r.status || "")) : undefined;
   const matched = useMemo(() => (req ? matchesForReq(data, req).map((x) => x.p) : []), [data, req]);
@@ -43,6 +44,7 @@ export function WaSendProperty({ client, onClose, send }: {
     setMsg(propMsg(p));
     setWithPdf(false);
     setWithDrive(false);
+    setPdfCaption(p.pdfCaption || "");
   };
 
   // Each thing goes to a client once (details + photos, photos link, file): what he already got is not sent again.
@@ -70,7 +72,7 @@ export function WaSendProperty({ client, onClose, send }: {
       }
       if (sendPdf && pick.pdfUrl) {
         setBusy("جارٍ إرسال ملف المشروع…");
-        await send({ url: pick.pdfUrl, fileName: (pick.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "تفضل طال عمرك هذا ملف المشروع" });
+        await send({ url: pick.pdfUrl, fileName: (pick.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", ...(pdfCaption.trim() ? { caption: pdfCaption.trim() } : {}) });
       }
       if (req) await reqSent(data, req.id, pick.id).catch(() => {});
       if (client) await markSent(data, client.id, pick, [sendMsg && "msg", sendDrive && "drive", sendPdf && "pdf"].filter(Boolean) as ("msg" | "drive" | "pdf")[], !req).catch(() => {});
@@ -138,6 +140,7 @@ export function WaSendProperty({ client, onClose, send }: {
                 {pick.driveLink && <label className="flex items-center gap-1.5"><input type="checkbox" disabled={gotDrive} checked={withDrive && !gotDrive} onChange={(e) => setWithDrive(e.target.checked)} /> 🔗 إرسال رابط الصور (درايف){gotDrive && " — أُرسل سابقاً"}</label>}
               </div>
             )}
+            {withPdf && !gotPdf && !!pick.pdfUrl && <input placeholder="نص مع الملف (اختياري)" value={pdfCaption} onChange={(e) => setPdfCaption(e.target.value)} />}
             {pick.videoLink && <span className="text-[12.5px] text-[var(--crm-ink-3)]">رابط الفيديو موجود داخل النص.</span>}
           </div>
         )}

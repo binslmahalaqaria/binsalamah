@@ -60,6 +60,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
   const [withMsg, setWithMsg] = useState(true);
   const [withDrive, setWithDrive] = useState(!!p.driveLink);
   const [withPdf, setWithPdf] = useState(!!p.pdfUrl);
+  const [pdfCaption, setPdfCaption] = useState(p.pdfCaption || "");
   const nl = String.fromCharCode(10);
   const anything = withMsg || (withDrive && !!p.driveLink) || (withPdf && !!p.pdfUrl);
 
@@ -89,11 +90,11 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
         const jid = phone + "@s.whatsapp.net";
         try {
           const parts: string[] = [];
-          if (sMsg) parts.push("حياك الله، نرسل لك تفاصيل العقار:" + nl + nl + propMsg(p));
+          if (sMsg) parts.push(propMsg(p));
           if (sDrive && p.driveLink) parts.push("حياك الله، تفضل طال عمرك هذا رابط ملف الصور:" + nl + p.driveLink);
           if (parts.length) await waApi("/api/send", { source: source.id, jid, text: parts.join(nl + nl) });
           if (sPdf && p.pdfUrl) {
-            await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", caption: "حياك الله، تفضل طال عمرك هذا ملف المشروع" });
+            await waApi("/api/send-media", { source: source.id, jid, url: p.pdfUrl, fileName: (p.pdfName || "ملف المشروع").replace(new RegExp(String.fromCharCode(92) + ".pdf$", "i"), "") + ".pdf", ...(pdfCaption.trim() ? { caption: pdfCaption.trim() } : {}) });
           }
           ok = true;
           // Mark what went out on the client (saved clients only; a typed number has no file).
@@ -148,6 +149,7 @@ export function SendZipToClient({ p, onClose, client, reqId, onSent }: { p: Prop
               <label className={"flex items-center gap-1.5 " + (p.driveLink ? "" : "opacity-50")}><input type="checkbox" disabled={!p.driveLink} checked={withDrive && !!p.driveLink} onChange={(e) => setWithDrive(e.target.checked)} /> رابط الصور (درايف){!p.driveLink && " — غير مضاف"}</label>
               <label className={"flex items-center gap-1.5 " + (p.pdfUrl ? "" : "opacity-50")}><input type="checkbox" disabled={!p.pdfUrl} checked={withPdf && !!p.pdfUrl} onChange={(e) => setWithPdf(e.target.checked)} /> ملف المشروع PDF{!p.pdfUrl && " — غير مرفوع"}</label>
             </div>
+            {withPdf && !!p.pdfUrl && <input placeholder="نص مع الملف (اختياري)" value={pdfCaption} onChange={(e) => setPdfCaption(e.target.value)} />}
             {client ? <b className="text-[14px]">إلى: {client.name} <span className="num font-normal text-[var(--crm-ink-3)]" dir="ltr">{client.phone}</span>{gotLine(client.id) && <span className="block text-[12px] font-normal text-[var(--crm-ink-3)]">أُرسل له سابقاً: {gotLine(client.id)} — لن يُعاد إرساله</span>}</b> : (
               <>
                 {sel.length > 0 && (

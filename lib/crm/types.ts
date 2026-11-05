@@ -94,6 +94,8 @@ export interface Property {
   /** Project file (PDF) uploaded to Firebase Storage, sent to the client's WhatsApp as a document. */
   pdfUrl?: string | null;
   pdfName?: string | null;
+  /** Optional text sent with the project file (empty = the file alone). */
+  pdfCaption?: string | null;
   ownerKind: string | null;
   contactName: string | null;
   contactPhone: string | null;
