@@ -88,6 +88,10 @@ export interface Offer {
   features?: string[];
   /** English features, same order as `features` (filled automatically on save). */
   features_en?: string[];
+  // REGA advertising licence shown on the listing (marketing regulation art. 5).
+  ad_license_no?: string | null;
+  ad_license_expiry?: string | null;
+  // Staff-only: stored in offers/{id}/private/links, never on the public doc (lib/offers.ts).
   map_url?: string | null;
   brochure_url?: string | null;
   video_url?: string | null;

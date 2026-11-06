@@ -8,6 +8,7 @@ import { SOCIAL, organizationJsonLd } from "@/lib/seo";
 import { IconInstagram, IconMail, IconPhone, IconPin, IconTikTok, IconYouTube, IconX } from "@/components/site/icons";
 import { Splash } from "@/components/site/Splash";
 import { ComingSoon } from "@/components/site/ComingSoon";
+import { LegalFooter } from "@/components/site/LegalPage";
 import { isSiteOpen } from "@/lib/site-mode";
 
 // Read on every request so the owner's switch in the CRM takes effect at once.
@@ -97,6 +98,7 @@ export default async function PublicLayout({
             <span className="flex gap-4">
               <Link href="/careers" className="hover:text-cream">{nav("careers")}</Link>
             </span>
+            <LegalFooter ar={ar} />
           </div>
         </div>
       </footer>

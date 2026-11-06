@@ -77,7 +77,8 @@ export function ResetData() {
     if (typed.trim() !== "تصفير") return toast("اكتب كلمة «تصفير» للتأكيد");
     setBusy("جارٍ الحذف…");
     try {
-      const refs = plan.flatMap(([, r]) => r);
+      // Offers keep their staff-only links in a sub-document, which a parent delete would leave behind.
+      const refs = plan.flatMap(([, r]) => r).concat(opt.site ? (found?.offers || []).map((r) => doc(r, "private", "links")) : []);
       for (let k = 0; k < refs.length; k += 400) {
         const b = writeBatch(db);
         refs.slice(k, k + 400).forEach((r) => b.delete(r));

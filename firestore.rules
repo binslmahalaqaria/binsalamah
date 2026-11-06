@@ -31,6 +31,12 @@ service cloud.firestore {
       allow delete: if isActiveStaff();
     }
 
+    // An offer's map location and project file: staff only. The client
+    // gets them from the team, so they must never sit on the public offer.
+    match /offers/{offerId}/private/{docId} {
+      allow read, write: if isActiveStaff();
+    }
+
     // leads: public can only create (the "Register interest" form and
     // general-inquiry contact form). No public read/update/delete — a
     // visitor must never see another customer's lead. Staff have full
@@ -46,8 +52,11 @@ service cloud.firestore {
       allow create: if isActiveStaff() || (
         request.resource.data.customer_name is string &&
         request.resource.data.customer_name.size() > 0 &&
+        request.resource.data.customer_name.size() <= 150 &&
         request.resource.data.phone is string &&
         request.resource.data.phone.size() > 0 &&
+        request.resource.data.phone.size() <= 40 &&
+        (request.resource.data.get('message', null) == null || request.resource.data.message.size() <= 6000) &&
         request.resource.data.source in ['website_interest', 'other'] &&
         request.resource.data.status == 'new' &&
         request.resource.data.assigned_to == null &&

@@ -4,6 +4,7 @@ import { RequestForm } from "@/components/site/RequestForm";
 import { IconInstagram, IconTikTok, IconYouTube, IconX } from "@/components/site/icons";
 import { allDistricts } from "@/lib/districts";
 import { SOCIAL } from "@/lib/seo";
+import { LegalFooter } from "@/components/site/LegalPage";
 
 /**
  * "انتظرونا قريباً" — shown instead of the whole public site while COMING_SOON is on
@@ -48,6 +49,7 @@ export async function ComingSoon() {
           ))}
         </div>
         <span>© {new Date().getFullYear()} {ar ? "جميع الحقوق محفوظة لبن سلمه العقارية" : "All rights reserved — Bin Slmah Real Estate"}</span>
+        <LegalFooter ar={ar} />
       </footer>
     </main>
   );

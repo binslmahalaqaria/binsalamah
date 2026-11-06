@@ -6,6 +6,7 @@
 
 | Date | Phase | Item Tested | Result | Notes | Tester |
 |---|---|---|---|---|---|
+| 2026-11-06 | Legal baseline | Local checks of pages, consent, headers | Pass | `/privacy` and `/terms` return 200 in Arabic/English; security headers present; no `map_url`/`brochure_url` in local `/ar/offers` HTML; customer collections return 403 with no login. Live rules not published yet, so the links move is untested end-to-end | Claude |
 | 2026-10-10 | CRM port | Old CRM import + new screens against live Firebase | Pass | Imported 2 clients/1 property/3 requests/1 task/1 goal via Team → Settings importer; Clients, Requests (stages, journey), Sales (75,000 SAR commission month), Team (stats, lastSeen self-write) render correctly under the new rules | Claude |
 | 2026-10-07 | 1 | Offer price hydration (`toLocaleString` locale pinned to `en-US`) | Fail → Fixed → Pass | Before: "Hydration failed" on `/ar` and `/ar/offers` in an Arabic-locale browser (`500,000` vs `٥٠٠٬٠٠٠`). After: server HTML and client DOM both render `500,000` on Home, Offers list, and offer detail; `tsc --noEmit` clean | Claude |
 | 2026-09-13 | 1 | `npm run build` / `tsc --noEmit` / `npm run lint` (post-brand-redesign) | Pass | Clean build, 0 type errors, same 6 pre-accepted lint warnings as Phase 2, no new errors | Claude |

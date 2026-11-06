@@ -82,3 +82,14 @@
 - [ ] Admin login and core CRUD (offers, leads) still work
 - [ ] Firestore Security Rules tests are re-run and still pass (no accidental loosening of access)
 - [ ] No new required environment variable is missing in production
+
+## Offer location privacy (2026-11-06)
+- [ ] With no login, `offers` docs have no `map_url`/`brochure_url`, and `offers/{id}/private/links` is refused
+- [ ] Public `/offers` and `/offers/[slug]` page source contains no map or brochure link
+- [ ] Editing a listing keeps its links, and they reach the linked CRM property
+- [ ] Editing the property's location updates the listing's private links
+
+## Legal baseline (2026-11-06)
+- [ ] `/privacy` and `/terms` open in both languages, also while the site shows «قريباً»
+- [ ] Footer shows CR, VAT, and legal links; FAL appears once `COMPANY.falNo` is set
+- [ ] With no login, `offers/files` in Storage can't be listed, and a shared download link still opens

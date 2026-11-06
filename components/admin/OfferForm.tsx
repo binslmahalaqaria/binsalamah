@@ -86,6 +86,8 @@ function toFormInput(offer?: Offer | null): OfferFormInput {
     warranties_text_en: offer?.warranties_text_en ?? "",
     features: offer?.features ?? [],
     features_en: offer?.features_en ?? [],
+    ad_license_no: offer?.ad_license_no ?? "",
+    ad_license_expiry: offer?.ad_license_expiry ?? "",
     map_url: offer?.map_url ?? "",
     brochure_url: offer?.brochure_url ?? "",
     video_url: offer?.video_url ?? "",
@@ -421,11 +423,20 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
           </div>
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className={labelClass}>رقم ترخيص الإعلان (الهيئة العامة للعقار)
+            <input className={inputClass} dir="ltr" value={form.ad_license_no ?? ""} onChange={(e) => field("ad_license_no", e.target.value)} />
+          </label>
+          <label className={labelClass}>تاريخ انتهاء ترخيص الإعلان
+            <input type="date" className={inputClass} value={form.ad_license_expiry ?? ""} onChange={(e) => field("ad_license_expiry", e.target.value)} />
+          </label>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className={labelClass}>رابط الموقع على الخريطة
+          <label className={labelClass}>رابط الموقع على الخريطة (للفريق فقط — لا يظهر للعميل)
             <input className={inputClass} dir="ltr" placeholder="https://maps.google.com/…" value={form.map_url ?? ""} onChange={(e) => field("map_url", e.target.value)} />
           </label>
-          <label className={labelClass}>ملف المشروع (PDF)
+          <label className={labelClass}>ملف المشروع PDF (للفريق فقط — لا يظهر للعميل)
             {form.brochure_url ? (
               <span className="flex flex-wrap items-center gap-2">
                 <a href={form.brochure_url} target="_blank" rel="noreferrer" className="rounded-lg border border-navy/15 px-3 py-2 text-sm text-navy hover:bg-navy/5">📄 عرض الملف</a>

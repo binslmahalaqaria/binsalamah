@@ -9,9 +9,10 @@ service firebase.storage {
       return request.auth != null &&
         firestore.get(/databases/(default)/documents/staff/$(request.auth.uid)).data.active == true;
     }
-    // Project files (PDF) sent to clients: staff upload, up to 15 MB.
+    // Project files (PDF): staff only, so nobody can list or fetch them from the
+    // public site. The team shares a file through its private download link.
     match /offers/files/{name} {
-      allow read: if true;
+      allow read: if isActiveStaff();
       allow delete: if isActiveStaff();
       allow create, update: if isActiveStaff()
         && request.resource.size < 15 * 1024 * 1024

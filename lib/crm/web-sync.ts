@@ -3,14 +3,15 @@
  * إذا عدلت شيء يتعدل هناك»). A listing made with «اعرضه في الموقع» stores `property_id`.
  *   - Saving the property in the CRM (or a deal changing a unit's status) updates the listing's shared fields.
  *   - Saving the listing in the admin form updates the property's shared fields.
- * Shared: name, type, city, district, photos, rooms, bathrooms, living rooms, map / video / brochure links,
- * features, units (name, area, price, rooms, status) and, without units, price and area. Each side writes the
+ * Shared: name, type, city, district, photos, rooms, bathrooms, living rooms, map / video / brochure links
+ * (map and brochure in the listing's staff-only doc, see lib/offers.ts), features, units (name, area, price, rooms, status) and, without units, price and area. Each side writes the
  * other directly (never through the function that syncs), so there is no loop. Not shared: descriptions, the
  * ribbon, developer, warranties, English text (English of a changed Arabic field is cleared and re-translated
  * the next time the listing is saved).
  */
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { saveOfferLinks } from "@/lib/offers";
 import { deriveFromUnits } from "@/lib/validators";
 import type { Offer, OfferType, OfferUnit, UnitStatus } from "@/lib/types";
 import { assertWritable } from "./preview";
@@ -56,9 +57,7 @@ export function offerPatch(p: Property, o: Offer): Record<string, unknown> {
   if (p.bedrooms != null) put("rooms", p.bedrooms);
   if (p.bathrooms != null) put("bathrooms", p.bathrooms);
   if (p.livingRooms != null) put("living_rooms", p.livingRooms);
-  put("map_url", p.link || "");
   put("video_url", p.videoLink || "");
-  put("brochure_url", p.pdfUrl || "");
   const feats = splitList(p.features);
   if (!same(o.features || [], feats)) { patch.features = feats; patch.features_en = []; }
 
@@ -143,6 +142,7 @@ export async function pushPropertyToOffers(propertyId: string) {
   for (const d of snap.docs) {
     const patch = offerPatch(p, d.data() as Offer);
     if (Object.keys(patch).length) await updateDoc(d.ref, { ...patch, updated_at: serverTimestamp() });
+    await saveOfferLinks(d.id, { map_url: p.link, brochure_url: p.pdfUrl });
   }
 }
 

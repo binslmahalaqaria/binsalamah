@@ -109,6 +109,12 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
             </div>
             <h1 className="font-heading text-3xl font-bold text-navy sm:text-4xl">{title}</h1>
             <p className="flex items-center gap-1.5 text-navy/60"><IconPin /> {district}{city ? (ar ? "، " : ", ") + city : ""}</p>
+            {offer.ad_license_no && (
+              <p className="text-xs text-navy/60">
+                {ar ? "رقم ترخيص الإعلان: " : "Advertising licence: "}<bdi dir="ltr">{offer.ad_license_no}</bdi>
+                {offer.ad_license_expiry && <>{ar ? " · ينتهي في " : " · expires "}<bdi dir="ltr">{offer.ad_license_expiry}</bdi></>}
+              </p>
+            )}
           </div>
 
           {/* One compact strip: key facts and project details together. */}

@@ -6,7 +6,7 @@ import { listPublishedOffers } from "@/lib/offers";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const pages = ["", "/offers", "/about", "/careers"];
+  const pages = ["", "/offers", "/about", "/careers", "/privacy", "/terms"];
   const now = new Date();
   const entry = (path: string, priority: number, lastModified = now): MetadataRoute.Sitemap[number] => ({
     url: `${SITE_URL}/ar${path}`,

@@ -71,6 +71,8 @@ export const offerFormSchema = z.object({
   warranties_text_en: z.string().trim().max(4000).nullable().optional(),
   features: z.array(z.string().trim().min(1)).optional().default([]),
   features_en: z.array(z.string().trim()).optional().default([]),
+  ad_license_no: z.string().trim().nullable().optional(),
+  ad_license_expiry: z.string().trim().nullable().optional(),
   map_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   brochure_url: z.string().trim().url().nullable().optional().or(z.literal("")),
   video_url: z.string().trim().url().nullable().optional().or(z.literal("")),

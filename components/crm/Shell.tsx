@@ -15,6 +15,7 @@ import { useCrm } from "@/lib/crm/store";
 import { can, isActive, members, myTasksOpen, nameOf } from "@/lib/crm/logic";
 import { addDays, today } from "@/lib/crm/util";
 import { TO_CONTACT } from "@/lib/crm/constants";
+import { migrateOfferLinks } from "@/lib/offers";
 import { assignPropRefs, assignRequestRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { TaskAlerts } from "./TaskAlerts";
 import { ChatAlerts } from "./ChatAlerts";
@@ -151,6 +152,14 @@ export function CrmShell({ children }: { children: ReactNode }) {
     cleaned.current = true;
     cleanOldCallDates(data).catch(() => { cleaned.current = false; });
   }, [loaded, data, previewAs]);
+
+  // Listings saved before 2026-11-06 still hold their location and project file on the public doc: move them.
+  const linksMoved = useRef(false);
+  useEffect(() => {
+    if (!loaded || previewAs || linksMoved.current || !data.isAdmin) return;
+    linksMoved.current = true;
+    migrateOfferLinks().catch(() => { linksMoved.current = false; });
+  }, [loaded, data.isAdmin, previewAs]);
 
   // Property numbers (#1, #2, …): any property still without one gets the next number.
   const numbering = useRef(false);
