@@ -8,8 +8,6 @@
 export const COMPANY = {
   nameAr: "بن سلمه العقارية",
   nameEn: "Bin Slmah Real Estate",
-  cr: "7041122982",
-  vat: "310815589200003",
   falNo: "", // to be supplied by the owner; the footer shows it once set
   email: "info@binslmahre.com",
   addressAr: "طريق عثمان بن عفان، حي النرجس، الرياض، المملكة العربية السعودية",
@@ -29,8 +27,8 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-const contactAr = `${COMPANY.nameAr}، سجل تجاري ${COMPANY.cr}، ${COMPANY.addressAr}. البريد: ${COMPANY.email}`;
-const contactEn = `${COMPANY.nameEn}, Commercial Registration ${COMPANY.cr}, ${COMPANY.addressEn}. Email: ${COMPANY.email}`;
+const contactAr = `${COMPANY.nameAr}، ${COMPANY.addressAr}. البريد: ${COMPANY.email}`;
+const contactEn = `${COMPANY.nameEn}, ${COMPANY.addressEn}. Email: ${COMPANY.email}`;
 
 export const PRIVACY: Record<"ar" | "en", LegalDoc> = {
   ar: {
@@ -58,21 +56,7 @@ export const PRIVACY: Record<"ar" | "en", LegalDoc> = {
         ],
         p: ["نعالج بياناتك بموافقتك، أو لتنفيذ اتفاق معك، أو لأن النظام يتطلب ذلك. لن نرسل لك رسائل تسويقية إلا بموافقتك، ويمكنك إيقافها في أي وقت."],
       },
-      {
-        h: "مع من نشاركها",
-        p: ["لا نبيع بياناتك. يطّلع عليها موظفونا المعنيون بخدمتك، ونستعين بمزودي خدمات يعالجونها نيابة عنا وبالقدر اللازم فقط:"],
-        li: [
-          "Google (Firebase): قاعدة البيانات مستضافة في مدينة الدمام بالمملكة، وتسجيل الدخول والملفات لدى Google.",
-          "Vercel: استضافة الموقع والنظام (خارج المملكة).",
-          "Railway: خادم ربط واتساب بالنظام (خارج المملكة).",
-          "Anthropic: المساعد الذكي الذي يستخدمه موظفونا داخل النظام (خارج المملكة).",
-          "WhatsApp: عند مراسلتك عبره.",
-          "Zoho: البريد الإلكتروني (مركز بيانات في المملكة).",
-          "الجهات الحكومية المختصة عند وجود إلزام نظامي، مثل هيئة الزكاة والضريبة والجمارك والهيئة العامة للعقار.",
-          "المالك أو المطور عند اللزوم لإتمام صفقتك.",
-        ],
-      },
-      { h: "نقل البيانات خارج المملكة", p: ["بما أن بعض مزودي الخدمة أعلاه يعملون خارج المملكة، قد تُنقل بعض بياناتك إليهم. نقتصر على الحد الأدنى اللازم، ونطبق الضمانات التي تتطلبها أنظمة المملكة."] },
+      { h: "نقل البيانات خارج المملكة", p: ["نستعين بمزودي خدمات تقنية يعمل بعضهم خارج المملكة، فقد تُنقل بعض بياناتك إليهم. نقتصر على الحد الأدنى اللازم، ونطبق الضمانات التي تتطلبها أنظمة المملكة."] },
       { h: "كيف نحميها ونحتفظ بها", p: ["نقيّد الوصول إلى البيانات بحسابات الموظفين المصرّح لهم، ونشفّر الاتصال بالموقع، ونحتفظ بنسخ احتياطية مؤمنة. نحتفظ ببياناتك طوال المدة اللازمة لتحقيق الغرض منها أو ما تتطلبه الأنظمة، ثم نتلفها أو نجعلها غير معرّفة. إذا وقع حادث يمس بياناتك نبلّغ الجهة المختصة ونبلغك وفق ما يقرره النظام."] },
       {
         h: "حقوقك",
@@ -115,21 +99,7 @@ export const PRIVACY: Record<"ar" | "en", LegalDoc> = {
         ],
         p: ["We process your data with your consent, to perform an agreement with you, or because the law requires it. We send marketing messages only with your consent, and you can stop them at any time."],
       },
-      {
-        h: "Who we share it with",
-        p: ["We do not sell your data. The staff serving you can access it, and service providers process it on our behalf, only as far as needed:"],
-        li: [
-          "Google (Firebase): the database is hosted in Dammam, Saudi Arabia; sign-in and files are with Google.",
-          "Vercel: website and system hosting (outside the Kingdom).",
-          "Railway: the server linking WhatsApp to our system (outside the Kingdom).",
-          "Anthropic: the AI assistant our staff use inside the system (outside the Kingdom).",
-          "WhatsApp: when you message us through it.",
-          "Zoho: email (data centre in the Kingdom).",
-          "Competent government authorities where the law requires, such as ZATCA and the Real Estate General Authority.",
-          "The owner or developer where needed to complete your deal.",
-        ],
-      },
-      { h: "Transfers outside the Kingdom", p: ["Because some of the providers above operate outside the Kingdom, some of your data may be transferred to them. We limit this to the minimum needed and apply the safeguards Saudi law requires."] },
+      { h: "Transfers outside the Kingdom", p: ["We use technical service providers, some of whom operate outside the Kingdom, so some of your data may be transferred to them. We limit this to the minimum needed and apply the safeguards Saudi law requires."] },
       { h: "How we protect and keep it", p: ["We restrict access to authorised staff accounts, encrypt connections to the website, and keep secure backups. We keep your data as long as needed for its purpose or as the law requires, then destroy or de-identify it. If an incident affects your data, we notify the competent authority and you as the law requires."] },
       {
         h: "Your rights",

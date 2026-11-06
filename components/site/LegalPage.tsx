@@ -26,15 +26,11 @@ export function LegalPage({ doc, ar }: { doc: LegalDoc; ar: boolean }) {
   );
 }
 
-/** Company registration details and legal links, shown in every footer. */
+/** Legal links (and the FAL licence once set), shown in every footer. */
 export function LegalFooter({ ar, className }: { ar: boolean; className?: string }) {
   return (
     <div className={"flex flex-col items-center gap-2 text-center text-xs " + (className || "")}>
-      <span>
-        {ar ? "سجل تجاري: " : "CR: "}<bdi dir="ltr">{COMPANY.cr}</bdi>
-        {" · "}{ar ? "الرقم الضريبي: " : "VAT: "}<bdi dir="ltr">{COMPANY.vat}</bdi>
-        {COMPANY.falNo && <>{" · "}{ar ? "رخصة فال: " : "FAL licence: "}<bdi dir="ltr">{COMPANY.falNo}</bdi></>}
-      </span>
+      {COMPANY.falNo && <span>{ar ? "رخصة فال: " : "FAL licence: "}<bdi dir="ltr">{COMPANY.falNo}</bdi></span>}
       <span className="flex gap-4">
         <Link href="/privacy" className="underline-offset-2 hover:underline">{ar ? "سياسة الخصوصية" : "Privacy Policy"}</Link>
         <Link href="/terms" className="underline-offset-2 hover:underline">{ar ? "شروط الاستخدام" : "Terms of Use"}</Link>

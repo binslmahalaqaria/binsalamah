@@ -91,5 +91,5 @@
 
 ## Legal baseline (2026-11-06)
 - [ ] `/privacy` and `/terms` open in both languages, also while the site shows «قريباً»
-- [ ] Footer shows CR, VAT, and legal links; FAL appears once `COMPANY.falNo` is set
+- [ ] Footer shows the legal links; FAL appears once `COMPANY.falNo` is set
 - [ ] With no login, `offers/files` in Storage can't be listed, and a shared download link still opens
