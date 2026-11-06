@@ -18,8 +18,10 @@ service firebase.storage {
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType == 'application/pdf';
     }
+    // This wildcard also matches offers/files/, and any rule that allows access wins,
+    // so project files must be excluded here for the rule above to mean anything.
     match /offers/{allPaths=**} {
-      allow read: if true;
+      allow read: if !allPaths.matches('files(/.*)?');
       allow delete: if isActiveStaff();
       allow create, update: if isActiveStaff()
         && request.resource.size < 10 * 1024 * 1024
