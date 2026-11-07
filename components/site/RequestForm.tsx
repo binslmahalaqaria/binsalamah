@@ -68,7 +68,8 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const mobile = saudiMobile(phone);
-    if (!type) return setErr(t("reqNeedType"));
+    // «أخرى» must be named, so the unit type always reaches the CRM (client 2026-11-07).
+    if (!type || (type === "other" && !otherType.trim())) return setErr(t("reqNeedType"));
     if (name.trim().length < 2) return setErr(t("reqNeedName"));
     if (!mobile) return setErr(t("reqNeedPhone"));
     // Location is required: in Riyadh at least an area (north, west, …) or a district; elsewhere the district name.

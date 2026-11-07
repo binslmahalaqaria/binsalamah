@@ -95,4 +95,4 @@
 - [ ] With no login, `offers/files` in Storage can't be listed, and a shared download link still opens
 
 ## Website request form (2026-11-07)
-- [ ] The form refuses an empty or unreadable budget and accepts free text such as «مليون ونص»
+- [ ] The form refuses a missing type (including an unnamed «أخرى»), a zone with no district, and an empty or unreadable budget, and accepts free text such as «مليون ونص»
