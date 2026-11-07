@@ -14,6 +14,7 @@ import { SentBadge } from "./SentBadge";
 import { SOLD_ST, TEMPS, lbl } from "@/lib/crm/constants";
 import { TaskRow } from "./TaskRow";
 import { ProposalRow, ViewingRow } from "./Journey";
+import { InterestRow } from "./Interests";
 
 export function ClientDrawer() {
   const { data, drawer, closeClient, openModal, toast } = useCrm();
@@ -174,6 +175,16 @@ export function ClientDrawer() {
                 لم يُسجَّل طلب العميل بعد.{" "}
                 <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "request", preset: { clientId: c.id, assignee: c.assignee || data.uid } })}>تسجيل طلبه</button>
               </Empty>
+            )}
+          </section>
+
+          <section className="crm-card grid gap-2 p-3.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[14.5px]">الاهتمامات</h3>
+              <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interest", clientId: c.id })}>+ اهتمام بعقار</button>
+            </div>
+            {(c.interests || []).length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-[var(--crm-line)]">{c.interests!.map((x) => <InterestRow key={x.id} c={c} x={x} showClient={false} />)}</div>
             )}
           </section>
 

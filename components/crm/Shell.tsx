@@ -26,6 +26,7 @@ import { ModalHost } from "./modals";
 import { Assistant } from "./Assistant";
 import { WaAlert } from "./WaAlert";
 import { WebLeadDispatcher } from "./WebLeadDispatcher";
+import { dueInterests } from "./Interests";
 
 interface NavItem {
   href: string;
@@ -37,7 +38,7 @@ interface NavItem {
 }
 
 /** Screens whose content follows the manager's "عرض بيانات" choice. */
-const VIEW_PAGES = ["/admin", "/admin/requests", "/admin/clients", "/admin/sales"];
+const VIEW_PAGES = ["/admin", "/admin/requests", "/admin/interests", "/admin/clients", "/admin/sales"];
 
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف مبيعات" };
 
@@ -90,6 +91,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: homeBadge }]],
     ["المبيعات", [
       { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/proposals", "/admin/viewings"] },
+      { href: "/admin/interests", k: "star", label: "الاهتمامات", badge: dueInterests(data, true).length },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
       ...(data.isMgr ? [{ href: "/admin/contact", k: "phone", label: "الأرقام", badge: toContact }] : []),
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),

@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { toggleTask, assignClient, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
+import { toggleTask, assignClient, closeInterest, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -45,13 +45,13 @@ function useForm<T extends F>(init: T) {
   return { f, set, setF };
 }
 
-function findDup(d: CrmData, phone: string, exceptId?: string | null) {
+export function findDup(d: CrmData, phone: string, exceptId?: string | null) {
   const n = normPhone(phone);
   if (!n) return null;
   return d.clients.find((c) => c.id !== exceptId && normPhone(c.phone) === n) || null;
 }
 
-function DupHint({ phone, exceptId }: { phone: string; exceptId?: string | null }) {
+export function DupHint({ phone, exceptId }: { phone: string; exceptId?: string | null }) {
   const { data, openClient, closeModal } = useCrm();
   const c = findDup(data, phone, exceptId);
   if (!c) return null;
@@ -121,6 +121,8 @@ export function ClientForm({ id }: { id?: string }) {
         body.unseen = body.assignee !== data.uid;
       }
       if ((body.visitAt || null) !== (rec?.visitAt || null)) body.visitConfirmed = false;
+      // Clearing the call date here is a choice too; setting one lifts it.
+      if ((body.nextCall || null) !== (rec?.nextCall || null)) body.noCall = !body.nextCall;
       if (rec) {
         await updateClient(rec, body as Record<string, unknown>);
         toast("تم الحفظ");
@@ -186,7 +188,7 @@ const withCurrent = (list: string[], cur: (string | null | undefined)[]) =>
 /* ====================================================================== */
 /* Request                                                                */
 /* ====================================================================== */
-export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string } }) {
+export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string; _interestId?: string } }) {
   const { data, closeModal, openModal, toast } = useCrm();
   const rec = id ? data.requests.find((r) => r.id === id) : undefined;
   const base: Partial<Request> = rec || preset || {};
@@ -302,6 +304,10 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       else {
         reqId = await write("requests", null, { ...body, createdAt: nowStamp() });
         if (moveClient && body.clientId && pick) await assignClient(data, body.clientId, pick, reqId);
+        // Made from an interest: it closes only now, so cancelling this form leaves it open.
+        const fromC = preset?._interestId ? clientById(data, body.clientId) : null;
+        const fromI = fromC?.interests?.find((x) => x.id === preset?._interestId);
+        if (fromC && fromI) await closeInterest(data, fromC, fromI, reqId, "");
       }
       toast(closeTo ? "تم الحفظ — يرجى استكمال بيانات " + (closeTo === "تم البيع" ? "البيع" : "العربون")
         : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : owner && !rec && pick === owner ? "تم الحفظ — الطلب عند " + nameOf(data, owner) + " مسؤول العميل" : "تم الحفظ");

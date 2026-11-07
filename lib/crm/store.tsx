@@ -27,7 +27,7 @@ import { setPreviewMode } from "./preview";
 
 export type Modal =
   | { kind: "client"; id?: string }
-  | { kind: "request"; id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string } }
+  | { kind: "request"; id?: string; preset?: Partial<Request> & { _clientName?: string; _newName?: string; _newPhone?: string; _interestId?: string } }
   | { kind: "property"; id?: string }
   | { kind: "task"; id?: string; preset?: Partial<Task> }
   | { kind: "update"; clientId: string; type?: string; propertyId?: string; reqId?: string }
@@ -38,6 +38,8 @@ export type Modal =
   | { kind: "propReqs"; propId: string }
   | { kind: "transfer"; reqId: string }
   | { kind: "offersSent"; reqId: string }
+  | { kind: "interest"; clientId?: string; propertyId?: string }
+  | { kind: "interestFollow"; clientId: string; id: string }
   | { kind: "viewResult"; viewingId: string }
   | { kind: "goal"; uid: string; month: string }
   | { kind: "hr"; uid: string }

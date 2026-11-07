@@ -73,6 +73,8 @@ export default function PropertiesPage() {
     }))) || toast("لا توجد بيانات للتصدير");
 
 
+  const interested = (id: string) => data.clients.reduce((n, c) => n + (c.interests || []).filter((x) => x.propertyId === id && ["متابعة", "ممتاز"].includes(x.status)).length, 0);
+
   return (
     <>
       <PropertyTabs />
@@ -174,6 +176,9 @@ export default function PropertiesPage() {
                       <div className="flex gap-1.5"><ContactIcons phone={p.contactPhone} text={"السلام عليكم، بخصوص " + p.title} /></div>
                     </div>
                   )}
+                  <button type="button" className="crm-btn sm justify-self-start" onClick={(e) => { e.stopPropagation(); openModal({ kind: "interest", propertyId: p.id }); }}>
+                    + عميل مهتم{interested(p.id) ? " (" + interested(p.id) + ")" : ""}
+                  </button>
                   {cm > 0 && (
                     <button type="button" className="crm-btn sm justify-self-start" onClick={(e) => { e.stopPropagation(); openModal({ kind: "propReqs", propId: p.id }); }}>
                       {cm} عميل يناسبه هذا العقار

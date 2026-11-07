@@ -6,6 +6,8 @@
 
 | Date | Phase | Item Tested | Result | Notes | Tester |
 |---|---|---|---|---|---|
+| 2026-11-07 | Home sections, interests, «بدون موعد» | Not run in the browser | `tsc` and lint clean and the pages return 200, but the browser pane is signed out and Chrome is not connected, so nothing was clicked through. Client asked to test locally | Claude |
+| 2026-11-07 | Opening page (panels, mark, «بن سلمه يدلك») | Pass | Local at 993 px: mark and phrase centred, panels move apart mid-animation, one continuous run not watched. Phone width not measured for this version | Claude |
 | 2026-11-07 | Opening page | Words, skip, once per session | Pass | Local, phone width, Arabic and English: tap skips, a reload in the same session and a first visit to /offers do not show it, bands fit the screen, hero back to the deployed design. The pane was hidden, so the full timed run and a clean screenshot were not captured; timing read from the CSS delays | Claude |
 | 2026-11-07 | Request form | Type, district, budget required | Pass | Local form refused: no type, unnamed «أخرى», no district, zone only, no budget. Each showed its message and no lead was sent | Claude |
 | 2026-11-07 | Request form | Budget required | Pass | Local form refused an empty budget and «كلام» with the budget message; no lead was sent. A valid budget was not submitted, to avoid a test lead in live data | Claude |

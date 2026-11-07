@@ -17,8 +17,25 @@ export interface LogEntry {
   call?: boolean;
 }
 
+/** A client asked about one specific property (client 2026-11-07). Open while status is «متابعة» or «ممتاز». */
+export interface Interest {
+  id: string;
+  propertyId: string | null;
+  /** Kept so the row still reads if the property is deleted. */
+  propertyTitle: string;
+  unit?: string | null;
+  note?: string | null;
+  followUp: string | null;
+  status: string;
+  requestId?: string | null;
+  by: string | null;
+  at: string;
+  history?: { at: string; by: string | null; result: string; note?: string | null }[];
+}
+
 export interface Client {
   id: string;
+  interests?: Interest[];
   /** What was sent to this client per property from the CRM's «إرسال للعميل»: msg = property message, drive = photos link, pdf = project file (ISO time each). */
   sentProps?: Record<string, { msg?: string; drive?: string; pdf?: string }> | null;
   /** When the fourth-attempt WhatsApp message was sent; 48 h without a reply → «لا يوجد رد». */
@@ -35,6 +52,8 @@ export interface Client {
   temp: string | null;
   status: string | null;
   nextCall: string | null;
+  /** The employee chose «بدون موعد» on purpose: nothing sets a call date by itself until someone sets one. */
+  noCall?: boolean;
   visitAt: string | null;
   visitProperty?: string | null;
   visitConfirmed?: boolean;

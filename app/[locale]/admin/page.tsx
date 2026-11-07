@@ -25,22 +25,37 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
+import { InterestRow, dueInterests } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
 
-function Section({ n, title, count, hint, children, open: open0 = true }: { n: number; title: string; count: number; hint?: string; children: ReactNode; open?: boolean }) {
-  const [open, setOpen] = useState(open0);
+/**
+ * One section of the home page. Closed by default so a long day stays short (client 2026-11-07): the title and count
+ * show, and the button under them opens the details. Each person's choice is remembered on their device.
+ */
+function Section({ n, title, count, hint, children }: { n: number; title: string; count: number; hint?: string; children: ReactNode }) {
+  const key = "crmHomeOpen:" + n;
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(key) === "1"; } catch { return false; } });
+  const toggle = () => {
+    setOpen(!open);
+    try { localStorage.setItem(key, open ? "0" : "1"); } catch { /* private mode */ }
+  };
   return (
-    <section className="crm-card mb-3 overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-4 py-3 text-start" aria-expanded={open}>
+    <section className={"crm-card mb-3 overflow-hidden " + (count ? "" : "opacity-60")}>
+      <div className="flex items-center gap-3 px-4 py-3">
         <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--crm-ink)] text-[13px] font-bold text-white">{n}</span>
         <b className="font-heading text-[15.5px]">{title}</b>
         <span className="num rounded-full bg-[var(--crm-surface-2)] px-2.5 text-[13px] font-semibold">{count}</span>
-        {hint && <span className="hidden text-[12.5px] text-[var(--crm-ink-3)] md:inline">{hint}</span>}
-        <span className="ms-auto text-xs text-[var(--crm-ink-3)]">{open ? "▴" : "▾"}</span>
-      </button>
-      {open && <div className="border-t border-[var(--crm-line)]">{count ? children : <Empty>لا يوجد شيء هنا الآن.</Empty>}</div>}
+        {hint && count > 0 && <span className="hidden text-[12.5px] text-[var(--crm-ink-3)] md:inline">{hint}</span>}
+      </div>
+      {count > 0 && (
+        <button type="button" onClick={toggle} aria-expanded={open}
+          className="w-full border-t border-[var(--crm-line)] bg-[var(--crm-surface-2)] px-4 py-2 text-[13px] font-semibold text-[var(--crm-ink-2)]">
+          {open ? "إخفاء التفاصيل ▴" : "عرض التفاصيل ▾"}
+        </button>
+      )}
+      {open && count > 0 && <div className="border-t border-[var(--crm-line)]">{children}</div>}
     </section>
   );
 }
@@ -73,7 +88,7 @@ export default function HomeDashboard() {
   const tomorrow = addDays(1);
   // 1) New customers to call: no open request yet — call due today/overdue, or a new number not tried today.
   const newCalls = mine.filter((c) =>
-    !open(c).length && ((isActive(c) && due(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
+    !open(c).length && ((isActive(c) && due(c) && !calledToday(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
   // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
   const negSt = ["تفاوض", "عربون"];
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
@@ -83,7 +98,7 @@ export default function HomeDashboard() {
   // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
   const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || ""));
   const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
-  const follow = base.filter((c) => !needsOptions(c) && due(c)).sort(byPrio);
+  const follow = base.filter((c) => !needsOptions(c) && due(c) && !calledToday(c)).sort(byPrio);
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
@@ -91,9 +106,9 @@ export default function HomeDashboard() {
   const clientById = new Map(mine.map((c) => [c.id, c]));
   const props = data.proposals.filter((p) => {
     const c = clientById.get(p.clientId);
-    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
+    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !calledToday(c) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
   }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
-  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
+  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !calledToday(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
     .sort((a, b) => byPrio(a.c, b.c));
   // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
   const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
@@ -112,6 +127,8 @@ export default function HomeDashboard() {
     .sort((a, b) => Number(!!b.due && b.due < t) - Number(!!a.due && a.due < t) || prioRank(a) - prioRank(b) || String(a.due || "").localeCompare(String(b.due || "")));
   const privDue = mineOnly ? priv.filter((x) => !x.done && x.due && x.due <= t).sort((a, b) => ((a.due || "") + (a.time || "")).localeCompare((b.due || "") + (b.time || ""))) : [];
   const overdueTasks = tasks.filter((x) => x.due && x.due < t).length + privDue.filter((x) => x.due && x.due < t).length;
+
+  const interests = dueInterests(data, true);
 
   /* ---- attendance (checks the office location first when that rule is on) ---- */
   async function doCheck(kind: "in" | "out") {
@@ -315,12 +332,16 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={5} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">
+      <Section n={5} title="متابعة الاهتمامات" count={interests.length} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
+        {interests.map(({ c, x }) => <InterestRow key={c.id + x.id} c={c} x={x} />)}
+      </Section>
+
+      <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={6} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
+      <Section n={7} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
@@ -340,11 +361,11 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={7} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
+      <Section n={8} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={8} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
+      <Section n={9} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
         {privDue.map((x) => (
           <div key={x.id} className="flex items-start gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 last:border-0">

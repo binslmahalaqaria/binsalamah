@@ -15,7 +15,7 @@ import { isCall, CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, T
 import {
   answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
-import type { AttendanceDay, Client, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
+import type { AttendanceDay, Client, Interest, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
 import { pushPropertyToOffers } from "./web-sync";
 import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
@@ -123,7 +123,7 @@ export async function advanceReq(d: CrmData, clientId: string, to: string, reqId
 }
 
 /** Logs what happened with a client and sets their next call. Doesn't touch requests. */
-export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean } = {}) {
+export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; noCall?: boolean } = {}) {
   const c = clientById(d, id);
   if (!c) return false;
   const u = UPD.find((x) => x.k === type);
@@ -136,9 +136,13 @@ export async function applyUpdate0(d: CrmData, id: string, type: string, next: s
     updatedAt: nowStamp(),
     unseen: false,
   };
+  if (opts.noCall) patch.noCall = true;
+  else if (next) patch.noCall = false;
   if (u?.status) patch.status = u.status;
   // A «لا يوجد رد» client who answers later is active again, with everything kept.
   else if (c.status === NO_RESP && entry.call && !MISSED.includes(type)) { patch.status = "نشط"; patch.waSentAt = null; }
+  // A new number who answered is a working client: they leave «الأرقام» and the new-calls list.
+  else if (c.status === TO_CONTACT && entry.call && !MISSED.includes(type)) patch.status = "نشط";
   if (type === "زار العقار" || u?.status) {
     patch.visitAt = null;
     patch.visitConfirmed = false;
@@ -185,6 +189,47 @@ export async function runNoResponse(d: CrmData, done: Set<string>) {
   }
 }
 
+/* ---------- interests: a client asked about a specific property (client 2026-11-07) ---------- */
+export type InterestResult = "ممتاز" | "يفكر" | "لم يرد" | "غير مهتم";
+const newId = () => Math.random().toString(36).slice(2, 10);
+const historyOf = (x: Interest, d: CrmData, result: string, note: string) =>
+  [...(x.history || []), { at: nowStamp(), by: d.uid || null, result, note: note || null }].slice(-10);
+
+/** Records the interest, or moves the date on an open one for the same property. Asking is not a call we made, so it never counts as one. */
+export async function addInterest(d: CrmData, c: Client, v: { propertyId: string; unit: string | null; note: string | null; followUp: string }) {
+  const p = propById(d, v.propertyId);
+  const title = p?.title || "عقار";
+  const cur = c.interests || [];
+  const same = cur.find((x) => x.propertyId === v.propertyId && ["متابعة", "ممتاز"].includes(x.status));
+  const interests = same
+    ? cur.map((x) => (x === same ? { ...x, unit: v.unit || x.unit || null, note: v.note || x.note || null, followUp: v.followUp } : x))
+    : [{ id: newId(), propertyId: v.propertyId, propertyTitle: title, unit: v.unit, note: v.note, followUp: v.followUp, status: "متابعة", by: d.uid || null, at: nowStamp() }, ...cur];
+  const asleep = [TO_CONTACT, NO_RESP, "غير مهتم"].includes(c.status || "");
+  await write("clients", c.id, {
+    interests, interestIn: c.interestIn || v.propertyId, unseen: false, updatedAt: nowStamp(), ...(asleep ? { status: "نشط" } : {}),
+    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + title + (v.note ? " — " + v.note : ""), propertyId: v.propertyId, call: false }),
+  }, "update");
+}
+
+/** Logs the follow-up. Excellent keeps it open and makes the client hot; not interested closes this interest only, not the client. */
+export async function followInterest(d: CrmData, c: Client, x: Interest, result: InterestResult, next: string | null, note: string) {
+  const status = result === "ممتاز" ? "ممتاز" : result === "غير مهتم" ? "غير مهتم" : x.status;
+  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, status, followUp: next, history: historyOf(x, d, result, note) } : i));
+  await write("clients", c.id, { interests, ...(result === "ممتاز" ? { temp: "ساخن" } : {}), updatedAt: nowStamp() }, "update");
+  // The client's own next call is left as it was: the interest has its own date.
+  await applyUpdate0(d, c.id, result === "لم يرد" ? "ما رد" : "اتصلت عليه", c.nextCall, "اهتمام " + x.propertyTitle + ": " + result + (note ? " — " + note : ""), x.propertyId);
+}
+
+/** The interest became a request. */
+export async function closeInterest(d: CrmData, c: Client, x: Interest, requestId: string, note: string) {
+  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, status: "حُوّل لطلب", followUp: null, requestId, history: historyOf(x, d, "حُوّل لطلب", note) } : i));
+  await write("clients", c.id, { interests, updatedAt: nowStamp() }, "update");
+}
+
+export async function removeInterest(c: Client, x: Interest) {
+  await write("clients", c.id, { interests: (c.interests || []).filter((i) => i.id !== x.id), updatedAt: nowStamp() }, "update");
+}
+
 /** Brings a «لا يوجد رد» client back to the active list, calling today. */
 export async function reactivateClient(d: CrmData, clientId: string) {
   const c = clientById(d, clientId);
@@ -195,7 +240,7 @@ export async function reactivateClient(d: CrmData, clientId: string) {
   }, "update");
 }
 
-export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; reqId?: string } = {}) {
+export async function applyUpdate(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; noCall?: boolean; reqId?: string } = {}) {
   const ok = await applyUpdate0(d, id, type, next, text, propertyId, opts);
   // The first real update on a website request clears «بانتظار تحديث الموظف» (who and when are kept).
   if (ok) {
@@ -214,7 +259,7 @@ export async function postpone(d: CrmData, id: string) {
   await write(
     "clients",
     id,
-    { nextCall: next, log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأجيل", text: "تأجيل الاتصال 3 أيام" }), updatedAt: nowStamp() },
+    { nextCall: next, noCall: false, log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأجيل", text: "تأجيل الاتصال 3 أيام" }), updatedAt: nowStamp() },
     "update"
   );
   return next;
@@ -260,7 +305,7 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
       }),
       lastUpdate: clear ? c.lastUpdate || null : "حدد موعد زيارة",
       lastUpdateAt: nowStamp(),
-      nextCall: day && diff > 0 ? addDays(diff - 1) : c.nextCall || null,
+      nextCall: day && diff > 0 && !c.noCall ? addDays(diff - 1) : c.nextCall || null,
       updatedAt: nowStamp(),
     },
     "update"
@@ -370,7 +415,7 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return;
   // A property sent from the matching screen / WhatsApp is not a call.
-  if (r.clientId) await applyUpdate(d, r.clientId, "تم إرسال التفاصيل", addDays(3), "", pid, { call: false });
+  if (r.clientId) await applyUpdate(d, r.clientId, "تم إرسال التفاصيل", clientById(d, r.clientId)?.noCall ? null : addDays(3), "", pid, { call: false });
   const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
   const sent = [...new Set((r.sent || []).concat(pid))];
   await recordProposal(d, r, pid);

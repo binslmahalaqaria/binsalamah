@@ -99,7 +99,17 @@
 
 ## Opening page (2026-11-07)
 
-- [ ] A new session on the home page opens with the question, then «بن سلمه يدلك», then the site. Arabic and English, phone and desktop.
+- [ ] A new session on the home page opens with the mark and «بن سلمه يدلك», then the panels part onto the site. Arabic and English, phone and desktop.
 - [ ] A tap skips it. Reloading in the same session doesn't show it again.
 - [ ] A first visit straight to an offer page doesn't show it.
 - [ ] With reduced motion, only the answer shows, briefly.
+
+## Home sections and interests (2026-11-07)
+
+- [ ] Home sections open closed; «عرض التفاصيل» opens and «إخفاء التفاصيل» closes each; the choice survives a reload; empty sections have no button.
+- [ ] Record an interest for a new client and for an existing one, from the page, a property card, and the client file.
+- [ ] When due it appears on the home page and in the sidebar badge. Each result behaves as in the CLAUDE.md log entry.
+- [ ] «حوّله طلب» then cancel leaves the interest open; saving closes it. A client with an open request is linked to it.
+- [ ] Transferring a client moves their interests.
+- [ ] «بدون موعد» chosen on a client stays empty after choosing the result, sending a property, and booking a viewing. Setting a date lifts it.
+- [ ] A number in «للتواصل» who answers becomes نشط and leaves «الأرقام»; one who doesn't answer stays. A client called today leaves the home sections until their next date.

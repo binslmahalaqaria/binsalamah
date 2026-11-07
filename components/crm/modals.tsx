@@ -19,6 +19,7 @@ import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
 import { SendZipToClient } from "./SendZipToClient";
 import { SentMarks } from "./SentBadge";
+import { InterestFollow, InterestForm } from "./Interests";
 
 export function ModalHost() {
   const { modal } = useCrm();
@@ -37,6 +38,8 @@ export function ModalHost() {
     case "propReqs": return <PropReqsModal propId={modal.propId} />;
     case "offersSent": return <OffersSentModal reqId={modal.reqId} />;
     case "transfer": return <TransferModal reqId={modal.reqId} />;
+    case "interest": return <InterestForm key={(modal.clientId || "") + (modal.propertyId || "")} clientId={modal.clientId} propertyId={modal.propertyId} />;
+    case "interestFollow": return <InterestFollow key={modal.id} clientId={modal.clientId} id={modal.id} />;
     case "goal": return <GoalModal key={modal.uid + modal.month} uid={modal.uid} month={modal.month} />;
     case "hr": return <HrModal uid={modal.uid} />;
     case "attEdit": return <AttEditModal uid={modal.uid} date={modal.date} />;
@@ -55,6 +58,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const hasReq = !!c && data.requests.some((r) => r.clientId === c.id && !["تم البيع", "ملغي"].includes(r.status || "جديد"));
   const defNext = (k: string) => (hasReq && !CALL_AFTER.includes(k) ? "none" : String(UPD.find((u) => u.k === k)?.n ?? (hasReq ? "none" : 3)));
   const [next, setNext] = useState(t0 ? defNext(t0) : hasReq ? "none" : "3");
+  // Once the employee picks a date option it stays; changing the result no longer resets it.
+  const [picked, setPicked] = useState(false);
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [prop, setProp] = useState(p0 || c?.interestIn || "");
@@ -73,7 +78,11 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       if (!date) return toast("اختر التاريخ");
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
-    await applyUpdate(data, clientId, type, nx, note.trim(), prop || null, { reqId });
+    try {
+      await applyUpdate(data, clientId, type, nx, note.trim(), prop || null, { reqId, noCall: picked && next === "none" });
+    } catch {
+      return toast("تعذّر حفظ التحديث، حاول مرة ثانية");
+    }
     // Location/details sent → the next step is the visit: open the booking straight away (client 2026-10-25).
     const openR = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.find((x) => x.clientId === clientId && OPEN_REQ(x));
     if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
@@ -87,13 +96,13 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={save}>حفظ التحديث</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
-      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); setNext(defNext(v)); }} />
+      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في زيارتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
       <div className="crm-sec mb-2">الاتصال القادم</div>
-      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
+      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={(v) => { setNext(v); setPicked(true); }} />
       {next === "date" && <input type="date" className="mt-2" min={today()} value={date} onChange={(e) => setDate(e.target.value)} />}
       {u?.status && !DEAL_UPD[type] && <p className="crm-hint mt-2">ستتغير حالة العميل إلى: {u.status}</p>}
       {DEAL_UPD[type] && <p className="crm-hint mt-2">عند الحفظ يُفتح نموذج {type === "دفع عربون" ? "العربون" : "البيع"} لتسجيل المبلغ والعقار والوحدة.</p>}
