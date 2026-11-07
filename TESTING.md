@@ -120,3 +120,4 @@
 - [ ] The receiver sees the card, and it opens the client file on that request.
 - [ ] A client whose request is «جديد» or «جاري البحث» gets no call date from the update form, client form, or postpone. Sending a property sets one, and returning the request to search clears it.
 - [ ] One interest form saves several properties and an unlisted one with details; the unlisted one shows «غير مضاف» and turns into a request with its details. «بدون موعد» in the client file clears the date.
+- [ ] A client with several interests shows as one row on الاهتمامات and the home page, and «عرض الاهتمامات» lists them with their follow-up buttons.

@@ -25,7 +25,7 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
-import { InterestRow, dueInterests } from "@/components/crm/Interests";
+import { InterestList, dueInterests } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -333,7 +333,7 @@ export default function HomeDashboard() {
       </Section>
 
       <Section n={5} title="متابعة الاهتمامات" count={interests.length} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
-        {interests.map(({ c, x }) => <InterestRow key={c.id + x.id} c={c} x={x} />)}
+        <InterestList items={interests} />
       </Section>
 
       <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">

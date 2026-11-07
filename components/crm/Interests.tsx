@@ -61,6 +61,54 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
   );
 }
 
+/** Lists interests with one row per client: someone with several opens them from their row instead of filling the list. */
+export function InterestList({ items }: { items: InterestItem[] }) {
+  const { data, openClient, openModal } = useCrm();
+  const t = today(), team = data.isMgr && !data.viewAs;
+  const groups = new Map<string, InterestItem[]>();
+  for (const it of items) groups.set(it.c.id, [...(groups.get(it.c.id) || []), it]);
+  return (
+    <>
+      {[...groups.values()].map((g) => {
+        if (g.length === 1) return <InterestRow key={g[0].c.id + g[0].x.id} c={g[0].c} x={g[0].x} />;
+        const c = g[0].c;
+        const next = g.map(({ x }) => x.followUp).filter((d): d is string => !!d).sort()[0];
+        return (
+          <div key={c.id} className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (next && next < t ? "late" : "")}>
+            <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
+              <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone="warm">{g.length} عقارات</Pill></div>
+              <div className="text-xs text-[var(--crm-ink-3)]">
+                {next && <>المتابعة: <span className={next < t ? "font-semibold text-[var(--crm-danger)]" : next === t ? "font-semibold" : ""}>{relDay(next)}</span></>}
+                {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ContactIcons phone={c.phone} />
+              <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "interestClient", clientId: c.id })}>عرض الاهتمامات</button>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** Everything one client is interested in. */
+export function ClientInterests({ clientId }: { clientId: string }) {
+  const { data, closeModal, openModal } = useCrm();
+  const c = clientById(data, clientId);
+  if (!c) return null;
+  const list = [...(c.interests || [])].sort((a, b) => Number(isOpenInterest(b)) - Number(isOpenInterest(a)) || String(a.followUp).localeCompare(String(b.followUp)));
+  return (
+    <ModalFrame title={"اهتمامات: " + c.name} onClose={closeModal} width={560}
+      footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "interest", clientId: c.id })}>+ اهتمام بعقار</button><button type="button" className="crm-btn" onClick={closeModal}>إغلاق</button></div>}>
+      <div className="overflow-hidden rounded-xl border border-[var(--crm-line)]">
+        {list.map((x) => <InterestRow key={x.id} c={c} x={x} showClient={false} />)}
+      </div>
+    </ModalFrame>
+  );
+}
+
 /** Record that a client asked about a property: an existing client, or a new name and number. */
 export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: string; propertyId?: string }) {
   const { data, closeModal, toast } = useCrm();

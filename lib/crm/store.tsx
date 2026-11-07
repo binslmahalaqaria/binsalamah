@@ -40,6 +40,7 @@ export type Modal =
   | { kind: "offersSent"; reqId: string }
   | { kind: "interest"; clientId?: string; propertyId?: string }
   | { kind: "interestFollow"; clientId: string; id: string }
+  | { kind: "interestClient"; clientId: string }
   | { kind: "viewResult"; viewingId: string }
   | { kind: "goal"; uid: string; month: string }
   | { kind: "hr"; uid: string }

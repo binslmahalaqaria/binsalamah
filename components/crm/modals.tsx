@@ -19,7 +19,7 @@ import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
 import { SendZipToClient } from "./SendZipToClient";
 import { SentMarks } from "./SentBadge";
-import { InterestFollow, InterestForm } from "./Interests";
+import { ClientInterests, InterestFollow, InterestForm } from "./Interests";
 
 export function ModalHost() {
   const { modal } = useCrm();
@@ -40,6 +40,7 @@ export function ModalHost() {
     case "transfer": return <TransferModal reqId={modal.reqId} />;
     case "interest": return <InterestForm key={(modal.clientId || "") + (modal.propertyId || "")} clientId={modal.clientId} propertyId={modal.propertyId} />;
     case "interestFollow": return <InterestFollow key={modal.id} clientId={modal.clientId} id={modal.id} />;
+    case "interestClient": return <ClientInterests clientId={modal.clientId} />;
     case "goal": return <GoalModal key={modal.uid + modal.month} uid={modal.uid} month={modal.month} />;
     case "hr": return <HrModal uid={modal.uid} />;
     case "attEdit": return <AttEditModal uid={modal.uid} date={modal.date} />;

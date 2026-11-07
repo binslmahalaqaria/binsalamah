@@ -6,7 +6,7 @@ import { useCrm } from "@/lib/crm/store";
 import { propById } from "@/lib/crm/logic";
 import { today } from "@/lib/crm/util";
 import { Empty, PageHeader, RadioChips, Select } from "@/components/crm/ui";
-import { InterestRow, interestItems, isOpenInterest } from "@/components/crm/Interests";
+import { InterestList, interestItems, isOpenInterest } from "@/components/crm/Interests";
 
 const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["closed", "المنتهية"]];
 
@@ -43,7 +43,7 @@ export default function InterestsPage() {
         <Select value={pid} onChange={setPid} blank="كل العقارات" options={props} ariaLabel="العقار" />
       </div>
       <div className="crm-card overflow-hidden">
-        {list.length ? list.map(({ c, x }) => <InterestRow key={c.id + x.id} c={c} x={x} />) : <Empty>لا يوجد شيء هنا الآن.</Empty>}
+        {list.length ? <InterestList items={list} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
       </div>
     </>
   );
