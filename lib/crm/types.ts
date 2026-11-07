@@ -221,6 +221,8 @@ export interface DirectMsg {
   text: string;
   at: string;
   clientId: string | null;
+  /** The request attached to the message, if any. */
+  reqId?: string | null;
   read: boolean;
 }
 
@@ -230,6 +232,7 @@ export interface ChatMsg {
   by: string;
   at: string;
   clientId: string | null;
+  reqId?: string | null;
 }
 
 export interface Goal {

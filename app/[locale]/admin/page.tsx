@@ -94,7 +94,7 @@ export default function HomeDashboard() {
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
   // New requests have no call date (client 2026-10-24): they show here until options are sent; the follow-up
   // call is set when options go out.
-  const needsOptions = (c: Client) => !c.nextCall && ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد");
+  const needsOptions = (c: Client) => ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد");
   // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
   const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || ""));
   const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));

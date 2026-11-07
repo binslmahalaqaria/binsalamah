@@ -10,20 +10,21 @@ import { useEffect, useRef, useState } from "react";
 import { clock, fmtStamp } from "@/lib/crm/util";
 import { isOnline } from "@/lib/crm/presence";
 import { useCrm } from "@/lib/crm/store";
-import { clientById, isMgrId, members, nameOf, visibleClients } from "@/lib/crm/logic";
+import { clientById, isMgrId, members, nameOf, wantLine } from "@/lib/crm/logic";
 import { markDmRead, sendChat, sendDm, write } from "@/lib/crm/actions";
 import { isPreview } from "@/lib/crm/preview";
 import { addDays, iso, today } from "@/lib/crm/util";
 import { Empty, PageHeader, Pill } from "@/components/crm/ui";
+import { ChatAttach, reqLabel, type Attached } from "@/components/crm/ChatAttach";
 
 const CHANNEL = "";
-interface Msg { id: string; by: string; text: string; at: string; clientId: string | null; read?: boolean }
+interface Msg { id: string; by: string; text: string; at: string; clientId: string | null; reqId?: string | null; read?: boolean }
 
 export default function ChatPage() {
   const { data, chat, dms, dmBlocked, openClient, toast, previewAs } = useCrm();
   const [peer, setPeer] = useState<string>(CHANNEL);
   const [text, setText] = useState("");
-  const [cid, setCid] = useState("");
+  const [att, setAtt] = useState<Attached | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const myName = nameOf(data, data.uid);
@@ -50,14 +51,17 @@ export default function ChatPage() {
   }, [chat, dms, peer, data.staff, me]);
 
   async function send() {
-    const t = text.trim();
+    // A request or client can go alone, with a short line as the message text.
+    const attC = att ? clientById(data, att.clientId) : null;
+    const attR = att?.reqId ? data.requests.find((r) => r.id === att.reqId) : null;
+    const t = text.trim() || (attC ? (attR ? reqLabel(attR) + " — " : "العميل: ") + attC.name : "");
     if (!t) return;
     setText("");
     atBottom.current = true;
     try {
-      if (peer === CHANNEL) await sendChat(data, t, cid || null);
-      else await sendDm(data, peer, t, cid || null);
-      setCid("");
+      if (peer === CHANNEL) await sendChat(data, t, att?.clientId || null, att?.reqId || null);
+      else await sendDm(data, peer, t, att?.clientId || null, att?.reqId || null);
+      setAtt(null);
     } catch {
       setText(t);
       toast(peer !== CHANNEL && dmBlocked ? "الرسائل الخاصة تحتاج نشر قواعد الأمان الجديدة في Firebase" : "لم تُرسل الرسالة، يرجى المحاولة مجدداً");
@@ -115,6 +119,7 @@ export default function ChatPage() {
               const ment = peer === CHANNEL && !mine && myName && myName !== "أنا" && m.text.includes("@" + myName);
               const tm = new Date(m.at);
               const c = clientById(data, m.clientId);
+              const r = m.reqId ? data.requests.find((x) => x.id === m.reqId) : null;
               return [
                 sep,
                 <div key={m.id} className={"flex max-w-[92%] items-end gap-2 md:max-w-[80%] " + (mine ? "self-end flex-row-reverse" : "")}>
@@ -122,7 +127,13 @@ export default function ChatPage() {
                   <div className={"min-w-20 rounded-xl px-3 py-1.5 " + (mine ? "bg-[var(--crm-gold-soft)]" : "bg-[var(--crm-surface-2)]") + (ment ? " outline-2 outline-[var(--crm-gold)]" : "")}>
                     {!mine && peer === CHANNEL && <div className="mb-0.5 text-[12.5px] font-semibold text-[var(--crm-gold-ink)]">{nameOf(data, m.by)} {isMgrId(data, m.by) && <Pill tone="gold">مدير</Pill>}</div>}
                     <div className="break-words whitespace-pre-wrap">{m.text}</div>
-                    {c && <button type="button" className="crm-btn ghost sm !px-0" onClick={() => openClient(c.id)}>العميل: {c.name}</button>}
+                    {c && (
+                      <button type="button" className="mt-1 grid w-full rounded-lg border border-[var(--crm-line)] bg-white px-2.5 py-1.5 text-start" onClick={() => openClient(c.id, r?.id)}>
+                        <b className="text-[13.5px]">{r ? reqLabel(r) + " · " : "العميل: "}{c.name}</b>
+                        {c.phone && <span className="num text-[12.5px] text-[var(--crm-ink-2)]">{c.phone}</span>}
+                        {r && <span className="text-[12.5px] text-[var(--crm-ink-3)]">{wantLine(data, c)}</span>}
+                      </button>
+                    )}
                     <div className="num mt-0.5 text-end text-[11px] text-[var(--crm-ink-3)]">
                       {clock(tm)}
                       {mine && peer !== CHANNEL && <span className={m.read ? "text-[#53bdeb]" : ""}> {m.read ? "✓✓ قُرئت" : "✓"}</span>}
@@ -133,13 +144,10 @@ export default function ChatPage() {
             })}
           </div>
           <div className="flex flex-wrap gap-2 border-t border-[var(--crm-line)] px-3 py-2.5">
+            <ChatAttach value={att} onChange={setAtt} />
             <textarea rows={2} className="min-w-[240px] flex-1 resize-none" value={text}
               placeholder={(peer === CHANNEL ? "اكتب رسالة للفريق" : "رسالة خاصة إلى " + title) + "… (Enter للإرسال، Shift+Enter لسطر جديد)"}
               onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
-            <select className="max-w-[160px]" aria-label="اربط عميل" value={cid} onChange={(e) => setCid(e.target.value)}>
-              <option value="">بدون عميل</option>
-              {visibleClients(data).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
             <button type="button" className="crm-btn primary" onClick={send}>إرسال</button>
           </div>
           {peer === CHANNEL && <div className="crm-hint px-3 pb-2.5">يمكنك الإشارة إلى زميلك بكتابة @ متبوعة باسمه. تظهر الرسائل لجميع أعضاء الفريق.</div>}

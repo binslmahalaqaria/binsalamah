@@ -13,7 +13,7 @@ import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
 import { isCall, CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
 import {
-  answeredSince, clientById, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
+  answeredSince, clientById, inSearch, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
 import type { AttendanceDay, Client, Interest, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
 import { pushPropertyToOffers } from "./web-sync";
@@ -126,6 +126,8 @@ export async function advanceReq(d: CrmData, clientId: string, to: string, reqId
 export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; noCall?: boolean } = {}) {
   const c = clientById(d, id);
   if (!c) return false;
+  // A call date only follows something sent: a request still being searched for has none.
+  if (next && inSearch(d, c) && !CALL_AFTER.includes(type)) next = null;
   const u = UPD.find((x) => x.k === type);
   const entry: LogEntry = { at: nowStamp(), byId: d.uid || null, type, text: text || "", propertyId: propertyId || null, call: opts.call ?? CALL_T.includes(type) };
   const patch: Partial<Client> = {
@@ -195,19 +197,23 @@ const newId = () => Math.random().toString(36).slice(2, 10);
 const historyOf = (x: Interest, d: CrmData, result: string, note: string) =>
   [...(x.history || []), { at: nowStamp(), by: d.uid || null, result, note: note || null }].slice(-10);
 
-/** Records the interest, or moves the date on an open one for the same property. Asking is not a call we made, so it never counts as one. */
-export async function addInterest(d: CrmData, c: Client, v: { propertyId: string; unit: string | null; note: string | null; followUp: string }) {
-  const p = propById(d, v.propertyId);
-  const title = p?.title || "عقار";
-  const cur = c.interests || [];
-  const same = cur.find((x) => x.propertyId === v.propertyId && ["متابعة", "ممتاز"].includes(x.status));
-  const interests = same
-    ? cur.map((x) => (x === same ? { ...x, unit: v.unit || x.unit || null, note: v.note || x.note || null, followUp: v.followUp } : x))
-    : [{ id: newId(), propertyId: v.propertyId, propertyTitle: title, unit: v.unit, note: v.note, followUp: v.followUp, status: "متابعة", by: d.uid || null, at: nowStamp() }, ...cur];
+/** One property the client asked about; `propertyId` is null when it isn't in the system yet. */
+export interface InterestItem { propertyId: string | null; title: string; unit: string | null; note: string | null }
+
+/** Records the interests in one write, or moves the date on an open one for the same property. Asking is not a call we made, so it never counts as one. */
+export async function addInterests(d: CrmData, c: Client, items: InterestItem[], followUp: string) {
+  const open = ["متابعة", "ممتاز"];
+  let interests: Interest[] = [...(c.interests || [])];
+  for (const v of items) {
+    const same = interests.find((x) => open.includes(x.status) && (v.propertyId ? x.propertyId === v.propertyId : !x.propertyId && x.propertyTitle === v.title));
+    interests = same
+      ? interests.map((x) => (x === same ? { ...x, unit: v.unit || x.unit || null, note: v.note || x.note || null, followUp } : x))
+      : [{ id: newId(), propertyId: v.propertyId, propertyTitle: v.title, unit: v.unit, note: v.note, followUp, status: "متابعة", by: d.uid || null, at: nowStamp() }, ...interests];
+  }
   const asleep = [TO_CONTACT, NO_RESP, "غير مهتم"].includes(c.status || "");
   await write("clients", c.id, {
-    interests, interestIn: c.interestIn || v.propertyId, unseen: false, updatedAt: nowStamp(), ...(asleep ? { status: "نشط" } : {}),
-    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + title + (v.note ? " — " + v.note : ""), propertyId: v.propertyId, call: false }),
+    interests, interestIn: c.interestIn || items.find((x) => x.propertyId)?.propertyId || null, unseen: false, updatedAt: nowStamp(), ...(asleep ? { status: "نشط" } : {}),
+    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + items.map((x) => x.title).join("، ") + (items.length === 1 && items[0].note ? " — " + items[0].note : ""), propertyId: items.find((x) => x.propertyId)?.propertyId || null, call: false }),
   }, "update");
 }
 
@@ -252,9 +258,17 @@ export async function applyUpdate(d: CrmData, id: string, type: string, next: st
   return ok;
 }
 
+/** Removes the next call date on purpose; it stays empty until someone sets one. */
+export async function clearNextCall(d: CrmData, c: Client) {
+  await write("clients", c.id, {
+    nextCall: null, noCall: true, updatedAt: nowStamp(),
+    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "إلغاء موعد", text: "أُلغي موعد الاتصال القادم", call: false }),
+  }, "update");
+}
+
 export async function postpone(d: CrmData, id: string) {
   const c = clientById(d, id);
-  if (!c) return null;
+  if (!c || inSearch(d, c)) return null;
   const next = addDays(3);
   await write(
     "clients",
@@ -407,7 +421,8 @@ export async function setReqStage(reqId: string, to: string, d?: CrmData) {
   // An explicit stage change is kept in the client's log (who, when, from → to).
   const r = d?.requests.find((x) => x.id === reqId);
   const c = d && r && clientById(d, r.clientId);
-  if (d && r && c) await write("clients", c.id, { log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: (r.status || "جديد") + " ← " + to, call: false }), updatedAt: nowStamp() }, "update");
+  const search = ["جديد", "جاري البحث"].includes(to);
+  if (d && r && c) await write("clients", c.id, { ...(search && !c.visitAt ? { nextCall: null } : {}), log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: (r.status || "جديد") + " ← " + to, call: false }), updatedAt: nowStamp() }, "update");
 }
 
 /** Records that a property was sent to a request's client; nudges early-stage requests forward. */
@@ -496,9 +511,9 @@ export const deleteAttendance = (uid: string, date: string) => {
   return deleteDoc(doc(db, "attendance", uid, "days", date));
 };
 
-export async function sendChat(d: CrmData, text: string, clientId: string | null) {
+export async function sendChat(d: CrmData, text: string, clientId: string | null, reqId: string | null = null) {
   assertWritable();
-  await addDoc(collection(db, "chat"), { text: text.slice(0, 2000), by: d.uid, at: nowStamp(), clientId: clientId || null });
+  await addDoc(collection(db, "chat"), { text: text.slice(0, 2000), by: d.uid, at: nowStamp(), clientId: clientId || null, reqId: reqId || null });
 }
 
 /**
@@ -510,7 +525,7 @@ export async function runEscalation(d: CrmData, mgr: string, days: number, done:
   const list = d.clients.filter(
     (c) =>
       (c.status || "نشط") === "نشط" && c.assignee && c.assignee !== mgr && c.nextCall &&
-      (dayDiff(c.nextCall) ?? 0) < -days && !done.has(c.id)
+      (dayDiff(c.nextCall) ?? 0) < -days && !done.has(c.id) && !inSearch(d, c)
   );
   for (const c of list) {
     done.add(c.id);
@@ -554,10 +569,10 @@ export async function nextAssignee(d: CrmData): Promise<string | null> {
 }
 
 /** Private message to one colleague (collection "dm"). */
-export async function sendDm(d: CrmData, to: string, text: string, clientId: string | null) {
+export async function sendDm(d: CrmData, to: string, text: string, clientId: string | null, reqId: string | null = null) {
   assertWritable();
   const members = [d.uid, to].sort() as [string, string];
-  await addDoc(collection(db, "dm"), { members, by: d.uid, to, text: text.slice(0, 2000), at: nowStamp(), clientId: clientId || null, read: false });
+  await addDoc(collection(db, "dm"), { members, by: d.uid, to, text: text.slice(0, 2000), at: nowStamp(), clientId: clientId || null, reqId: reqId || null, read: false });
 }
 /** Marks private messages sent to me as read (only the "read" flag may change). */
 export async function markDmRead(ids: string[]) {
@@ -602,7 +617,11 @@ export async function recordProposal(d: CrmData, r: Request, pid: string, unit?:
 /** Back to the property search list (even from a later stage) unless a deal is recorded. */
 async function backToSearch(d: CrmData, requestId: string | null | undefined) {
   const r = d.requests.find((x) => x.id === requestId);
-  if (r && OPEN_REQ(r) && !SOLD_ST.includes(r.status || "")) await write("requests", r.id, { status: "جاري البحث", updatedAt: nowStamp() }, "update");
+  if (r && OPEN_REQ(r) && !SOLD_ST.includes(r.status || "")) {
+    await write("requests", r.id, { status: "جاري البحث", updatedAt: nowStamp() }, "update");
+    const c = clientById(d, r.clientId);
+    if (c?.nextCall && !c.visitAt) await write("clients", c.id, { nextCall: null, updatedAt: nowStamp() }, "update");
+  }
 }
 
 /** Changes an offer's status; «غير مناسب» returns the request to the search list when no other offer is still open. */
@@ -675,15 +694,15 @@ export async function cleanOldCallDates(d: CrmData) {
   if (!d.isAdmin) return;
   const flag = doc(db, "settings", "migrations");
   const f = await getDoc(flag);
-  if (f.exists() && f.data().callDates20261024) return;
-  const hasOpen = new Set(d.requests.filter(OPEN_REQ).map((r) => r.clientId));
-  const stale = d.clients.filter((c) => c.nextCall && hasOpen.has(c.id) && !c.visitAt && !CALL_AFTER.includes((c.log || [])[0]?.type || ""));
+  if (f.exists() && f.data().callDates20261107) return;
+  // Client 2026-11-07: requests in «جديد» or «جاري البحث» carry no call date.
+  const stale = d.clients.filter((c) => c.nextCall && !c.visitAt && inSearch(d, c));
   for (let k = 0; k < stale.length; k += 400) {
     const b = writeBatch(db);
     stale.slice(k, k + 400).forEach((c) => b.update(doc(db, "clients", c.id), { nextCall: null }));
     await b.commit();
   }
-  await setDoc(flag, { callDates20261024: true, cleared: stale.length, at: nowStamp() }, { merge: true });
+  await setDoc(flag, { callDates20261107: true, cleared20261107: stale.length, at: nowStamp() }, { merge: true });
 }
 
 /**

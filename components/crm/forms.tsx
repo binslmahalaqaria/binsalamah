@@ -12,7 +12,7 @@ import { useCrm } from "@/lib/crm/store";
 import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
-  allDistricts, clientById, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
+  allDistricts, clientById, inSearch, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
 import { toggleTask, assignClient, closeInterest, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
@@ -100,6 +100,8 @@ export function ClientForm({ id }: { id?: string }) {
     visitAt: s(rec?.visitAt), visitProperty: s(rec?.visitProperty), notes: s(rec?.notes),
   });
   const [busy, setBusy] = useState(false);
+  // A request still being searched for has no call date (client 2026-11-07).
+  const searching = !!rec && inSearch(data, rec);
 
   async function save() {
     if (!f.name.trim()) return toast("يرجى تعبئة حقل: اسم العميل");
@@ -112,7 +114,7 @@ export function ClientForm({ id }: { id?: string }) {
       const body: Partial<Client> = {
         name: f.name.trim(), phone: f.phone.trim() || null, source: f.source || null,
         assignee: data.isMgr ? f.assignee || null : rec ? rec.assignee : data.uid,
-        temp: f.temp || null, status: f.status, nextCall: f.nextCall || null,
+        temp: f.temp || null, status: f.status, nextCall: searching ? null : f.nextCall || null,
         visitAt: f.visitAt || null, visitProperty: f.visitProperty || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
       };
       if (body.assignee && body.assignee !== rec?.assignee) {
@@ -172,7 +174,7 @@ export function ClientForm({ id }: { id?: string }) {
         <Sec>المتابعة</Sec>
         <Field label="درجة الاهتمام"><Select value={f.temp} onChange={(v) => set("temp", v)} options={TEMPS} blank="لم يُحدد" /></Field>
         <Field label="الحالة"><Select value={f.status} onChange={(v) => set("status", v)} options={CSTATUS} /></Field>
-        <Field label="موعد الاتصال القادم"><input type="date" value={f.nextCall} onChange={(e) => set("nextCall", e.target.value)} /></Field>
+        {!searching && <Field label="موعد الاتصال القادم"><input type="date" value={f.nextCall} onChange={(e) => set("nextCall", e.target.value)} /></Field>}
         <Field label="ملاحظات عن العميل" full hint="متطلبات العميل (نوع العقار، الحي، الميزانية…) تُسجَّل في طلبه.">
           <textarea rows={3} value={f.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
@@ -294,7 +296,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
           ? { status: "نشط", nextCall: cc.nextCall || null, lastUpdate: "سجّل اهتمام", lastUpdateAt: nowStamp(),
               log: [{ at: nowStamp(), byId: data.uid || null, type: "سجّل اهتمام", text: "تم التواصل وسُجّل طلبه", call: true }, ...(cc.log || [])].slice(0, 80) }
           : {};
-        await write("clients", body.clientId, { ...demand, ...revive, temp: f.temp || cc?.temp || null, updatedAt: nowStamp() }, "update");
+        await write("clients", body.clientId, { ...demand, ...revive, ...(cc?.visitAt ? {} : { nextCall: null }), temp: f.temp || cc?.temp || null, updatedAt: nowStamp() }, "update");
       } else if (f.temp && f.temp !== clientById(data, body.clientId)?.temp) {
         await write("clients", body.clientId, { temp: f.temp, updatedAt: nowStamp() }, "update");
       }

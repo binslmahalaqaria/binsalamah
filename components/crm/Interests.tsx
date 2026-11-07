@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterest, closeInterest, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestResult } from "@/lib/crm/actions";
+import { addInterests, closeInterest, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
@@ -42,6 +42,7 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient ? <b className="font-heading">{c.name}</b> : <b className="font-heading">{title}</b>}
           {showClient && <TempPill t={c.temp} />}
+          {!x.propertyId && <Pill tone="muted">غير مضاف</Pill>}
           <Pill tone={x.status === "ممتاز" ? "ok" : x.status === "غير مهتم" ? "muted" : x.status === "حُوّل لطلب" ? "ok" : "warm"}>{x.status}</Pill>
         </div>
         {showClient && <div className="truncate text-[13px] text-[var(--crm-ink-2)]">مهتم في: {title}{x.unit ? " · " + x.unit : ""}</div>}
@@ -66,8 +67,10 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
   const [clientId, setClientId] = useState(c0 || "");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [propertyId, setPropertyId] = useState(p0 || "");
+  const [picked, setPicked] = useState<string[]>(p0 ? [p0] : []);
   const [unit, setUnit] = useState("");
+  // Properties not in the system: a name and a short description, so they can be recognised later.
+  const [extras, setExtras] = useState<{ title: string; details: string }[]>([]);
   const [note, setNote] = useState("");
   const [days, setDays] = useState("3");
   const [date, setDate] = useState("");
@@ -75,12 +78,15 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
   const clients = visibleClients(data).map((c) => [c.id, c.name] as [string, string]);
   const preset = clientById(data, c0);
   if (preset && !clients.some(([v]) => v === preset.id)) clients.unshift([preset.id, preset.name]);
-  const prop = propById(data, propertyId);
+  const prop = picked.length === 1 ? propById(data, picked[0]) : undefined;
   const units = prop ? unitsOf(prop) : [];
+  const setExtra = (i: number, k: "title" | "details", v: string) => setExtras((xs) => xs.map((x, n) => (n === i ? { ...x, [k]: v } : x)));
 
   async function save() {
     if (!clientId && !name.trim()) return toast("اختر عميلاً موجوداً أو اكتب اسم العميل");
-    if (!propertyId) return toast("اختر العقار الذي استفسر عنه");
+    const typed = extras.filter((x) => x.title.trim());
+    if (extras.some((x) => !x.title.trim() && x.details.trim())) return toast("اكتب اسم العقار غير المضاف");
+    if (!picked.length && !typed.length) return toast("اختر العقار الذي استفسر عنه");
     const followUp = pickDate(days, date);
     if (!followUp) return toast("اختر تاريخ المتابعة");
     if (!clientId && phone) {
@@ -100,8 +106,12 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
         id = await createClient(body);
         fresh = { ...body, id } as Client; // not back from the live listener yet
       }
-      await addInterest(data, fresh || clientById(data, id)!, { propertyId, unit: unit || null, note: note.trim() || null, followUp });
-      toast("سُجّل الاهتمام — المتابعة " + relDay(followUp));
+      const items: NewInterest[] = [
+        ...picked.map((pid) => ({ propertyId: pid, title: propById(data, pid)?.title || "عقار", unit: picked.length === 1 ? unit || null : null, note: note.trim() || null })),
+        ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: [x.details.trim(), note.trim()].filter(Boolean).join(" — ") || null })),
+      ];
+      await addInterests(data, fresh || clientById(data, id)!, items, followUp);
+      toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));
       closeModal();
     } catch (e) {
       toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ");
@@ -121,10 +131,25 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
             <Field label="الجوال"><input value={phone} dir="ltr" placeholder="05xxxxxxxx" onChange={(e) => setPhone(e.target.value)} /><DupHint phone={phone} /></Field>
           </div>
         )}
-        <Field label="العقار الذي استفسر عنه *">
-          <Select value={propertyId} onChange={(v) => { setPropertyId(v); setUnit(""); }} blank="—"
-            options={data.props.map((p) => [p.id, (p.ref ? "#" + p.ref + " " : "") + p.title] as [string, string])} />
+        <Field label="العقارات التي استفسر عنها *" hint="تقدر تختار أكثر من عقار.">
+          <Select value="" onChange={(v) => { if (v) setPicked((xs) => (xs.includes(v) ? xs : [...xs, v])); setUnit(""); }} blank="+ أضف عقار من النظام"
+            options={data.props.filter((p) => !picked.includes(p.id)).map((p) => [p.id, (p.ref ? "#" + p.ref + " " : "") + p.title] as [string, string])} />
         </Field>
+        {picked.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {picked.map((id) => (
+              <button key={id} type="button" className="crm-btn sm" title="إزالة" onClick={() => { setPicked((xs) => xs.filter((x) => x !== id)); setUnit(""); }}>{propById(data, id)?.title || "عقار"} ✕</button>
+            ))}
+          </div>
+        )}
+        {extras.map((x, i) => (
+          <div key={i} className="grid gap-2 rounded-xl border border-[var(--crm-line)] p-2.5">
+            <div className="flex items-center justify-between text-[13px]"><b>عقار غير مضاف في النظام</b><button type="button" className="crm-btn ghost sm" onClick={() => setExtras((xs) => xs.filter((_, n) => n !== i))}>إزالة</button></div>
+            <input value={x.title} placeholder="اسم العقار أو وصفه، مثال: فيلا حي الملقا" aria-label="اسم العقار" onChange={(e) => setExtra(i, "title", e.target.value)} />
+            <input value={x.details} placeholder="تفاصيل بسيطة: السعر، المساحة، من أين سمع عنه" aria-label="تفاصيل العقار" onChange={(e) => setExtra(i, "details", e.target.value)} />
+          </div>
+        ))}
+        <button type="button" className="crm-btn sm justify-self-start" onClick={() => setExtras((xs) => [...xs, { title: "", details: "" }])}>+ عقار غير مضاف في النظام</button>
         {units.length > 0 && (
           <Field label="الوحدة (اختياري)"><Select value={unit} onChange={setUnit} blank="—" options={units.map((u) => u.name)} /></Field>
         )}

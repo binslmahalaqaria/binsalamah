@@ -113,3 +113,10 @@
 - [ ] Transferring a client moves their interests.
 - [ ] «بدون موعد» chosen on a client stays empty after choosing the result, sending a property, and booking a viewing. Setting a date lifts it.
 - [ ] A number in «للتواصل» who answers becomes نشط and leaves «الأرقام»; one who doesn't answer stays. A client called today leaves the home sections until their next date.
+
+## Chat attachments (2026-11-07)
+
+- [ ] In الدردشة, search by name, mobile, ط-12, and 12 (Arabic digits too), pick a result, and send with and without text, in the team channel and privately.
+- [ ] The receiver sees the card, and it opens the client file on that request.
+- [ ] A client whose request is «جديد» or «جاري البحث» gets no call date from the update form, client form, or postpone. Sending a property sets one, and returning the request to search clears it.
+- [ ] One interest form saves several properties and an unlisted one with details; the unlisted one shows «غير مضاف» and turns into a request with its details. «بدون موعد» in the client file clears the date.
