@@ -93,3 +93,6 @@
 - [ ] `/privacy` and `/terms` open in both languages, also while the site shows «قريباً»
 - [ ] Footer shows the legal links; FAL appears once `COMPANY.falNo` is set
 - [ ] With no login, `offers/files` in Storage can't be listed, and a shared download link still opens
+
+## Website request form (2026-11-07)
+- [ ] The form refuses an empty or unreadable budget and accepts free text such as «مليون ونص»

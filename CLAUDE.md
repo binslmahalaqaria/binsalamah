@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-07** — **Budget required on the website request form.** Client: the buyer must enter it. `components/site/RequestForm.tsx` refuses to send until `parseBudget()` reads a figure from the field (free text such as «مليون ونص» still works). Affects §8.
+
 - **2026-11-06** — **Privacy policy rewritten, shorter.** Client: remove the children section and the padding, and follow rakez.sa's short style without copying it. Only Rakez's section outline was used; the text is our own and describes what this system does, in six ordinal sections (`lib/legal.ts`). Terms unchanged. Affects §8.
 
 - **2026-11-06** — **Legal pages trimmed at the client's request.** The CR and VAT numbers were removed from the site footers and the privacy policy, and the policy's "who we share it with" section was removed; the transfers section no longer points to it. Internal receipts and invoices keep the CR and VAT numbers. The client was told this leaves less disclosure than the PDPL and E-Commerce Law summaries call for, so the lawyer review should cover it. Affects §8.

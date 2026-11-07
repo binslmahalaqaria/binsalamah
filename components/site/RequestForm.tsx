@@ -76,6 +76,8 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
     // A zone alone isn't enough: at least one district in it (client 2026-10-24).
     if (riyadh && !picked.length) return setErr(t("reqNeedDistrict"));
     if (city === OTHER && !otherCity.trim()) return setErr(t("reqNeedArea"));
+    // The budget is required (client 2026-11-07); it must be a figure the CRM can read.
+    if (!parseBudget(budget)) return setErr(t("reqNeedBudget"));
     setErr("");
     setState("sending");
     const cityName = city === OTHER ? otherCity.trim() || "غير محددة" : city;
