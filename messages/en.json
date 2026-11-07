@@ -251,6 +251,8 @@
   "Site": {
     "heroKicker": "Bin Slmah Real Estate",
     "heroTitle": "The shortest way to your property",
+    "introHooks": ["Tired of\nsearching?"],
+    "introLead": "Bin Slmah will guide you",
     "heroSubtitle": "We search, analyse with you, and pick the best properties in Riyadh — from the first call to the keys.",
     "browse": "Browse properties",
     "request": "Tell us what you need",

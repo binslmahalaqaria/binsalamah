@@ -96,3 +96,10 @@
 
 ## Website request form (2026-11-07)
 - [ ] The form refuses a missing type (including an unnamed «أخرى»), a zone with no district, and an empty or unreadable budget, and accepts free text such as «مليون ونص»
+
+## Opening page (2026-11-07)
+
+- [ ] A new session on the home page opens with the question, then «بن سلمه يدلك», then the site. Arabic and English, phone and desktop.
+- [ ] A tap skips it. Reloading in the same session doesn't show it again.
+- [ ] A first visit straight to an offer page doesn't show it.
+- [ ] With reduced motion, only the answer shows, briefly.
