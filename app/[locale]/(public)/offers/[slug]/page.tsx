@@ -6,6 +6,7 @@ import { getPublishedOfferBySlug } from "@/lib/offers";
 import { getPublicContactInfo } from "@/lib/settings";
 import { demoOffer } from "@/lib/demo-offers";
 import { enquiryMessage, shortOfferUrl } from "@/lib/seo";
+import { districtPath, listingHeadline, listingJsonLd, listingSummary } from "@/lib/seo-listing";
 import { WhatsAppLink } from "@/components/WhatsAppButton";
 import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
@@ -36,13 +37,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!o) return {};
   const ar = locale === "ar";
   const title = ar ? o.title_ar : o.title_en || o.title_ar;
-  const where = ar ? `${o.district_ar}، ${o.city_ar}` : `${o.district_en || o.district_ar}, ${o.city_en || o.city_ar}`;
-  const description = (ar ? o.description_ar : o.description_en || o.description_ar).slice(0, 160) || where;
+  // «فلل الصحافة | 200م — فيلا للبيع في حي الصحافة، الرياض»: the name plus what people search for.
+  const head = listingHeadline(o, ar);
+  const own = (ar ? o.description_ar : o.description_en || o.description_ar).replace(/\s+/g, " ").trim();
+  const description = (listingSummary(o, ar) + (own ? " " + own : "")).slice(0, 300);
   return {
-    title: `${title} — ${where}`,
+    title: `${title} — ${head}`,
     description,
     alternates: { canonical: `/${locale}/offers/${o.slug}`, languages: { ar: `/ar/offers/${o.slug}`, en: `/en/offers/${o.slug}` } },
-    openGraph: { title, description, images: o.cover_image ? [{ url: o.cover_image }] : ["/og.jpg"] },
+    openGraph: { title: `${title} — ${head}`, description, images: o.cover_image ? [{ url: o.cover_image }] : ["/og.jpg"] },
     // Sample offers (demo=1) must never show up in search results.
     ...(o.id.startsWith("d") && o.slug.startsWith("demo-") ? { robots: { index: false, follow: false } } : {}),
   };
@@ -90,9 +93,11 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-10">
+      {live && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(listingJsonLd(offer, locale)) }} />}
       <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm text-navy/50">
         <Link href="/" className="hover:text-gold">{ar ? "الرئيسية" : "Home"}</Link><span>/</span>
         <Link href="/offers" className="hover:text-gold">{ar ? "العقارات" : "Properties"}</Link><span>/</span>
+        {live && offer.district_ar && <><Link href={districtPath(offer.district_ar)} className="hover:text-gold">{ar ? "حي " + district : district}</Link><span>/</span></>}
         <span className="text-navy">{title}</span>
       </nav>
 

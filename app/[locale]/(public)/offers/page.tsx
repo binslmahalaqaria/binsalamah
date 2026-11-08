@@ -4,6 +4,8 @@ import { OffersGrid } from "@/components/OffersGrid";
 import { listPublishedOffers } from "@/lib/offers";
 import { getPublicContactInfo } from "@/lib/settings";
 import { withDemo } from "@/lib/demo-offers";
+import { districtsOf } from "@/lib/seo-listing";
+import { DistrictLinks } from "@/components/site/DistrictLinks";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -15,7 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
-export default async function OffersPage({ searchParams }: { searchParams: Promise<{ demo?: string; type?: string; zone?: string; district?: string; districts?: string; price?: string }> }) {
+export default async function OffersPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ demo?: string; type?: string; zone?: string; district?: string; districts?: string; price?: string }> }) {
+  const { locale } = await params;
   const [t, s, live, { whatsappNumber }, sp] = await Promise.all([
     getTranslations("Offers"),
     getTranslations("Site"),
@@ -39,6 +42,7 @@ export default async function OffersPage({ searchParams }: { searchParams: Promi
       <section className="relative z-10 mx-auto -mt-14 max-w-6xl px-4 pb-20 sm:px-6">
         <OffersGrid offers={offers} whatsappNumber={whatsappNumber} initial={{ type: sp.type, zone: sp.zone, districts: sp.districts || sp.district, price: sp.price }} />
       </section>
+      <DistrictLinks list={districtsOf(live)} ar={locale === "ar"} />
     </>
   );
 }

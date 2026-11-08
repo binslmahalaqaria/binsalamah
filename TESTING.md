@@ -134,3 +134,9 @@
 - [ ] Same client gets a request → the interests show «حُوّل لطلب» and appear as offers on the new request (unlisted one with «غير مضاف»).
 - [ ] Client with a request: «تم إرسال التفاصيل» with an unlisted property → offer «غير مضاف» under the request. Interest form for this client → offers «مهتم», not الاهتمامات.
 - [ ] الاهتمامات opens from الطلبات tabs; the sidebar has no separate item.
+
+## SEO (2026-11-08)
+
+- [ ] /ar/offers ends with district links; each opens /ar/area/<district> with the right title, H1 and listings; an unknown district is 404.
+- [ ] A property page title reads «<name> — <type> للبيع في حي <district>، الرياض» and contains RealEstateListing JSON-LD (Google Rich Results Test).
+- [ ] sitemap.xml lists the district pages.

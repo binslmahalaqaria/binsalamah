@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/seo";
 import { listPublishedOffers } from "@/lib/offers";
+import { districtPath, districtsOf } from "@/lib/seo-listing";
 
 /** Every public page in both languages, plus each published property. Rebuilt hourly. */
 export const revalidate = 3600;
@@ -18,5 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...pages.map((p, i) => entry(p, i === 0 ? 1 : 0.7)),
     ...offers.map((o) => entry(`/offers/${o.slug}`, 0.8, new Date(o.updated_at || Date.now()))),
+    // A page per district with listings (SEO, 2026-11-08).
+    ...districtsOf(offers).map(([d]) => entry(districtPath(d), 0.8)),
   ];
 }
