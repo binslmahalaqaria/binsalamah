@@ -438,6 +438,15 @@ export async function reqSent(d: CrmData, reqId: string, pid: string) {
   await write("requests", reqId, { sent, ...(early ? { status: "أرسلنا خيارات" } : {}), updatedAt: nowStamp() }, "update");
 }
 
+/** Several properties sent in one update (client 2026-11-08): each becomes an offer on the request, which moves forward once. */
+export async function recordSends(d: CrmData, reqId: string, pids: string[]) {
+  const r = d.requests.find((x) => x.id === reqId);
+  if (!r || !pids.length) return;
+  for (const pid of pids) await recordProposal(d, r, pid);
+  const early = ["جديد", "جاري البحث"].includes(r.status || "جديد");
+  await write("requests", reqId, { sent: [...new Set((r.sent || []).concat(pids))], ...(early ? { status: "أرسلنا خيارات" } : {}), updatedAt: nowStamp() }, "update");
+}
+
 /** Records on the client what was sent for a property (message / photos link / file) and writes it to the client's log. */
 export async function markSent(d: CrmData, clientId: string, p: Property, kinds: ("msg" | "drive" | "pdf")[], withLog = true) {
   const c = clientById(d, clientId);

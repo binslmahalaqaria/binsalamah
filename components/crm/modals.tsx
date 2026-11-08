@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, inSearch, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  applyUpdate, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  applyUpdate, recordSends, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -63,7 +63,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const [picked, setPicked] = useState(false);
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
-  const [prop, setProp] = useState(p0 || c?.interestIn || "");
+  // One update can name several properties (client 2026-11-08), e.g. details of three properties sent together.
+  const [props, setProps] = useState<string[]>(() => [p0 || c?.interestIn || ""].filter(Boolean));
   if (!c) return null;
   // A call date only follows something sent: a request still in «جديد» or «جاري البحث» has none.
   const noDate = inSearch(data, c) && !CALL_AFTER.includes(type);
@@ -83,15 +84,19 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
     try {
-      await applyUpdate(data, clientId, type, nx, note.trim(), prop || null, { reqId, noCall: picked && next === "none" });
+      const titles = props.map((id) => data.props.find((p) => p.id === id)?.title).filter(Boolean);
+      const text = [note.trim(), titles.length > 1 ? "العقارات: " + titles.join("، ") : ""].filter(Boolean).join(" — ");
+      await applyUpdate(data, clientId, type, nx, text, props[0] || null, { reqId, noCall: picked && next === "none" });
     } catch {
       return toast("تعذّر حفظ التحديث، حاول مرة ثانية");
     }
     // Location/details sent → the next step is the visit: open the booking straight away (client 2026-10-25).
     const openR = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.find((x) => x.clientId === clientId && OPEN_REQ(x));
+    // Each property sent is recorded as an offer on the request.
+    if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR && props.length) await recordSends(data, openR.id, props);
     if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
       toast("سُجّل الإرسال — حدّد موعد الزيارة، أو أغلق النافذة إن لم يُتفق بعد");
-      return openModal({ kind: "visit", reqId: openR.id, propertyId: prop || undefined });
+      return openModal({ kind: "visit", reqId: openR.id, propertyId: props[0] || undefined });
     }
     toast("تم — " + (nx ? "الاتصال القادم " + relDay(nx) + " (" + nx + ")" : "بدون موعد اتصال"));
     closeModal();
@@ -102,7 +107,15 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
       <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
-        <Field label="العقار (اختياري)"><Select value={prop} onChange={setProp} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
+        <Field label="العقارات (اختياري)" hint="تقدر تختار أكثر من عقار.">
+          <Select value="" onChange={(v) => v && setProps((xs) => (xs.includes(v) ? xs : [...xs, v]))} blank="+ أضف عقار"
+            options={data.props.filter((p) => !props.includes(p.id)).map((p) => [p.id, (p.ref ? "#" + p.ref + " " : "") + p.title] as [string, string])} />
+          {props.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {props.map((id) => <button key={id} type="button" className="crm-btn sm" title="إزالة" onClick={() => setProps((xs) => xs.filter((x) => x !== id))}>{data.props.find((p) => p.id === id)?.title || "عقار"} ✕</button>)}
+            </div>
+          )}
+        </Field>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في زيارتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
       {noDate ? <p className="crm-hint mt-3">الطلب ما زال في البحث، فما يحتاج موعد اتصال. يتحدد الموعد إذا أُرسل له شيء.</p> : (
