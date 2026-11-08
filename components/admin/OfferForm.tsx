@@ -183,7 +183,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
         const { url } = await uploadOfferImage(file);
         setImages((rows) => [...rows.filter((r) => r.url.trim()), { url }]);
       } catch (e) {
-        setError("تعذّر رفع الصورة " + file.name + (e instanceof Error && /unauthorized|permission/i.test(e.message) ? " — صلاحيات التخزين غير مفعّلة" : ""));
+        setError("تعذّر رفع " + file.name + ": " + (e instanceof Error ? e.message : ""));
       } finally {
         setUploading((n) => n - 1);
       }

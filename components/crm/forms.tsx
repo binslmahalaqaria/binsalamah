@@ -461,7 +461,7 @@ export function PropertyForm({ id }: { id?: string }) {
     const urls: string[] = [];
     for (const file of list) {
       try { urls.push((await uploadOfferImage(file)).url); }
-      catch { toast("تعذّر رفع الصورة " + file.name); }
+      catch (e) { toast("تعذّر رفع " + file.name + ": " + (e instanceof Error ? e.message : "")); }
       setUploading((n) => n - 1);
     }
     if (urls.length) setF((p) => ({ ...p, images: [...p.images, ...urls] }));
@@ -592,7 +592,7 @@ export function PropertyForm({ id }: { id?: string }) {
               if (file.size > 15 * 1024 * 1024) return toast("الملف أكبر من 15 م.ب");
               setPdfBusy(true);
               try { const r = await uploadOfferPdf(file); setF((p) => ({ ...p, pdfUrl: r.url, pdfName: file.name })); }
-              catch { toast("تعذّر رفع الملف"); } finally { setPdfBusy(false); }
+              catch (e) { toast("تعذّر رفع الملف: " + (e instanceof Error ? e.message : "")); } finally { setPdfBusy(false); }
             }} />
           )}
           {pdfBusy && <span className="crm-hint">جارٍ الرفع…</span>}
