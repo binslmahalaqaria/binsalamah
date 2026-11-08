@@ -523,9 +523,10 @@ export function PropertyForm({ id }: { id?: string }) {
         videoLink: f.videoLink.trim() || null, notes: f.notes.trim() || null, updatedAt: nowStamp(),
         driveLink: f.driveLink.trim() || null, pdfUrl: f.pdfUrl || null, pdfName: f.pdfUrl ? f.pdfName || null : null, pdfCaption: f.pdfUrl ? f.pdfCaption.trim() || null : null,
       };
-      if (rec) await writeProperty(rec.id, { ...body, updatedBy: data.uid });
-      if (rec && refChanged) await setPropRef(data, rec.id, newRef!);
-      else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
+      if (rec) {
+        await writeProperty(rec.id, { ...body, updatedBy: data.uid });
+        if (refChanged) await setPropRef(data, rec.id, newRef!);
+      } else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
       toast("تم الحفظ");
       closeModal();
     } catch {
