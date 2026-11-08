@@ -676,7 +676,7 @@ async function backToSearch(d: CrmData, requestId: string | null | undefined) {
 }
 
 /** Changes an offer's status; «غير مناسب» returns the request to the search list when no other offer is still open. */
-export async function setProposalStatus(d: CrmData, p: Proposal, status: string, feedback?: string) {
+export async function setProposalStatus(d: CrmData, p: Proposal, status: string, feedback?: string, opts: { log?: boolean } = {}) {
   await write("proposals", p.id, {
     status, ...(feedback !== undefined ? { feedback: feedback || null } : {}),
     history: [...(p.history || []), ev(d, status, feedback)], updatedAt: nowStamp(),
@@ -690,7 +690,8 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
   if (c && ["مهتم", "غير مناسب"].includes(status)) {
     const log = pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: propTitle(d, p) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId || null, call: false });
     await write("clients", c.id, {
-      log: allBad ? [{ at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: "كل العروض غير مناسبة ← جاري البحث", call: false }, ...log].slice(0, LOG_MAX) : log,
+      // Skipped when the caller has just written the client's log (it would be overwritten from the older copy).
+      ...(opts.log === false ? {} : { log: allBad ? [{ at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: "كل العروض غير مناسبة ← جاري البحث", call: false }, ...log].slice(0, LOG_MAX) : log }),
       ...(status === "مهتم" && p.propertyId ? { interestIn: p.propertyId } : {}),
       ...(allBad && !c.visitAt ? { nextCall: null } : {}), updatedAt: nowStamp(),
     }, "update");
@@ -739,9 +740,9 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
   await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
   const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
   if (result === "interested") {
-    if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد الزيارة");
+    if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد الزيارة", { log: false });
   } else if (result === "unsuitable") {
-    if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد الزيارة");
+    if (p) await setProposalStatus(d, p, "غير مناسب", feedback || "بعد الزيارة", { log: false });
   }
 }
 

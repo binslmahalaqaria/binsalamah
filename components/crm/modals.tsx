@@ -67,11 +67,16 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const [props, setProps] = useState<string[]>(() => [p0 || c?.interestIn || ""].filter(Boolean));
   // Properties not in the system: a name and short details (client 2026-11-08).
   const [extras, setExtras] = useState<{ title: string; details: string }[]>([]);
+  const [busy, setBusy] = useState(false);
   if (!c) return null;
-  // A call date only follows something sent: a request still in «جديد» or «جاري البحث» has none.
   const u = UPD.find((x) => x.k === type);
   async function save() {
+    if (busy) return; // a second tap must not save twice
     if (!type) return toast("يرجى اختيار نتيجة التواصل أولاً");
+    setBusy(true);
+    try { await saveNow(); } finally { setBusy(false); }
+  }
+  async function saveNow() {
     if (DEAL_UPD[type]) {
       const r = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.filter((x) => x.clientId === clientId && OPEN_REQ(x)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0];
       if (!r) return toast("سجّل طلباً للعميل أولاً، ثم سجّل " + (type === "دفع عربون" ? "العربون" : "البيع") + " عليه");
@@ -94,16 +99,22 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     const openR = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.find((x) => x.clientId === clientId && OPEN_REQ(x));
     // One place per property: with a request they are its offers; without one they go to الاهتمامات.
     const sendT = ["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type);
+    // Properties count as «asked about / sent» only for these results; on a plain call the field is just a note.
+    const aboutProps = sendT || ["استفسر", "سجّل اهتمام"].includes(type);
     const typed = extras.filter((x) => x.title.trim());
-    if (openR) {
-      if (sendT && props.length) await recordSends(data, openR.id, props);
-      for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, sendT ? "أُرسل" : "مهتم");
-    } else if (c && !u?.status && (props.length || typed.length)) {
-      // (Not when the result itself archives the client, e.g. «غير مهتم».)
-      await addInterests(data, c, [
-        ...props.map((id) => ({ propertyId: id, title: data.props.find((p) => p.id === id)?.title || "عقار", unit: null, note: null })),
-        ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: x.details.trim() || null })),
-      ], nx || addDays(3), { log: false });
+    try {
+      if (openR) {
+        if (sendT && props.length) await recordSends(data, openR.id, props);
+        for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, sendT ? "أُرسل" : "مهتم");
+      } else if (c && !u?.status && ((aboutProps && props.length) || typed.length)) {
+        // (Not when the result itself archives the client, e.g. «غير مهتم».)
+        await addInterests(data, c, [
+          ...(aboutProps ? props : []).map((id) => ({ propertyId: id, title: data.props.find((p) => p.id === id)?.title || "عقار", unit: null, note: null })),
+          ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: x.details.trim() || null })),
+        ], nx || addDays(3), { log: false });
+      }
+    } catch {
+      toast("سُجّل التحديث، لكن تعذّر حفظ العقارات — جرّب مرة ثانية");
     }
     if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
       toast("سُجّل الإرسال — حدّد موعد الزيارة، أو أغلق النافذة إن لم يُتفق بعد");
@@ -114,7 +125,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   }
   return (
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
-      footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" onClick={save}>حفظ التحديث</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
+      footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" disabled={busy} onClick={save}>{busy ? "جارٍ الحفظ…" : "حفظ التحديث"}</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
       <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
