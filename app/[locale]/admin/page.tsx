@@ -88,7 +88,7 @@ export default function HomeDashboard() {
   const tomorrow = addDays(1);
   // 1) New customers to call: no open request yet — call due today/overdue, or a new number not tried today.
   const newCalls = mine.filter((c) =>
-    !open(c).length && ((isActive(c) && due(c) && !calledToday(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
+    !open(c).length && ((isActive(c) && due(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
   // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
   const negSt = ["تفاوض", "عربون"];
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
@@ -98,7 +98,7 @@ export default function HomeDashboard() {
   // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
   const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && ![...negSt, "أرسلنا خيارات"].includes(open(c)[0].status || ""));
   const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
-  const follow = base.filter((c) => !needsOptions(c) && due(c) && !calledToday(c)).sort(byPrio);
+  const follow = base.filter((c) => !needsOptions(c) && due(c)).sort(byPrio);
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
@@ -106,9 +106,9 @@ export default function HomeDashboard() {
   const clientById = new Map(mine.map((c) => [c.id, c]));
   const props = data.proposals.filter((p) => {
     const c = clientById.get(p.clientId);
-    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !calledToday(c) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
+    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
   }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
-  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !calledToday(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
+  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
     .sort((a, b) => byPrio(a.c, b.c));
   // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
   const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
