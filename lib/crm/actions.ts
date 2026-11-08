@@ -640,12 +640,21 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
     history: [...(p.history || []), ev(d, status, feedback)], updatedAt: nowStamp(),
   }, "update");
   const c = clientById(d, p.clientId);
-  if (c && ["مهتم", "غير مناسب"].includes(status))
+  // Every offer sent on the request is now «غير مناسب»: the request goes back to «جاري البحث» by itself (client 2026-11-08).
+  // One offer still open (waiting, interested, viewing booked) keeps it where it is.
+  const r = d.requests.find((x) => x.id === p.requestId);
+  const allBad = status === "غير مناسب" && !!r && r.status === "أرسلنا خيارات" &&
+    d.proposals.filter((x) => x.requestId === p.requestId && x.id !== p.id).every((x) => x.status === "غير مناسب");
+  if (c && ["مهتم", "غير مناسب"].includes(status)) {
+    const log = pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: pTitle(d, p.propertyId) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId, call: false });
     await write("clients", c.id, {
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: pTitle(d, p.propertyId) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId, call: false }),
-      ...(status === "مهتم" ? { interestIn: p.propertyId } : {}), updatedAt: nowStamp(),
+      log: allBad ? [{ at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: "كل العروض غير مناسبة ← جاري البحث", call: false }, ...log].slice(0, LOG_MAX) : log,
+      ...(status === "مهتم" ? { interestIn: p.propertyId } : {}),
+      ...(allBad && !c.visitAt ? { nextCall: null } : {}), updatedAt: nowStamp(),
     }, "update");
-  void PROP_OPEN; void backToSearch; // the stage stays as the employee set it
+  }
+  if (allBad) await write("requests", r!.id, { status: "جاري البحث", updatedAt: nowStamp() }, "update");
+  void PROP_OPEN; void backToSearch;
 }
 
 /** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «زيارة», the offer linked. */

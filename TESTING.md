@@ -126,3 +126,4 @@
 - [ ] Owner changes a property's number in its form; a number already used is refused; the next new property gets the number after the highest.
 - [ ] Upload a photo over 10 MB, a normal JPEG, a PNG screenshot, and an iPhone HEIC in the property form: the first three upload; HEIC uploads or shows the clear message. A failure names its reason.
 - [ ] Client update «تم إرسال التفاصيل» with three properties: three offers appear under the request, the log names all three, the request moves to «أرسلنا خيارات».
+- [ ] A request in «أرسلنا خيارات» with two offers: mark one «غير مناسب» (stays), then the other (goes to «جاري البحث», call date cleared, log entry). With one offer still «مهتم», it stays.
