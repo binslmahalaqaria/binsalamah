@@ -139,9 +139,11 @@ export const SENT_T = ["تم إرسال الموقع", "تم إرسال التف
  * count as calls (client 2026-10-21) — recording a deposit/sale, a visit, a confirmation, a transfer or
  * a property sent from the matching screen is not a call.
  */
-export const CALL_T = ["اتصلت عليه", "ما رد", "مشغول", "رقم خاطئ", "استفسر", "تم إرسال الموقع", "تم إرسال التفاصيل", "سجّل اهتمام", "صرف النظر", "تفاوض"];
-/** Is this log entry a call? New entries carry `call`; older ones are judged by their type. */
-export const isCall = (l: { type: string; call?: boolean }) => l.call ?? CALL_T.includes(l.type);
+export const CALL_T = ["اتصلت عليه", "ما رد", "مشغول", "رقم خاطئ", "استفسر", "سجّل اهتمام", "صرف النظر", "تفاوض"];
+/** Sending the location or details is a send, not a call (client 2026-11-09), including entries saved before as calls. */
+export const SEND_T = ["تم إرسال الموقع", "تم إرسال التفاصيل"];
+/** Is this log entry a call? New entries carry `call`; older ones are judged by their type. Sends never count. */
+export const isCall = (l: { type: string; call?: boolean }) => !SEND_T.includes(l.type) && (l.call ?? CALL_T.includes(l.type));
 export const NOCALL = ["تأجيل", "إلغاء موعد", "رجع لمدير المبيعات", "أُعيد إلى مدير المبيعات", "تحويل", "إلغاء صفقة"];
 
 /** Monthly goal keys: [key, form label, column label]. */
