@@ -135,6 +135,12 @@ export function waLink(p: string | null | undefined, text?: string) {
   if (!d) return null;
   return "https://wa.me/" + d + (text ? "?text=" + encodeURIComponent(text) : "");
 }
+/** Opens the chat in WhatsApp Web in the browser, with the message typed in. */
+export function waWebLink(p: string | null | undefined, text?: string) {
+  const d = intl(p);
+  if (!d) return null;
+  return "https://web.whatsapp.com/send?phone=" + d + (text ? "&text=" + encodeURIComponent(text) : "");
+}
 export const telLink = (p: string | null | undefined) => {
   const d = intl(p);
   return d ? "tel:+" + d : null;
