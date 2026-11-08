@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { assertWritable, isPreview } from "./preview";
-import { isCall, CALL_AFTER, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
+import { isCall, CALL_T, MISSED, NO_RESP, PROP_OPEN, REQ, SOLD_ST, TO_CONTACT, UPD, UPD_STAGE, WA_LOG } from "./constants";
 import {
   answeredSince, clientById, inSearch, missedStreak, nameOf, OPEN_REQ, propById, reqsOf, unitsOf, type CrmData,
 } from "./logic";
@@ -126,8 +126,6 @@ export async function advanceReq(d: CrmData, clientId: string, to: string, reqId
 export async function applyUpdate0(d: CrmData, id: string, type: string, next: string | null, text: string, propertyId: string | null, opts: { call?: boolean; noCall?: boolean } = {}) {
   const c = clientById(d, id);
   if (!c) return false;
-  // A call date only follows something sent: a request still being searched for has none.
-  if (next && inSearch(d, c) && !CALL_AFTER.includes(type)) next = null;
   const u = UPD.find((x) => x.k === type);
   const entry: LogEntry = { at: nowStamp(), byId: d.uid || null, type, text: text || "", propertyId: propertyId || null, call: opts.call ?? CALL_T.includes(type) };
   const patch: Partial<Client> = {
@@ -269,7 +267,7 @@ export async function clearNextCall(d: CrmData, c: Client) {
 
 export async function postpone(d: CrmData, id: string) {
   const c = clientById(d, id);
-  if (!c || inSearch(d, c)) return null;
+  if (!c) return null;
   const next = addDays(3);
   await write(
     "clients",
@@ -422,7 +420,8 @@ export async function setReqStage(reqId: string, to: string, d?: CrmData) {
   // An explicit stage change is kept in the client's log (who, when, from → to).
   const r = d?.requests.find((x) => x.id === reqId);
   const c = d && r && clientById(d, r.clientId);
-  const search = ["جديد", "جاري البحث"].includes(to);
+  // Back to search clears the call date only when nothing was ever sent on the request.
+  const search = ["جديد", "جاري البحث"].includes(to) && !!r && !(r.sent || []).length && !d?.proposals.some((p) => p.requestId === r.id);
   if (d && r && c) await write("clients", c.id, { ...(search && !c.visitAt ? { nextCall: null } : {}), log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: (r.status || "جديد") + " ← " + to, call: false }), updatedAt: nowStamp() }, "update");
 }
 

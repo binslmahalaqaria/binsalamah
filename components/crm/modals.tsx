@@ -7,7 +7,7 @@ import { useCrm } from "@/lib/crm/store";
 import { useRouter } from "@/i18n/navigation";
 import { CALL_AFTER, CONTRACT, GOALK, REQ_TONE, SOLD_ST, UPD, lbl } from "@/lib/crm/constants";
 import {
-  clientById, comm, goalOf, inSearch, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
+  clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
   addInterests, applyUpdate, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
@@ -69,7 +69,6 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const [extras, setExtras] = useState<{ title: string; details: string }[]>([]);
   if (!c) return null;
   // A call date only follows something sent: a request still in «جديد» or «جاري البحث» has none.
-  const noDate = inSearch(data, c) && !CALL_AFTER.includes(type);
   const u = UPD.find((x) => x.k === type);
   async function save() {
     if (!type) return toast("يرجى اختيار نتيجة التواصل أولاً");
@@ -80,8 +79,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       return;
     }
     let nx: string | null = null;
-    if (noDate) nx = null;
-    else if (next === "date") {
+    if (next === "date") {
       if (!date) return toast("اختر التاريخ");
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
@@ -139,7 +137,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
         <button type="button" className="crm-btn sm justify-self-start" onClick={() => setExtras((xs) => [...xs, { title: "", details: "" }])}>+ عقار غير مضاف في النظام</button>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في زيارتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
-      {noDate ? <p className="crm-hint mt-3">الطلب ما زال في البحث، فما يحتاج موعد اتصال. يتحدد الموعد إذا أُرسل له شيء.</p> : (
+      {(
         <>
           <div className="crm-sec mb-2">الاتصال القادم</div>
           <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={(v) => { setNext(v); setPicked(true); }} />

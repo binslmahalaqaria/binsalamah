@@ -158,10 +158,14 @@ export function reqsOf(d: CrmData, c: Client) {
     .filter((r) => r.clientId === c.id && OPEN_REQ(r))
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
-/** Their newest open request is still «جديد» or «جاري البحث»: nothing has been sent, so no call date applies (client 2026-11-07). */
+/**
+ * Their newest open request is «جديد» or «جاري البحث» and nothing was ever sent on it, so no call date applies
+ * (client 2026-11-07). Once something was sent or viewed (offers, sent list), a call date is allowed again even if the
+ * request went back to «جاري البحث» (client 2026-11-08: a call after a visit must show).
+ */
 export const inSearch = (d: CrmData, c: Client) => {
   const r = reqsOf(d, c)[0];
-  return !!r && ["جديد", "جاري البحث"].includes(r.status || "جديد");
+  return !!r && ["جديد", "جاري البحث"].includes(r.status || "جديد") && !(r.sent || []).length && !d.proposals.some((p) => p.requestId === r.id);
 };
 /** The client's current demand: their newest open request, falling back to legacy fields on the client. */
 export const demandOf = (d: CrmData, c: Client): Demand => reqsOf(d, c)[0] || c;

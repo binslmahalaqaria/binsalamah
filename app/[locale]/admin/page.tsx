@@ -94,7 +94,8 @@ export default function HomeDashboard() {
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
   // New requests have no call date (client 2026-10-24): they show here until options are sent; the follow-up
   // call is set when options go out.
-  const needsOptions = (c: Client) => ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد");
+  // A searching request with a call date that has come (something was sent or viewed before) is a follow-up instead.
+  const needsOptions = (c: Client) => ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد") && !due(c);
   // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
   const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && !negSt.includes(open(c)[0].status || ""));
   const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
@@ -105,15 +106,17 @@ export default function HomeDashboard() {
   const clientById = new Map(mine.map((c) => [c.id, c]));
   const props = data.proposals.filter((p) => {
     const c = clientById.get(p.clientId);
-    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
+    // A client with a call date due is listed under «متابعات اليوم»; here only offers with no date, sent before today.
+    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && !c.nextCall && p.sentAt.slice(0, 10) < t;
   }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
-  const offers = reqsMine(["أرسلنا خيارات"]).filter((x) => !x.c.visitAt && due(x.c) && !data.proposals.some((p) => p.requestId === x.r.id))
-    .sort((a, b) => byPrio(a.c, b.c));
+  // Older sends without an offer record are due follow-ups now, so they show under «متابعات اليوم».
+  const offers: { c: Client; r: Request }[] = [];
   // 2b) Follow-ups due today: everyone with a request whose call date has come and who isn't already listed under
   // offers waiting for an answer — e.g. after a viewing (client 2026-11-08: a call set for today after a visit was
   // in no section, because «أرسلنا خيارات» was only ever shown as offers waiting).
-  const inOffers = new Set([...props.map((p) => p.clientId), ...offers.map((x) => x.c.id)]);
-  const follow = base.filter((c) => !needsOptions(c) && due(c) && !inOffers.has(c.id)).sort(byPrio);
+  // Client 2026-11-08: a call date that has come always shows here, whatever the request's stage (negotiation and
+  // booked viewings keep their own sections).
+  const follow = base.filter((c) => due(c)).sort(byPrio);
   // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
   const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
   const allViews = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));

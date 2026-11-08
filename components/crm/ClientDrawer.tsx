@@ -3,7 +3,7 @@
 /** Client file: contact, next step, requests with their journey, open tasks, notes, and the full log. */
 import { useEffect } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { can, clientById, inSearch, journey, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
+import { can, clientById, journey, match, nameOf, OPEN_REQ, propById } from "@/lib/crm/logic";
 import { clearNextCall, confirmVisit, deleteRequest, postpone, setTemp, write } from "@/lib/crm/actions";
 import { isPreview } from "@/lib/crm/preview";
 import { fmtStamp, fmtVisit, money, nowStamp, relDay, today } from "@/lib/crm/util";
@@ -110,7 +110,7 @@ export function ClientDrawer() {
             </div>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "update", clientId: c.id })}>تحديث</button>
-              {!inSearch(data, c) && <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تم التأجيل إلى " + n); }}>تأجيل 3 أيام</button>}
+              <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تم التأجيل إلى " + n); }}>تأجيل 3 أيام</button>
               {c.nextCall && <button type="button" className="crm-btn" onClick={async () => { await clearNextCall(data, c); toast("أُلغي موعد الاتصال"); }}>بدون موعد</button>}
               {vis && !vis.ok && (
                 <button type="button" className="crm-btn" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الزيارة</button>
