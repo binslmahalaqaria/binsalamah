@@ -14,8 +14,26 @@ import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "
 import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, findDup } from "./forms";
+import { WaMessageButton } from "./WaButtons";
 
 export const INT_OPEN = ["متابعة", "ممتاز"];
+
+/** The follow-up message, text approved by the client 2026-11-08. Signed with the signed-in employee's first name. */
+export function interestMessage(d: CrmData, c: Client, xs: Interest[]) {
+  const titles = xs.map((x) => propById(d, x.propertyId)?.title || x.propertyTitle);
+  const list = titles.length > 1 ? titles.slice(0, -1).join("، ") + " و" + titles[titles.length - 1] : titles[0] || "العقار";
+  const nameOnly = /^[\d\s+()-]+$/.test((c.name || "").trim()) || !c.name?.trim();
+  const me = (nameOf(d, d.uid) || "").trim().split(/\s+/)[0];
+  return [
+    "السلام عليكم ورحمة الله، حيّاك الله" + (nameOnly ? "" : " أستاذ " + c.name.trim()) + " 🌷",
+    "",
+    (me ? "معك " + me + " من" : "معك فريق") + " بن سلمه العقارية.",
+    "سبق وتواصلت معنا بخصوص " + list + "، وحبيت أتابع معك: هل تمت الزيارة، أو حاب ننسّق لك موعد زيارة يناسبك؟ أو حاب نشوف لك عقار آخر اذا العقار غير مناسب معك؟",
+    "",
+    "حاضرين لخدمتك طال عمرك.",
+  ].join("\n");
+}
+const FOLLOW_TITLE = "يفتح واتساب برسالة متابعة جاهزة، راجعها وأرسلها";
 export const isOpenInterest = (x: Interest) => INT_OPEN.includes(x.status);
 export type InterestItem = { c: Client; x: Interest };
 
@@ -53,8 +71,9 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
           {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <ContactIcons phone={c.phone} />
+        {open && <WaMessageButton phone={c.phone} text={interestMessage(data, c, [x])} label="📲 رسالة متابعة" title={FOLLOW_TITLE} />}
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
       </div>
     </div>
@@ -82,8 +101,9 @@ export function InterestList({ items }: { items: InterestItem[] }) {
                 {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <ContactIcons phone={c.phone} />
+              {g.some(({ x }) => isOpenInterest(x)) && <WaMessageButton phone={c.phone} text={interestMessage(data, c, g.map(({ x }) => x).filter(isOpenInterest))} label="📲 رسالة متابعة" title={FOLLOW_TITLE} />}
               <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "interestClient", clientId: c.id })}>عرض الاهتمامات</button>
             </div>
           </div>

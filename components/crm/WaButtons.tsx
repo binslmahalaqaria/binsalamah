@@ -48,3 +48,12 @@ export function SendRequestButton({ c, r, small = true }: { c: Client; r?: Reque
     </button>
   );
 }
+
+/** Opens WhatsApp with a ready message (the CRM inbox, or the employee's phone without the WhatsApp permission). */
+export function WaMessageButton({ phone, text, label, title }: { phone: string | null | undefined; text: string; label: string; title?: string }) {
+  const open = useOpenWa();
+  if (!phone) return null;
+  return (
+    <button type="button" className="crm-btn sm" title={title} onClick={(e) => { e.stopPropagation(); open(phone, text); }}>{label}</button>
+  );
+}

@@ -122,3 +122,4 @@
 - [ ] One interest form saves several properties and an unlisted one with details; the unlisted one shows «غير مضاف» and turns into a request with its details. «بدون موعد» in the client file clears the date.
 - [ ] A client with several interests shows as one row on الاهتمامات and the home page, and «عرض الاهتمامات» lists them with their follow-up buttons.
 - [ ] Budget on both request forms: ready amounts up to 10 مليون, «أخرى» shows the field and its reading, unreadable or very small figures can't be saved, rent shows rent amounts.
+- [ ] «📲 رسالة متابعة» on an interest opens WhatsApp with the approved text, the client's name, the property names, and the signed-in employee's first name.
