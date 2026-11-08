@@ -106,8 +106,9 @@ export default function HomeDashboard() {
   const clientById = new Map(mine.map((c) => [c.id, c]));
   const props = data.proposals.filter((p) => {
     const c = clientById.get(p.clientId);
-    // A client with a call date due is listed under «متابعات اليوم»; here only offers with no date, sent before today.
-    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && !c.nextCall && p.sentAt.slice(0, 10) < t;
+    // Offers still waiting for the answer, when the client's call date has come (or, with no date, sent before today).
+    // Such a client also shows under «متابعات اليوم»: both sections, on purpose (client 2026-11-09).
+    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
   }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
   // Older sends without an offer record are due follow-ups now, so they show under «متابعات اليوم».
   const offers: { c: Client; r: Request }[] = [];
