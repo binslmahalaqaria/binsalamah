@@ -123,3 +123,4 @@
 - [ ] A client with several interests shows as one row on الاهتمامات and the home page, and «عرض الاهتمامات» lists them with their follow-up buttons.
 - [ ] Budget on both request forms: ready amounts up to 10 مليون, «أخرى» shows the field and its reading, unreadable or very small figures can't be saved, rent shows rent amounts.
 - [ ] The WhatsApp icon on an open interest opens WhatsApp with the approved text, the client's name, the property names, and the signed-in employee's first name.
+- [ ] Owner changes a property's number in its form; a number already used is refused; the next new property gets the number after the highest.

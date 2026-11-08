@@ -723,6 +723,19 @@ export async function assignPropRefs(d: CrmData) {
   }
 }
 
+/**
+ * The owner renumbers a property (client 2026-11-08: «#13 خلها #12»). The counter follows the highest number in use,
+ * so the next new property continues right after it.
+ */
+export async function setPropRef(d: CrmData, pid: string, n: number) {
+  assertWritable();
+  const top = Math.max(n, ...d.props.filter((p) => p.id !== pid).map((p) => p.ref || 0));
+  await runTransaction(db, async (tx) => {
+    tx.update(doc(db, "properties", pid), { ref: n, updatedAt: nowStamp(), updatedBy: d.uid || null });
+    tx.set(doc(db, "counters", "props"), { last: top }, { merge: true });
+  });
+}
+
 /** Same for requests (ط-1, ط-2, …): any request without a number gets the next one, oldest first (counters/requests). */
 export async function assignRequestRefs(d: CrmData) {
   const todo = d.requests.filter((r) => !r.ref).sort((x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || "")));

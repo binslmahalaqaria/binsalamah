@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, inSearch, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { toggleTask, assignClient, closeInterest, createClient, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
+import { toggleTask, assignClient, closeInterest, createClient, setPropRef, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -438,7 +438,7 @@ export function PropertyForm({ id }: { id?: string }) {
     waMessage: s(r.waMessage), units: (r.units || []).map((u) => ({ ...u })) as Unit[],
     features: s(r.features), city: r.city || "الرياض", buildArea: s(r.buildArea), livingRooms: s(r.livingRooms), floors: s(r.floors),
     facing: s(r.facing), streetWidth: s(r.streetWidth), age: s(r.age), videoLink: s(r.videoLink), notes: s(r.notes),
-    driveLink: s(r.driveLink), pdfUrl: s(r.pdfUrl), pdfName: s(r.pdfName), pdfCaption: s(r.pdfCaption),
+    driveLink: s(r.driveLink), pdfUrl: s(r.pdfUrl), pdfName: s(r.pdfName), pdfCaption: s(r.pdfCaption), ref: s(r.ref),
   });
   const [busy, setBusy] = useState(false);
   const [waArmed, setWaArmed] = useState(false);
@@ -503,6 +503,14 @@ export function PropertyForm({ id }: { id?: string }) {
 
   async function save() {
     if (!f.title.trim()) return toast("يرجى تعبئة حقل: اسم العقار");
+    // Property number: the owner may change it, never to one another property already has.
+    const newRef = rec && data.isAdmin ? num(f.ref) : null;
+    const refChanged = !!rec && newRef !== null && newRef !== (rec.ref || null);
+    if (refChanged) {
+      if (!Number.isInteger(newRef) || newRef! < 1) return toast("رقم العقار لازم يكون رقم صحيح أكبر من صفر");
+      const taken = data.props.find((p) => p.id !== rec!.id && p.ref === newRef);
+      if (taken) return toast("الرقم #" + newRef + " مستخدم لعقار: " + taken.title);
+    }
     setBusy(true);
     try {
       const body: Partial<Property> = {
@@ -517,6 +525,7 @@ export function PropertyForm({ id }: { id?: string }) {
         driveLink: f.driveLink.trim() || null, pdfUrl: f.pdfUrl || null, pdfName: f.pdfUrl ? f.pdfName || null : null, pdfCaption: f.pdfUrl ? f.pdfCaption.trim() || null : null,
       };
       if (rec) await writeProperty(rec.id, { ...body, updatedBy: data.uid });
+      if (rec && refChanged) await setPropRef(data, rec.id, newRef!);
       else await write("properties", null, { ...body, createdAt: nowStamp(), createdBy: data.uid, updatedBy: data.uid });
       toast("تم الحفظ");
       closeModal();
@@ -549,6 +558,11 @@ export function PropertyForm({ id }: { id?: string }) {
           </p>
         )}
         <Sec>العقار</Sec>
+        {rec && data.isAdmin && (
+          <Field label="رقم العقار" hint="للمالك فقط. ما يقبل رقم مستخدم لعقار ثاني.">
+            <input inputMode="numeric" dir="ltr" value={f.ref} onChange={(e) => set("ref", e.target.value)} />
+          </Field>
+        )}
         <Field label="اسم العقار *" full><input value={f.title} placeholder="فيلا 250م النرجس" onChange={(e) => set("title", e.target.value)} /></Field>
         <Field label="النوع"><Select value={f.type} onChange={(v) => set("type", v)} options={withCurrent(data.propTypes, [f.type])} /></Field>
         <Field label="للـ"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["بيع", "إيجار"]} /></Field>
