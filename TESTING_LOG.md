@@ -6,6 +6,7 @@
 
 | Date | Phase | Item Tested | Result | Notes | Tester |
 |---|---|---|---|---|---|
+| 2026-11-07 | Budget picker | Pass (website), not run (CRM) | Local website form: 14 amounts up to 10 مليون plus «أخرى»; typed 1.5, 3 مليون, 1000 read correctly and «كلام» refused; rent shows rent amounts. Parser also run on 13 samples. No lead was sent. The CRM form was not opened (signed out) | Claude |
 | 2026-11-07 | Chat attachments, call-date rule, multi-property interests | Not run in the browser | `tsc` and lint clean; deployed at the client's request without a click-through (pane signed out) | Claude |
 | 2026-11-07 | Home sections, interests, «بدون موعد» | Not run in the browser | `tsc` and lint clean and the pages return 200, but the browser pane is signed out and Chrome is not connected, so nothing was clicked through. Client asked to test locally | Claude |
 | 2026-11-07 | Opening page (panels, mark, «بن سلمه يدلك») | Pass | Local at 993 px: mark and phrase centred, panels move apart mid-animation, one continuous run not watched. Phone width not measured for this version | Claude |

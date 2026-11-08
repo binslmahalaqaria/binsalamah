@@ -28,6 +28,8 @@ import { listOffers } from "@/lib/offers";
 import { useAuth } from "@/lib/auth-context";
 import type { Offer } from "@/lib/types";
 import { RIYADH_ZONES, districtKey, zoneOf } from "@/lib/districts";
+import { budgetOk, parseBudget } from "@/lib/budget";
+import { BudgetPicker } from "@/components/BudgetPicker";
 
 type F = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v));
@@ -233,6 +235,9 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       if (ex) { toast("لهذا العميل طلب قائم — عدّل طلبه الحالي بدل إضافة طلب جديد"); return openModal({ kind: "request", id: ex.id }); }
     }
     if (nameless && !f.clientName.trim()) return toast("اكتب اسم العميل — محفوظ بالرقم فقط");
+    const rent = f.purpose === "إيجار";
+    // Required on new requests; an old one with no budget can still be edited (client 2026-11-07).
+    if ((!rec || f.budget.trim()) && !budgetOk(f.budget, rent)) return toast("اختر الميزانية أو اكتبها بشكل صحيح");
     if (!f.zones.length) return toast("اختر الجهة (شمال، شرق، غرب، جنوب أو وسط الرياض)");
     // Every chosen zone needs at least one district in it (client 2026-10-24).
     const noDist = f.zones.filter((z) => !f.districts.some((d) => zoneOf(d)?.ar === z));
@@ -252,7 +257,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         else pick = owner;
       }
       const demand = {
-        purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: num(f.budget),
+        purpose: f.purpose, propTypes: f.propTypes, zones: f.zones, districts: f.districts.join("، ") || null, budget: parseBudget(f.budget, rent),
         payment: f.payment || null, bank: f.bank || null, areaMin: num(f.areaMin), areaMax: num(f.areaMax), bedroomsMin: num(f.bedroomsMin),
         floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
@@ -370,7 +375,9 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         )}
         <Sec>متطلبات العميل</Sec>
         <Field label="نوع الطلب"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} /></Field>
-        <Field label="الميزانية القصوى (ريال)"><input inputMode="decimal" value={f.budget} onChange={(e) => set("budget", e.target.value)} /></Field>
+        <Field label="الميزانية القصوى *" full>
+          <BudgetPicker value={f.budget} onChange={(v) => set("budget", v)} rent={f.purpose === "إيجار"} chip={(on) => "crm-btn sm" + (on ? " primary" : "")} placeholder="مثال: 3 مليون أو 750 ألف" />
+        </Field>
         <Field label="المساحة من (م²)"><input inputMode="decimal" value={f.areaMin} placeholder="أقل مساحة" onChange={(e) => set("areaMin", e.target.value)} /></Field>
         <Field label="المساحة إلى (م²)"><input inputMode="decimal" value={f.areaMax} placeholder="أعلى مساحة" onChange={(e) => set("areaMax", e.target.value)} /></Field>
         <Field label="نوع العقار" full>

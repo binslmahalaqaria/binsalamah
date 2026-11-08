@@ -418,7 +418,7 @@
     "waShort": "WhatsApp",
     "reqNeedArea": "Please choose an area or district (e.g. North Riyadh)",
     "reqNeedDistrict": "Please pick at least one district in that area",
-    "reqNeedBudget": "Please enter your budget, e.g. 1.5 million",
+    "reqNeedBudget": "Please choose or enter your budget",
     "reqBudgetHint": "Type your budget, e.g. 1.5 million",
     "payQ": "How will you pay?",
     "payCash": "Cash",

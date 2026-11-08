@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-07** — **Budget picked, not typed.** Client: budget figures were confusing. In the CRM form «3 مليون» saved as 3, and on the website «1.5» read as 1,500. Both request forms now use `components/BudgetPicker.tsx`: ready amounts from 500 ألف to 10 مليون (30 ألف to 300 ألف for rent) and «أخرى» to type one, with the reading shown below. Saving needs a readable figure of at least 50,000 (5,000 for rent), on new CRM requests and every website request. `parseBudget(raw, rent)` reads 1–99 as millions, 100–9,999 as thousands, rent under 1,000 as thousands, and anything with separators as written. The website lead sends the figure, not the typed text. Old requests keep their stored budget. Affects §8, §9.
+
 - **2026-11-07** — **Interests grouped by client.** Client: several interests for one client must not stack in the list. `InterestList` shows one row per client on الاهتمامات and the home page, with the count and earliest date; «عرض الاهتمامات» opens that client's list (`ClientInterests`, modal `interestClient`). Affects §9.
 
 - **2026-11-07** — **Interests: several properties, and properties not in the system; «بدون موعد» in the client file.** The interest form takes several properties in one save (`addInterests`, one write), plus quick entries for a property not in the system: a name and short details, stored with `propertyId: null` and shown as «غير مضاف». The unit field shows only when one property is chosen. The client file gains «بدون موعد» (`clearNextCall`), which removes the date and sets `noCall`. Affects §5, §9.

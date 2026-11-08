@@ -16,7 +16,8 @@ import { ZonePicker } from "@/components/site/ZonePicker";
 import { SEARCH_TYPES } from "@/components/site/SearchBar";
 import { Link } from "@/i18n/navigation";
 import { listPublishedOffers } from "@/lib/offers";
-import { parseBudget } from "@/lib/budget";
+import { budgetOk, parseBudget } from "@/lib/budget";
+import { BudgetPicker } from "@/components/BudgetPicker";
 import type { Offer } from "@/lib/types";
 
 /** Same types and order as the search bar; "أخرى" asks the visitor to name it. The CRM reads the lead in Arabic. */
@@ -78,13 +79,14 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
     if (riyadh && !picked.length) return setErr(t("reqNeedDistrict"));
     if (city === OTHER && !otherCity.trim()) return setErr(t("reqNeedArea"));
     // The budget is required (client 2026-11-07); it must be a figure the CRM can read.
-    if (!parseBudget(budget)) return setErr(t("reqNeedBudget"));
+    const rent = purpose === "reqRent";
+    if (!budgetOk(budget, rent)) return setErr(t("reqNeedBudget"));
     setErr("");
     setState("sending");
     const cityName = city === OTHER ? otherCity.trim() || "غير محددة" : city;
     const message = [
       "طلب عقاري من الموقع", "النوع: " + (type === "other" ? otherType.trim() || "أخرى" : type ? TYPE_AR[type] : ""), "الغرض: " + (purpose ? PURPOSE_AR[purpose] : "غير محدد"),
-      "المدينة: " + cityName + (riyadh ? " — " + (picked.length ? Array.from(new Set(picked.map((d) => RIYADH_ZONES.find((z) => z.districts.includes(d))?.ar).filter(Boolean))).join("، ") : RIYADH_ZONES.find((z) => z.id === zone)?.ar) : ""), (picked.length > 1 ? "الأحياء: " : "الحي: ") + ((riyadh ? picked.join("، ") : district.trim()) || "غير محدد"), "الميزانية: " + (budget.trim() || "غير محددة"),
+      "المدينة: " + cityName + (riyadh ? " — " + (picked.length ? Array.from(new Set(picked.map((d) => RIYADH_ZONES.find((z) => z.districts.includes(d))?.ar).filter(Boolean))).join("، ") : RIYADH_ZONES.find((z) => z.id === zone)?.ar) : ""), (picked.length > 1 ? "الأحياء: " : "الحي: ") + ((riyadh ? picked.join("، ") : district.trim()) || "غير محدد"), "الميزانية: " + (parseBudget(budget, rent) || 0).toLocaleString("en-US"),
       ...(pay ? ["الدفع: " + PAY_AR[pay]] : []),
       ...(() => {
         const a = Number(area.replace(/[^\d]/g, "")), b = Number(areaTo.replace(/[^\d]/g, ""));
@@ -96,7 +98,7 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
       setState("done");
       // Listings on the site that fit what was asked: type, district/area, budget (+10%), size (−10%).
       if (purpose !== "reqRent") listPublishedOffers().then((all) => {
-        const b = parseBudget(budget), a = Number(area.replace(/[^\d]/g, "")) || 0, ax = Number(areaTo.replace(/[^\d]/g, "")) || 0;
+        const b = parseBudget(budget, rent), a = Number(area.replace(/[^\d]/g, "")) || 0, ax = Number(areaTo.replace(/[^\d]/g, "")) || 0;
         const zoneDists = riyadh && !picked.length ? RIYADH_ZONES.find((z) => z.id === zone)?.districts || [] : [];
         const fit = all.filter((o) => {
           if (type && type !== "other" && o.type !== type) return false;
@@ -213,9 +215,9 @@ export function RequestForm({ districts, noLinks }: { districts: string[]; noLin
 
             <div>
               {step(4, t("reqQ3"))}
-              <div className="grid gap-3 sm:grid-cols-2 sm:max-w-2xl">
-                <input className={field} value={budget} onChange={(e) => setBudget(e.target.value)} placeholder={t("reqBudgetHint")} />
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-4 sm:max-w-3xl">
+                <BudgetPicker value={budget} onChange={setBudget} rent={purpose === "reqRent"} ar={ar} chip={(on) => chip(on) + " min-w-20"} inputClassName={field + " sm:max-w-sm"} placeholder={t("reqBudgetHint")} />
+                <div className="grid grid-cols-2 gap-3 sm:max-w-md">
                   <input className={field} inputMode="numeric" value={area} onChange={(e) => setArea(e.target.value)} placeholder={t("reqAreaHint")} />
                   <input className={field} inputMode="numeric" value={areaTo} onChange={(e) => setAreaTo(e.target.value)} placeholder={t("reqAreaToHint")} />
                 </div>
