@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-09** — **A due call isn't hidden by a visit booked later.** Further review: a client with a visit booked days ahead was left out of «متابعات اليوم» even when their call date had come. Only a visit today or tomorrow (its own section) now keeps a client out. Affects §9.
+
 - **2026-11-09** — **Client update form hardened.** Review findings: (1) the property field starts with the client's last property, so a plain call by a client with no request quietly created an interest; now properties become interests only for «تم إرسال الموقع / التفاصيل», «استفسر» and «سجّل اهتمام» (typed unlisted properties always count). (2) A double tap on «حفظ التحديث» could save twice; the button now locks while saving. (3) A failure after the update itself is reported instead of failing silently. Affects §9.
 
 - **2026-11-09** — **Fix: recording a viewing's result lost its log entry.** Review of the last two days' changes. `viewingResult()` wrote «زار العقار» to the client's log, then `setProposalStatus()` wrote the client again from the copy loaded before, so the visit entry (and its note) vanished from the log. `setProposalStatus` takes `{ log: false }` and the viewing result uses it. Affects §9.

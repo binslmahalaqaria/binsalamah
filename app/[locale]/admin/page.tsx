@@ -97,7 +97,9 @@ export default function HomeDashboard() {
   // A searching request with a call date that has come (something was sent or viewed before) is a follow-up instead.
   const needsOptions = (c: Client) => ["جديد", "جاري البحث"].includes(open(c)[0].status || "جديد") && !due(c);
   // New requests (no options sent yet) and due follow-ups are two different jobs, so two sections (client 2026-10-25).
-  const base = mine.filter((c) => isActive(c) && open(c).length && !c.visitAt && !negSt.includes(open(c)[0].status || ""));
+  // A visit today or tomorrow has its own section; a visit further away doesn't hide a call that is due (client 2026-11-09).
+  const visitSoon = (c: Client) => !!c.visitAt && c.visitAt.slice(0, 10) <= addDays(1);
+  const base = mine.filter((c) => isActive(c) && open(c).length && !visitSoon(c) && !negSt.includes(open(c)[0].status || ""));
   const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));

@@ -491,7 +491,9 @@ export async function transferRequest(d: CrmData, r: Request, to: string, note: 
   const res = await assignClient(d, r.clientId, to, r.id);
   if (c) {
     const text = "تحويل الطلب من " + (from ? nameOf(d, from) : "غير مسند") + " إلى " + nameOf(d, to) + (note ? ": " + note : "");
-    await write("clients", c.id, { log: pushLog(clientById(d, c.id) || c, { at: nowStamp(), byId: d.uid, type: "تحويل", text, call: false }), updatedAt: nowStamp() }, "update");
+    // assignClient just wrote «إسناد» from the same older copy of the client; keep it under the transfer entry.
+    const assigned = c.assignee !== to ? [{ at: nowStamp(), byId: d.uid, type: "إسناد", text: "الإسناد: " + nameOf(d, to), call: false }] : [];
+    await write("clients", c.id, { log: [{ at: nowStamp(), byId: d.uid, type: "تحويل", text, call: false }, ...assigned, ...(c.log || [])].slice(0, LOG_MAX), updatedAt: nowStamp() }, "update");
   }
   return res;
 }
