@@ -10,7 +10,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
 import { can, nameOf, reqsOf } from "@/lib/crm/logic";
 import type { Client, Request } from "@/lib/crm/types";
-import { waLink, waWebLink } from "@/lib/crm/util";
+import { waLink } from "@/lib/crm/util";
 import { requestMessage, waInboxHref } from "@/lib/crm/wa";
 
 function useOpenWa() {
@@ -49,15 +49,3 @@ export function SendRequestButton({ c, r, small = true }: { c: Client; r?: Reque
   );
 }
 
-/** Opens WhatsApp with a ready message (the CRM inbox, or the employee's phone without the WhatsApp permission). */
-export function WaMessageButton({ phone, text, label, title }: { phone: string | null | undefined; text: string; label: string; title?: string }) {
-  const open = useOpenWa();
-  const web = waWebLink(phone, text);
-  if (!phone) return null;
-  return (
-    <>
-      <button type="button" className="crm-btn sm" title={title} onClick={(e) => { e.stopPropagation(); open(phone, text); }}>{label}</button>
-      {web && <a className="crm-btn sm" href={web} target="_blank" rel="noopener" title="يفتح واتساب ويب والرسالة مكتوبة" onClick={(e) => e.stopPropagation()}>🌐 واتساب ويب</a>}
-    </>
-  );
-}

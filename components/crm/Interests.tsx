@@ -14,7 +14,6 @@ import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "
 import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, findDup } from "./forms";
-import { WaMessageButton } from "./WaButtons";
 
 export const INT_OPEN = ["متابعة", "ممتاز"];
 
@@ -33,7 +32,7 @@ export function interestMessage(d: CrmData, c: Client, xs: Interest[]) {
     "حاضرين لخدمتك طال عمرك.",
   ].join("\n");
 }
-const FOLLOW_TITLE = "يفتح واتساب برسالة متابعة جاهزة، راجعها وأرسلها";
+
 export const isOpenInterest = (x: Interest) => INT_OPEN.includes(x.status);
 export type InterestItem = { c: Client; x: Interest };
 
@@ -72,8 +71,8 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <ContactIcons phone={c.phone} />
-        {open && <WaMessageButton phone={c.phone} text={interestMessage(data, c, [x])} label="📲 رسالة متابعة" title={FOLLOW_TITLE} />}
+        {/* The WhatsApp icon opens the app with the follow-up message ready. */}
+        <ContactIcons phone={c.phone} text={open ? interestMessage(data, c, [x]) : undefined} />
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
       </div>
     </div>
@@ -102,8 +101,7 @@ export function InterestList({ items }: { items: InterestItem[] }) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <ContactIcons phone={c.phone} />
-              {g.some(({ x }) => isOpenInterest(x)) && <WaMessageButton phone={c.phone} text={interestMessage(data, c, g.map(({ x }) => x).filter(isOpenInterest))} label="📲 رسالة متابعة" title={FOLLOW_TITLE} />}
+              <ContactIcons phone={c.phone} text={g.some(({ x }) => isOpenInterest(x)) ? interestMessage(data, c, g.map(({ x }) => x).filter(isOpenInterest)) : undefined} />
               <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "interestClient", clientId: c.id })}>عرض الاهتمامات</button>
             </div>
           </div>
