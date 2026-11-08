@@ -32,12 +32,13 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, p.requestId)}>
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
-          <span className="text-[13.5px]">{pr?.ref ? "#" + pr.ref + " " : ""}{pr?.title || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
+          <span className="text-[13.5px]">{pr?.ref ? "#" + pr.ref + " " : ""}{pr?.title || p.propertyTitle || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
+          {!p.propertyId && <Pill tone="muted">غير مضاف</Pill>}
           <Pill tone={PROP_TONE[p.status]}>{p.status}</Pill>
           {orphan && <Pill tone="hot">{c ? "الطلب محذوف" : "العميل محذوف"}</Pill>}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
-          أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
+          أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.note ? " · " + p.note : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
           {data.isMgr && p.assignee ? " · " + nameOf(data, p.assignee) : ""}
         </div>
       </div>
@@ -53,7 +54,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>
         </>}
         {["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) && (
-          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId })}>حدد زيارة</button>
+          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId || undefined })}>حدد زيارة</button>
         )}
         <Kebab items={[
           p.status === "أُرسل" ? { label: "شاهد العرض — بانتظار رده", onClick: () => set("بانتظار الرد") } : null,

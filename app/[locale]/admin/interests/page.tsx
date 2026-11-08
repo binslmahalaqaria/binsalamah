@@ -7,6 +7,7 @@ import { propById } from "@/lib/crm/logic";
 import { today } from "@/lib/crm/util";
 import { Empty, PageHeader, RadioChips, Select } from "@/components/crm/ui";
 import { InterestList, interestItems, isOpenInterest } from "@/components/crm/Interests";
+import { RequestTabs } from "@/components/crm/PageTabs";
 
 const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["closed", "المنتهية"]];
 
@@ -33,7 +34,8 @@ export default function InterestsPage() {
 
   return (
     <>
-      <PageHeader title="الاهتمامات" sub="عملاء استفسروا عن عقار معيّن — نرجع لهم في موعدهم"
+      <RequestTabs />
+      <PageHeader title="الاهتمامات" sub="عملاء ما لهم طلب استفسروا عن عقار معيّن — نرجع لهم في موعدهم. إذا انسجل له طلب تنتقل عقاراته للعروض"
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "interest" })}>+ تسجيل اهتمام</button>} />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RadioChips options={TABS.map(([k, l]) => [k, l + " (" + inTab(k).length + ")"] as [string, string])} value={tab} onChange={setTab} />

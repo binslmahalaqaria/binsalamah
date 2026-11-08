@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, inSearch, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  applyUpdate, recordSends, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  addInterests, applyUpdate, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -65,6 +65,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
   const [note, setNote] = useState("");
   // One update can name several properties (client 2026-11-08), e.g. details of three properties sent together.
   const [props, setProps] = useState<string[]>(() => [p0 || c?.interestIn || ""].filter(Boolean));
+  // Properties not in the system: a name and short details (client 2026-11-08).
+  const [extras, setExtras] = useState<{ title: string; details: string }[]>([]);
   if (!c) return null;
   // A call date only follows something sent: a request still in «جديد» or «جاري البحث» has none.
   const noDate = inSearch(data, c) && !CALL_AFTER.includes(type);
@@ -84,7 +86,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
     try {
-      const titles = props.map((id) => data.props.find((p) => p.id === id)?.title).filter(Boolean);
+      const titles = [...props.map((id) => data.props.find((p) => p.id === id)?.title), ...extras.map((x) => x.title.trim())].filter(Boolean);
       const text = [note.trim(), titles.length > 1 ? "العقارات: " + titles.join("، ") : ""].filter(Boolean).join(" — ");
       await applyUpdate(data, clientId, type, nx, text, props[0] || null, { reqId, noCall: picked && next === "none" });
     } catch {
@@ -92,8 +94,19 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     }
     // Location/details sent → the next step is the visit: open the booking straight away (client 2026-10-25).
     const openR = (reqId && data.requests.find((x) => x.id === reqId && OPEN_REQ(x))) || data.requests.find((x) => x.clientId === clientId && OPEN_REQ(x));
-    // Each property sent is recorded as an offer on the request.
-    if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR && props.length) await recordSends(data, openR.id, props);
+    // One place per property: with a request they are its offers; without one they go to الاهتمامات.
+    const sendT = ["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type);
+    const typed = extras.filter((x) => x.title.trim());
+    if (openR) {
+      if (sendT && props.length) await recordSends(data, openR.id, props);
+      for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, sendT ? "أُرسل" : "مهتم");
+    } else if (c && !u?.status && (props.length || typed.length)) {
+      // (Not when the result itself archives the client, e.g. «غير مهتم».)
+      await addInterests(data, c, [
+        ...props.map((id) => ({ propertyId: id, title: data.props.find((p) => p.id === id)?.title || "عقار", unit: null, note: null })),
+        ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: x.details.trim() || null })),
+      ], nx || addDays(3), { log: false });
+    }
     if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
       toast("سُجّل الإرسال — حدّد موعد الزيارة، أو أغلق النافذة إن لم يُتفق بعد");
       return openModal({ kind: "visit", reqId: openR.id, propertyId: props[0] || undefined });
@@ -116,6 +129,14 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
             </div>
           )}
         </Field>
+        {extras.map((x, i) => (
+          <div key={i} className="grid gap-2 rounded-xl border border-[var(--crm-line)] p-2.5">
+            <div className="flex items-center justify-between text-[13px]"><b>عقار غير مضاف في النظام</b><button type="button" className="crm-btn ghost sm" onClick={() => setExtras((xs) => xs.filter((_, n) => n !== i))}>إزالة</button></div>
+            <input value={x.title} placeholder="اسم العقار أو وصفه، مثال: فيلا حي الملقا" aria-label="اسم العقار" onChange={(e) => setExtras((xs) => xs.map((y, n) => (n === i ? { ...y, title: e.target.value } : y)))} />
+            <input value={x.details} placeholder="تفاصيل بسيطة: السعر، المساحة" aria-label="تفاصيل العقار" onChange={(e) => setExtras((xs) => xs.map((y, n) => (n === i ? { ...y, details: e.target.value } : y)))} />
+          </div>
+        ))}
+        <button type="button" className="crm-btn sm justify-self-start" onClick={() => setExtras((xs) => [...xs, { title: "", details: "" }])}>+ عقار غير مضاف في النظام</button>
         <Field label="ملاحظة"><textarea rows={2} value={note} placeholder="مثال: أعجبته الفيلا ويرغب في زيارتها مع زوجته" onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
       {noDate ? <p className="crm-hint mt-3">الطلب ما زال في البحث، فما يحتاج موعد اتصال. يتحدد الموعد إذا أُرسل له شيء.</p> : (

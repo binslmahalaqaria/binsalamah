@@ -127,3 +127,10 @@
 - [ ] Upload a photo over 10 MB, a normal JPEG, a PNG screenshot, and an iPhone HEIC in the property form: the first three upload; HEIC uploads or shows the clear message. A failure names its reason.
 - [ ] Client update «تم إرسال التفاصيل» with three properties: three offers appear under the request, the log names all three, the request moves to «أرسلنا خيارات».
 - [ ] A request in «أرسلنا خيارات» with two offers: mark one «غير مناسب» (stays), then the other (goes to «جاري البحث», call date cleared, log entry). With one offer still «مهتم», it stays.
+
+## One place per property (2026-11-08)
+
+- [ ] Client without a request: update with a property and an unlisted one → both appear in الاهتمامات, nothing in العروض.
+- [ ] Same client gets a request → the interests show «حُوّل لطلب» and appear as offers on the new request (unlisted one with «غير مضاف»).
+- [ ] Client with a request: «تم إرسال التفاصيل» with an unlisted property → offer «غير مضاف» under the request. Interest form for this client → offers «مهتم», not الاهتمامات.
+- [ ] الاهتمامات opens from الطلبات tabs; the sidebar has no separate item.

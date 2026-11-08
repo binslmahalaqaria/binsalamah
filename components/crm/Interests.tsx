@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterests, closeInterest, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
+import { addInterests, askedOnRequest, interestsToOffers, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
@@ -176,8 +176,16 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
         ...picked.map((pid) => ({ propertyId: pid, title: propById(data, pid)?.title || "عقار", unit: picked.length === 1 ? unit || null : null, note: note.trim() || null })),
         ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: [x.details.trim(), note.trim()].filter(Boolean).join(" — ") || null })),
       ];
-      await addInterests(data, fresh || clientById(data, id)!, items, followUp);
-      toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));
+      const who = fresh || clientById(data, id)!;
+      // A client who already has a request: the properties go to that request's offers (one place per property).
+      const req = !fresh ? data.requests.find((r) => r.clientId === who.id && OPEN_REQ(r)) : undefined;
+      if (req) {
+        await askedOnRequest(data, who, req, items);
+        toast("للعميل طلب قائم — انسجلت في «العروض» داخل طلبه");
+      } else {
+        await addInterests(data, who, items, followUp);
+        toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));
+      }
       closeModal();
     } catch (e) {
       toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ");
@@ -256,8 +264,8 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
         // One open request per client: an existing one is opened instead of adding a second.
         const ex = data.requests.find((r) => r.clientId === c!.id && OPEN_REQ(r));
         if (ex) {
-          await closeInterest(data, c!, x!, ex.id, note.trim());
-          toast("للعميل طلب قائم — رُبط الاهتمام به");
+          await interestsToOffers(data, c!, ex, x!.id);
+          toast("للعميل طلب قائم — انضاف العقار لعروض طلبه");
           return openModal({ kind: "request", id: ex.id });
         }
         const district = p?.district ? splitList(p.district) : [];

@@ -90,8 +90,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: homeBadge }]],
     ["المبيعات", [
-      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq, also: ["/admin/leads", "/admin/proposals", "/admin/viewings"] },
-      { href: "/admin/interests", k: "star", label: "الاهتمامات", badge: dueInterests(data, true).length },
+      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq + dueInterests(data, true).length, also: ["/admin/leads", "/admin/proposals", "/admin/viewings", "/admin/interests"] },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
       ...(data.isMgr ? [{ href: "/admin/contact", k: "phone", label: "الأرقام", badge: toContact }] : []),
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),

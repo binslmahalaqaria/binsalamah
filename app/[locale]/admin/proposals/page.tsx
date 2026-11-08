@@ -22,7 +22,7 @@ export default function ProposalsPage() {
   return (
     <>
       <RequestTabs />
-      <PageHeader title="العروض" sub="العقارات المرسلة للعملاء وحالتها ورأيهم — غير المناسب يعيد الطلب إلى مرحلة «جاري البحث»" />
+      <PageHeader title="العروض" sub="العقارات المرسلة لعملاء عندهم طلب، وحالتها ورأيهم. إذا صارت كل عروض الطلب غير مناسبة يرجع إلى «جاري البحث»" />
       <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-2.5">
         <Select value={st} onChange={setSt} options={[["open", "القائمة"], ...PROP_ST.map((x) => [x, x] as [string, string])]} blank="كل الحالات" />
         {data.isMgr && <Select value={who} onChange={setWho} options={members(data).map((id) => [id, nameOf(data, id)] as [string, string])} blank="كل الموظفين" />}

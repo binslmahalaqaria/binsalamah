@@ -404,7 +404,10 @@ export interface Proposal {
   id: string;
   requestId: string;
   clientId: string;
+  /** Empty for a property that isn't in the system (client 2026-11-08); its name and details are then below. */
   propertyId: string;
+  propertyTitle?: string | null;
+  note?: string | null;
   unit?: string | null;
   price?: number | null;
   sentAt: string;

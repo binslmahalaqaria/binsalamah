@@ -201,7 +201,7 @@ const historyOf = (x: Interest, d: CrmData, result: string, note: string) =>
 export interface InterestItem { propertyId: string | null; title: string; unit: string | null; note: string | null }
 
 /** Records the interests in one write, or moves the date on an open one for the same property. Asking is not a call we made, so it never counts as one. */
-export async function addInterests(d: CrmData, c: Client, items: InterestItem[], followUp: string) {
+export async function addInterests(d: CrmData, c: Client, items: InterestItem[], followUp: string, opts: { log?: boolean } = {}) {
   const open = ["متابعة", "ممتاز"];
   let interests: Interest[] = [...(c.interests || [])];
   for (const v of items) {
@@ -213,7 +213,8 @@ export async function addInterests(d: CrmData, c: Client, items: InterestItem[],
   const asleep = [TO_CONTACT, NO_RESP, "غير مهتم"].includes(c.status || "");
   await write("clients", c.id, {
     interests, interestIn: c.interestIn || items.find((x) => x.propertyId)?.propertyId || null, unseen: false, updatedAt: nowStamp(), ...(asleep ? { status: "نشط" } : {}),
-    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + items.map((x) => x.title).join("، ") + (items.length === 1 && items[0].note ? " — " + items[0].note : ""), propertyId: items.find((x) => x.propertyId)?.propertyId || null, call: false }),
+    // Skipped when the caller has just written the client's log itself (it would be overwritten).
+    ...(opts.log === false ? {} : { log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + items.map((x) => x.title).join("، ") + (items.length === 1 && items[0].note ? " — " + items[0].note : ""), propertyId: items.find((x) => x.propertyId)?.propertyId || null, call: false }) }),
   }, "update");
 }
 
@@ -606,7 +607,7 @@ export async function deleteRequest(d: CrmData, r: Request) {
 
 /* ---------- offers and viewings (trial 2026-10-22) ---------- */
 const ev = (d: CrmData, status: string, note?: string | null) => ({ at: nowStamp(), by: d.uid || null, status, note: note || null });
-const pTitle = (d: CrmData, pid: string | null | undefined) => propById(d, pid)?.title || "عقار";
+const propTitle = (d: CrmData, p: Pick<Proposal, "propertyId" | "propertyTitle">) => propById(d, p.propertyId)?.title || p.propertyTitle || "عقار";
 
 /** Every property sent to a customer becomes an offer (once per request + property; re-sending refreshes it). */
 export async function recordProposal(d: CrmData, r: Request, pid: string, unit?: string | null) {
@@ -621,6 +622,48 @@ export async function recordProposal(d: CrmData, r: Request, pid: string, unit?:
     sentAt: nowStamp(), by: d.uid || null, assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null,
     status: "أُرسل", feedback: null, history: [ev(d, "أُرسل")], updatedAt: nowStamp(),
   });
+}
+
+type ReqRef = Pick<Request, "id" | "clientId" | "assignee">;
+
+/** A property that isn't in the system, sent or asked about on a request: an offer holding its name and details. */
+export async function recordUnlisted(d: CrmData, r: ReqRef, title: string, note: string | null, status = "أُرسل") {
+  return write("proposals", null, {
+    requestId: r.id, clientId: r.clientId, propertyId: "", propertyTitle: title, note: note || null, unit: null, price: null,
+    sentAt: nowStamp(), by: d.uid || null, assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null,
+    status, feedback: null, history: [ev(d, status)], updatedAt: nowStamp(),
+  });
+}
+
+/** Records a property on the request as an offer with the given status (listed or not). */
+async function offerWithStatus(d: CrmData, r: ReqRef, v: { propertyId: string | null; title: string; unit?: string | null; note?: string | null }, status: string) {
+  if (!v.propertyId) return recordUnlisted(d, r, v.title, v.note || null, status);
+  const id = await recordProposal(d, r as Request, v.propertyId, v.unit);
+  if (id && status !== "أُرسل") await write("proposals", id, { status, updatedAt: nowStamp() }, "update");
+  return id;
+}
+
+/**
+ * One place per property (client 2026-11-08): when a client gets a request, their open interests move into it as
+ * offers and leave الاهتمامات. `only` limits it to one interest.
+ */
+export async function interestsToOffers(d: CrmData, c: Client, r: ReqRef, only?: string) {
+  const open = (c.interests || []).filter((x) => ["متابعة", "ممتاز"].includes(x.status) && (!only || x.id === only));
+  if (!open.length) return;
+  for (const x of open) await offerWithStatus(d, r, { propertyId: x.propertyId, title: x.propertyTitle, unit: x.unit, note: x.note }, x.status === "ممتاز" ? "مهتم" : "بانتظار الرد");
+  const ids = new Set(open.map((x) => x.id));
+  await write("clients", c.id, {
+    interests: (c.interests || []).map((i) => (ids.has(i.id) ? { ...i, status: "حُوّل لطلب", followUp: null, requestId: r.id } : i)), updatedAt: nowStamp(),
+  }, "update");
+}
+
+/** A client with a request asked about properties: they go to that request's offers as «مهتم», not to الاهتمامات. */
+export async function askedOnRequest(d: CrmData, c: Client, r: ReqRef, items: InterestItem[]) {
+  for (const v of items) await offerWithStatus(d, r, v, "مهتم");
+  await write("clients", c.id, {
+    log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + items.map((x) => x.title).join("، "), propertyId: items.find((x) => x.propertyId)?.propertyId || null, call: false }),
+    updatedAt: nowStamp(),
+  }, "update");
 }
 
 /** Back to the property search list (even from a later stage) unless a deal is recorded. */
@@ -646,10 +689,10 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
   const allBad = status === "غير مناسب" && !!r && r.status === "أرسلنا خيارات" &&
     d.proposals.filter((x) => x.requestId === p.requestId && x.id !== p.id).every((x) => x.status === "غير مناسب");
   if (c && ["مهتم", "غير مناسب"].includes(status)) {
-    const log = pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: pTitle(d, p.propertyId) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId, call: false });
+    const log = pushLog(c, { at: nowStamp(), byId: d.uid, type: status === "مهتم" ? "مهتم بعرض" : "عرض غير مناسب", text: propTitle(d, p) + (feedback ? " — " + feedback : ""), propertyId: p.propertyId || null, call: false });
     await write("clients", c.id, {
       log: allBad ? [{ at: nowStamp(), byId: d.uid, type: "تغيير المرحلة", text: "كل العروض غير مناسبة ← جاري البحث", call: false }, ...log].slice(0, LOG_MAX) : log,
-      ...(status === "مهتم" ? { interestIn: p.propertyId } : {}),
+      ...(status === "مهتم" && p.propertyId ? { interestIn: p.propertyId } : {}),
       ...(allBad && !c.visitAt ? { nextCall: null } : {}), updatedAt: nowStamp(),
     }, "update");
   }

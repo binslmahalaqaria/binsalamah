@@ -13,7 +13,7 @@ import {
   CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, inSearch, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
-import { toggleTask, assignClient, closeInterest, createClient, setPropRef, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
+import { toggleTask, assignClient, interestsToOffers, createClient, setPropRef, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
@@ -311,10 +311,9 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       else {
         reqId = await write("requests", null, { ...body, createdAt: nowStamp() });
         if (moveClient && body.clientId && pick) await assignClient(data, body.clientId, pick, reqId);
-        // Made from an interest: it closes only now, so cancelling this form leaves it open.
-        const fromC = preset?._interestId ? clientById(data, body.clientId) : null;
-        const fromI = fromC?.interests?.find((x) => x.id === preset?._interestId);
-        if (fromC && fromI) await closeInterest(data, fromC, fromI, reqId, "");
+        // The client's open interests move into the new request as its offers (client 2026-11-08: one place per property).
+        const fromC = clientById(data, body.clientId);
+        if (fromC && reqId) await interestsToOffers(data, fromC, { id: reqId, clientId: fromC.id, assignee: pick || null });
       }
       toast(closeTo ? "تم الحفظ — يرجى استكمال بيانات " + (closeTo === "تم البيع" ? "البيع" : "العربون")
         : autoTo ? "تم الحفظ وأُسند تلقائياً إلى " + nameOf(data, autoTo) : owner && !rec && pick === owner ? "تم الحفظ — الطلب عند " + nameOf(data, owner) + " مسؤول العميل" : "تم الحفظ");
