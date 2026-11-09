@@ -3,14 +3,15 @@
 /** "الطلبات" — client requests by stage (one table), with matching, journey, and sale recording. */
 import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { OPEN_STAGES, REQ, REQ_TONE, lbl } from "@/lib/crm/constants";
+import { OPEN_STAGES, REQ, REQ_TONE, TEMPS, lbl } from "@/lib/crm/constants";
 import {
   clientById, followState, match, members, nameOf, areaRange, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
 import type { Request } from "@/lib/crm/types";
 import { ageDays, exportCsv, fmtStamp, num, splitList, today, money } from "@/lib/crm/util";
-import { zoneOf } from "@/lib/districts";
-import { Empty, Kebab, PageHeader, Select } from "@/components/crm/ui";
+import { RIYADH_ZONES, zoneOf } from "@/lib/districts";
+import { parseBudget } from "@/lib/budget";
+import { DistrictPicker, Empty, Field, Kebab, MultiCheck, PageHeader } from "@/components/crm/ui";
 import { SentBadge } from "@/components/crm/SentBadge";
 import { RequestTabs } from "@/components/crm/PageTabs";
 import { changeStage, reqMenu } from "@/components/crm/bits";
@@ -19,17 +20,24 @@ export default function RequestsPage() {
   const { data, loaded, openModal, openClient, toast } = useCrm();
   const [q, setQ] = useState("");
   const [showF, setShowF] = useState(false);
-  const [fType, setFType] = useState("");
-  const [fPurpose, setFPurpose] = useState("");
-  const [fFollow, setFFollow] = useState("");
-  const [fDist, setFDist] = useState("");
-  const [fBudget, setFBudget] = useState("");
+  // Filters (client 2026-11-09): several choices per filter, combined; the export takes exactly what is shown.
+  const [fTypes, setFTypes] = useState<string[]>([]);
+  const [fPurposes, setFPurposes] = useState<string[]>([]);
+  const [fFollows, setFFollows] = useState<string[]>([]);
+  const [fZones, setFZones] = useState<string[]>([]);
+  const [fDists, setFDists] = useState<string[]>([]);
+  const [fOwners, setFOwners] = useState<string[]>([]);
+  const [fTemps, setFTemps] = useState<string[]>([]);
+  const [fBmin, setFBmin] = useState("");
+  const [fBmax, setFBmax] = useState("");
+  const [fAmin, setFAmin] = useState("");
+  const [fAmax, setFAmax] = useState("");
   const [stg, setStg] = useState("open");
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get("stage")) setStg(sp.get("stage")!);
-    if (sp.get("follow")) { setFFollow(sp.get("follow")!); setShowF(true); }
+    if (sp.get("follow")) { setFFollows([sp.get("follow")!]); setShowF(true); }
   }, []);
 
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
@@ -46,22 +54,39 @@ export default function RequestsPage() {
   })();
   if (refQ !== null) all = all.filter((r) => r.ref === refQ);
   else if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); return [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
-  if (refQ === null && fType) all = all.filter((r) => typesOf(r).includes(fType));
-  if (refQ === null && fPurpose) all = all.filter((r) => (r.purpose || "شراء") === fPurpose);
-  if (refQ === null && fFollow) all = all.filter((r) => followState(data, r) === fFollow);
-  if (refQ === null && fDist.trim()) all = all.filter((r) => splitList(r.districts).some((d) => d.includes(fDist.trim())));
-  const bmax = num(fBudget);
-  if (refQ === null && bmax) all = all.filter((r) => !r.budget || r.budget <= bmax);
-  const nF = [fType, fPurpose, fFollow, fDist.trim(), bmax].filter(Boolean).length;
+  const zonesOf = (r: Request) => (r.zones?.length ? r.zones : Array.from(new Set(splitList(r.districts).map((x) => zoneOf(x)?.ar).filter((z): z is string => !!z))));
+  const bmin = parseBudget(fBmin), bmax = parseBudget(fBmax), amin = num(fAmin), amax = num(fAmax);
+  if (refQ === null) {
+    if (fTypes.length) all = all.filter((r) => typesOf(r).some((t) => fTypes.includes(t)));
+    if (fPurposes.length) all = all.filter((r) => fPurposes.includes(r.purpose || "شراء"));
+    if (fFollows.length) all = all.filter((r) => fFollows.includes(followState(data, r)));
+    if (fZones.length) all = all.filter((r) => zonesOf(r).some((z) => fZones.includes(z)));
+    if (fDists.length) all = all.filter((r) => splitList(r.districts).some((d) => fDists.includes(d)));
+    if (fOwners.length) all = all.filter((r) => fOwners.includes(r.assignee || "none"));
+    if (fTemps.length) all = all.filter((r) => fTemps.includes(clientById(data, r.clientId)?.temp || "none"));
+    // Budget and area: a request without the figure doesn't match a range that was asked for.
+    if (bmin || bmax) all = all.filter((r) => !!r.budget && (!bmin || r.budget >= bmin) && (!bmax || r.budget <= bmax));
+    if (amin || amax) all = all.filter((r) => {
+      const lo = r.areaMin ?? r.areaMax, hi = r.areaMax ?? r.areaMin;
+      return lo != null && hi != null && (!amin || hi >= amin) && (!amax || lo <= amax);
+    });
+  }
+  const nF = [fTypes.length, fPurposes.length, fFollows.length, fZones.length, fDists.length, fOwners.length, fTemps.length, bmin || bmax, amin || amax].filter(Boolean).length;
+  const clearF = () => { setFTypes([]); setFPurposes([]); setFFollows([]); setFZones([]); setFDists([]); setFOwners([]); setFTemps([]); setFBmin(""); setFBmax(""); setFAmin(""); setFAmax(""); };
+  const typeOpts = Array.from(new Set([...data.propTypes, ...data.requests.flatMap((r) => typesOf(r))])).filter(Boolean);
+  const distOpts = Array.from(new Set(data.requests.flatMap((r) => splitList(r.districts)))).sort((a, b) => a.localeCompare(b, "ar"));
   const cnt = (st: string) => all.filter((r) => (r.status || "جديد") === st).length;
   const nOpen = all.filter(OPEN_REQ).length;
 
+  // Exactly what is on screen: the search, the filters and the stage tab.
   const exportRows = () =>
-    exportCsv("الطلبات", visibleRequests(data).map((r) => {
+    exportCsv("الطلبات", shownList().map((r) => {
       const c = clientById(data, r.clientId);
+      const last = (c?.log || [])[0];
       return {
         "رقم الطلب": r.ref ? "ط-" + r.ref : "", "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "",
-        "نوع العقار": typesOf(r).join("، "), "الأحياء": r.districts || "", "الميزانية": r.budget ?? "", "الدفع": r.payment || "", "البنك": r.bank || "",
+        "درجة الاهتمام": c?.temp || "", "نوع العقار": typesOf(r).join("، "), "المنطقة": zonesOf(r).join("، "), "الأحياء": r.districts || "",
+        "آخر تحديث": last ? lbl(last.type) + (last.text ? " — " + last.text : "") : "", "تاريخ آخر تحديث": last ? fmtStamp(last.at) : "", "الميزانية": r.budget ?? "", "الدفع": r.payment || "", "البنك": r.bank || "",
         "أقل مساحة": r.areaMin ?? "", "أعلى مساحة": r.areaMax ?? "", "أقل غرف": r.bedroomsMin ?? "", "الدور": (r.floors || []).join("، "), "التفاصيل": r.requirements || "",
         "المسؤول": nameOf(data, r.assignee), "تاريخ الطلب": fmtStamp(r.createdAt), "ملاحظات": r.notes || "",
       };
@@ -126,12 +151,13 @@ export default function RequestsPage() {
   };
 
   const groups = stg === "open" ? OPEN_STAGES : [stg];
+  function shownList() { return refQ !== null ? all : all.filter((r) => groups.includes((r.status || "جديد") as never)); }
   const hasAny = visibleRequests(data).length > 0;
 
   return (
     <>
       <RequestTabs />
-      <PageHeader eyebrow="المبيعات" title="الطلبات" sub="جميع طلبات العملاء ومراحلها. استخدم أزرار المراحل للتصفية، وزر «فلترة» للبحث حسب الحي أو الميزانية."
+      <PageHeader eyebrow="المبيعات" title="الطلبات" sub="جميع طلبات العملاء ومراحلها. «فلترة» تختار فيها أكثر من نوع وحي وميزانية، و«تصدير Excel» يصدّر اللي ظاهر قدامك."
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button>} />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -139,16 +165,25 @@ export default function RequestsPage() {
         <button type="button" className="crm-btn" aria-expanded={showF} onClick={() => setShowF((v) => !v)}>
           فلترة{nF > 0 && <span className="num rounded-full bg-[var(--crm-ink)] px-1.5 text-[11px] text-white">{nF}</span>}
         </button>
-        {can(data, "export") && <button type="button" className="crm-btn" onClick={exportRows}>تصدير Excel</button>}
+        {can(data, "export") && <button type="button" className="crm-btn" onClick={exportRows}>تصدير Excel{nF || qq ? " (" + shownList().length + ")" : ""}</button>}
       </div>
       {showF && (
-        <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-2.5">
-          <Select value={fType} onChange={setFType} options={data.propTypes} blank="كل الأنواع" ariaLabel="النوع" />
-          <Select value={fPurpose} onChange={setFPurpose} options={["شراء", "إيجار"]} blank="شراء وإيجار" ariaLabel="الطلب" />
-          <Select value={fFollow} onChange={setFFollow} options={[["none", "لم يُرسل إليه عرض"], ["sent", "أُرسل إليه ولم يُحدَّد موعد"], ["visit", "لديه موعد أو تمت الزيارة"]]} blank="كل المتابعة" ariaLabel="المتابعة" />
-          <input className="w-[150px]" placeholder="الحي" value={fDist} onChange={(e) => setFDist(e.target.value)} />
-          <input className="w-[170px]" inputMode="decimal" placeholder="الميزانية حتى" value={fBudget} onChange={(e) => setFBudget(e.target.value)} />
-          {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => { setFType(""); setFPurpose(""); setFFollow(""); setFDist(""); setFBudget(""); }}>مسح الفلاتر</button>}
+        <div className="crm-card mb-3 grid gap-3 p-3 sm:grid-cols-2">
+          <Field label="نوع العقار" full><MultiCheck options={typeOpts} value={fTypes} onChange={setFTypes} /></Field>
+          <Field label="المنطقة" full><MultiCheck options={RIYADH_ZONES.map((z) => z.ar)} value={fZones} onChange={setFZones} /></Field>
+          <Field label="الأحياء (اختر أكثر من حي)" full><DistrictPicker all={distOpts} value={fDists} onChange={setFDists} /></Field>
+          <Field label="الميزانية من"><input value={fBmin} placeholder="مثال: مليون" onChange={(e) => setFBmin(e.target.value)} /></Field>
+          <Field label="الميزانية إلى"><input value={fBmax} placeholder="مثال: 3 مليون" onChange={(e) => setFBmax(e.target.value)} /></Field>
+          <Field label="المساحة من (م²)"><input inputMode="decimal" value={fAmin} onChange={(e) => setFAmin(e.target.value)} /></Field>
+          <Field label="المساحة إلى (م²)"><input inputMode="decimal" value={fAmax} onChange={(e) => setFAmax(e.target.value)} /></Field>
+          <Field label="الطلب"><MultiCheck options={["شراء", "إيجار"]} value={fPurposes} onChange={setFPurposes} /></Field>
+          <Field label="درجة الاهتمام"><MultiCheck options={[...TEMPS, "none"]} labels={{ none: "لم تُحدد" }} value={fTemps} onChange={setFTemps} /></Field>
+          <Field label="المتابعة" full><MultiCheck options={["none", "sent", "visit"]} labels={{ none: "لم يُرسل له عرض", sent: "أُرسل له ولم تُحدد زيارة", visit: "له زيارة أو زار" }} value={fFollows} onChange={setFFollows} /></Field>
+          {data.isMgr && <Field label="المسؤول" full><MultiCheck options={[...members(data), "none"]} labels={Object.fromEntries([...members(data).map((id) => [id, nameOf(data, id)]), ["none", "غير مسند"]])} value={fOwners} onChange={setFOwners} /></Field>}
+          <div className="flex items-center gap-2 sm:col-span-2">
+            <span className="text-[13px] text-[var(--crm-ink-2)]">{nF ? "النتيجة: " + shownList().length + " طلب" : "اختر من الفلاتر، وتقدر تختار أكثر من خيار"}</span>
+            {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={clearF}>مسح الفلاتر</button>}
+          </div>
         </div>
       )}
 
@@ -169,7 +204,7 @@ export default function RequestsPage() {
         <Empty big><span className="grid justify-items-center gap-3">لا توجد طلبات بعد.<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button></span></Empty>
       ) : (() => {
         // Newest request first (client 2026-10-31), across all the stages being shown.
-        const shown = refQ !== null ? all : all.filter((r) => groups.includes((r.status || "جديد") as never));
+        const shown = shownList();
         const body = [...shown].sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || ""))).map(row);
         return body.length ? (
           <div className="crm-card overflow-hidden"><div>

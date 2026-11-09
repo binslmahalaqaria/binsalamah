@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-09** — **Requests: multi-choice filters, and the export takes what is shown.** Client: choose several districts, types, budgets and so on, and export the result. The الطلبات filter panel now has: property types, zones and districts (several each), budget from–to (typed freely, read with `parseBudget`), area from–to (overlapping the request's range), purpose, interest level, follow-up state and, for managers, the employee (several each). Choices in one filter match any; filters combine. A request without the budget or area figure doesn't match a range. «تصدير Excel» exports exactly the shown list (search, filters and stage tab) with the count on the button, and adds interest level, zone and last update columns. Affects §9.
+
 - **2026-11-09** — **Searching by request number finds only that request.** Client: «ط-12» or «12» must show just that request. In الطلبات a query that is a request number (ط-12, #12, 12, Arabic digits too; up to 4 digits) now matches only `ref`, in any stage and ignoring the filters; before, «12» also matched every mobile, district or note containing 12. Longer numbers are searched as mobiles. Affects §9.
 
 - **2026-11-09** — **Calls: «استفسر» no longer counts, confirming a viewing does.** Client: a call is only when the employee calls. «استفسر» (the client asked) joined `SEND_T`, so it never counts, old entries included; «تأكيد زيارة» joined `CALL_T` and `confirmVisit()` writes it with `call: true`, so confirming counts, old confirmations included. Affects §9.
