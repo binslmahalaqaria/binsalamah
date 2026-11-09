@@ -38,7 +38,12 @@ export default function RequestsPage() {
   const qq = q.trim();
   // A request number («ط-12», «#12», «12», Arabic digits too) finds only that request, in any stage and whatever the
   // filters (client 2026-11-09); longer numbers are searched as mobiles.
-  const refQ = (() => { const m = qq.replace(/[٠-٩]/g, (x) => String("٠١٢٣٤٥٦٧٨٩".indexOf(x))).match(/^(?:ط|#)?[-\s]*(\d{1,4})$/); return m ? Number(m[1]) : null; })();
+  // «0555…» is the start of a mobile, not a request number; a number no request has falls back to the normal search.
+  const refQ = (() => {
+    const m = qq.replace(/[٠-٩]/g, (x) => String("٠١٢٣٤٥٦٧٨٩".indexOf(x))).match(/^(?:ط|#)?[-\s]*([1-9]\d{0,3})$/);
+    const n = m ? Number(m[1]) : null;
+    return n !== null && all.some((r) => r.ref === n) ? n : null;
+  })();
   if (refQ !== null) all = all.filter((r) => r.ref === refQ);
   else if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); return [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
   if (refQ === null && fType) all = all.filter((r) => typesOf(r).includes(fType));
