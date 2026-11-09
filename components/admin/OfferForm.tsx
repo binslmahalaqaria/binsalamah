@@ -290,7 +290,7 @@ export function OfferForm({ offer, prefill }: { offer?: Offer | null; prefill?: 
 
       <Section title={t("sectionImages")} hint="ارفع الصور من جهازك أو جوالك — الصورة الأولى هي الغلاف. تُصغَّر تلقائياً لتبقى سرعة الموقع عالية.">
         <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy/20 px-4 py-6 text-sm font-medium text-navy transition-colors hover:border-navy/50 hover:bg-navy/[0.02]">
-          <input type="file" accept="image/*,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
+          <input type="file" accept="image/*,.heic,.heif,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
           {uploading ? "جارٍ رفع " + uploading + " صورة…" : "📷 رفع صور"}
         </label>
         {images.some((r) => r.url.trim()) && (

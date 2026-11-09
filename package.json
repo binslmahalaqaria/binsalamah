@@ -14,6 +14,7 @@
     "@sparticuz/chromium": "153.0.0",
     "fflate": "^0.8.3",
     "firebase": "^12.18.0",
+    "heic-to": "1.6.6",
     "html-to-image": "1.11.13",
     "jose": "^6.2.12",
     "jsrsasign": "11.1.5",

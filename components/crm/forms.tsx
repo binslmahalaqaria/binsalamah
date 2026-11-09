@@ -619,7 +619,7 @@ export function PropertyForm({ id }: { id?: string }) {
           )}
           <div className="flex flex-wrap gap-2">
             <label className={"crm-btn primary cursor-pointer" + (uploading ? " pointer-events-none opacity-60" : "")}>
-              <input type="file" accept="image/*,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
+              <input type="file" accept="image/*,.heic,.heif,.zip,.pdf,.docx,.pptx,application/pdf,application/zip" multiple className="hidden" onChange={(e) => { uploadFiles(e.target.files); e.target.value = ""; }} />
               {uploading ? "جارٍ رفع " + uploading + " صورة…" : "📷 رفع صور"}
             </label>
             <input className="crm-input min-w-[180px] flex-1" dir="ltr" value={f.newImg} placeholder="أو الصق رابط صورة https://…" onChange={(e) => set("newImg", e.target.value)} />

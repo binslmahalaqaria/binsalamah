@@ -1,12 +1,12 @@
 /**
  * Turns whatever the user drops into the photo box into plain image files:
  * images pass through; a ZIP (also Word/PowerPoint/Excel files, which are zips)
- * gives the pictures inside it; a PDF gives its embedded JPEG photos.
+ * gives the pictures inside it (iPhone HEIC photos too); a PDF gives its embedded JPEG photos.
  */
 import { unzipSync } from "fflate";
 
-const IMG = /\.(jpe?g|png|webp|gif|bmp)$/i;
-const MIME: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", bmp: "image/bmp" };
+const IMG = /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i;
+const MIME: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", bmp: "image/bmp", heic: "image/heic", heif: "image/heif" };
 const MIN_BYTES = 15000; // skips icons, logos and tiny decorations
 
 const ext = (n: string) => (n.split(".").pop() || "").toLowerCase();
@@ -56,7 +56,7 @@ export async function expandToImages(files: FileList | File[] | null): Promise<{
   const images: File[] = [];
   const empty: string[] = [];
   for (const f of Array.from(files || [])) {
-    if (f.type.startsWith("image/")) { images.push(f); continue; }
+    if (f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name)) { images.push(f); continue; }
     const base = f.name.replace(/\.[^.]+$/, "") || "photo";
     try {
       const buf = new Uint8Array(await f.arrayBuffer());

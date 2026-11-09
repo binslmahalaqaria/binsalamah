@@ -15,6 +15,11 @@ const isHeic = (f: File) => /heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(
 async function decode(file: File): Promise<CanvasImageSource & { width: number; height: number } | null> {
   const bmp = await createImageBitmap(file).catch(() => null);
   if (bmp) return bmp;
+  // iPhone photos: Chrome and Edge can't read HEIC, so decode it here (loaded only when needed).
+  if (isHeic(file)) {
+    const { heicTo } = await import("heic-to/next");
+    return heicTo({ blob: file, type: "bitmap" }).catch(() => null);
+  }
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
@@ -44,7 +49,7 @@ async function shrink(file: File): Promise<Blob> {
   if (file.type === "image/gif" && file.size < LIMIT) return file;
   const src = await decode(file);
   if (!src) {
-    if (isHeic(file)) throw new Error("صورة آيفون بصيغة HEIC ما يقرأها المتصفح. أرسلها لنفسك واتساب واحفظها، أو غيّر الكاميرا إلى «الأكثر توافقاً»");
+    if (isHeic(file)) throw new Error("ما قدرت أحوّل صورة الآيفون (HEIC)");
     if (file.size < LIMIT) return file;
     throw new Error("ما قدرت أقرأ الصورة وحجمها " + mb(file.size) + " م.ب");
   }
