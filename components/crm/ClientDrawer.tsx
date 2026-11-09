@@ -14,7 +14,7 @@ import { SentBadge } from "./SentBadge";
 import { SOLD_ST, TEMPS, lbl } from "@/lib/crm/constants";
 import { TaskRow } from "./TaskRow";
 import { ProposalRow, ViewingRow } from "./Journey";
-import { InterestRow } from "./Interests";
+import { InterestRow, reqInterestOffers } from "./Interests";
 
 export function ClientDrawer() {
   const { data, drawer, closeClient, openModal, toast } = useCrm();
@@ -186,6 +186,10 @@ export function ClientDrawer() {
             </div>
             {(c.interests || []).length > 0 && (
               <div className="overflow-hidden rounded-xl border border-[var(--crm-line)]">{c.interests!.map((x) => <InterestRow key={x.id} c={c} x={x} showClient={false} />)}</div>
+            )}
+            {/* Interests on the client's open request are kept as offers «مهتم»; shown here too (client 2026-11-09). */}
+            {reqInterestOffers(data, c.id).length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-[var(--crm-line)]">{reqInterestOffers(data, c.id).map((p) => <ProposalRow key={p.id} p={p} showClient={false} />)}</div>
             )}
           </section>
 

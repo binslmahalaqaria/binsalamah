@@ -39,6 +39,14 @@ export type InterestItem = { c: Client; x: Interest };
 /** Every interest of the clients this person may see; `work` keeps to their own queue, like the home page. */
 export const interestItems = (d: CrmData, work = false): InterestItem[] =>
   (work ? workClients(d) : visibleClients(d)).flatMap((c) => (c.interests || []).map((x) => ({ c, x })));
+/** Clients with an open request keep what they are interested in as offers with status «مهتم» (العروض). Shown in
+ *  الاهتمامات and the client file too, so every interest can be seen (client 2026-11-09). Newest first. */
+export const reqInterestOffers = (d: CrmData, clientId?: string) =>
+  d.proposals
+    .filter((p) => (clientId ? p.clientId === clientId : d.isMgr ? !d.viewAs || p.assignee === d.viewAs : p.assignee === d.uid))
+    .filter((p) => p.status === "مهتم" && (() => { const r = d.requests.find((x) => x.id === p.requestId); return !!r && OPEN_REQ(r); })())
+    .sort((a, b) => String(b.updatedAt || b.sentAt).localeCompare(String(a.updatedAt || a.sentAt)));
+
 /** Open interests whose follow-up is due today or overdue, oldest date first. */
 export const dueInterests = (d: CrmData, work = false) => {
   const t = today();
