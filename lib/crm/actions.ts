@@ -286,7 +286,7 @@ export async function confirmVisit(d: CrmData, id: string) {
     id,
     {
       visitConfirmed: true,
-      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد الزيارة " + fmtVisit(c.visitAt) }),
+      log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأكيد زيارة", text: "تم تأكيد موعد الزيارة " + fmtVisit(c.visitAt), call: true }),
       updatedAt: nowStamp(),
     },
     "update"

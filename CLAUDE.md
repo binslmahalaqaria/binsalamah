@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-09** — **Calls: «استفسر» no longer counts, confirming a viewing does.** Client: a call is only when the employee calls. «استفسر» (the client asked) joined `SEND_T`, so it never counts, old entries included; «تأكيد زيارة» joined `CALL_T` and `confirmVisit()` writes it with `call: true`, so confirming counts, old confirmations included. Affects §9.
+
 - **2026-11-09** — **Sending the location or details is not a call.** Client: only real calls (new calls, after-visit calls…) count in the daily calls. «تم إرسال الموقع» and «تم إرسال التفاصيل» left `CALL_T`; new `SEND_T` and `isCall()` ignore them even on older log entries saved with `call: true`, so today's figures, the daily target, the call log and reports drop them at once. Affects §9.
 
 - **2026-11-09** — **A due call isn't hidden by a visit booked later.** Further review: a client with a visit booked days ahead was left out of «متابعات اليوم» even when their call date had come. Only a visit today or tomorrow (its own section) now keeps a client out. Affects §9.
