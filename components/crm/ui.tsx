@@ -300,7 +300,7 @@ export function ConfirmButton({ onConfirm, children, className }: { onConfirm: (
  * Tabs that join related screens under one sidebar item (e.g. العملاء / للتواصل),
  * so the same thing is not listed twice under different names.
  */
-export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?: number; show?: boolean }[] }) {
+export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?: number; alert?: boolean; show?: boolean }[] }) {
   const pathname = usePathname();
   return (
     <nav className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--crm-line)]" aria-label="أقسام الصفحة">
@@ -311,7 +311,7 @@ export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?:
             className={"-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-semibold " +
               (on ? "border-[var(--crm-gold)] text-[var(--crm-ink)]" : "border-transparent text-[var(--crm-ink-3)] hover:text-[var(--crm-ink)]")}>
             {x.label}
-            {!!x.badge && <span className="num rounded-full bg-[var(--crm-gold-soft)] px-2 text-[11px] leading-[18px] text-[var(--crm-ink)]">{x.badge}</span>}
+            {!!x.badge && <span className={"num rounded-full px-2 text-[11px] leading-[18px] " + (x.alert ? "bg-[var(--crm-danger)] font-bold text-white" : "bg-[var(--crm-gold-soft)] text-[var(--crm-ink)]")}>{x.badge}</span>}
           </Link>
         );
       })}

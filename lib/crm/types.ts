@@ -416,6 +416,8 @@ export interface Proposal {
   /** أُرسل · بانتظار الرد · مهتم · غير مناسب */
   status: string;
   feedback?: string | null;
+  /** When to check back with the client about an offer they are interested in (YYYY-MM-DD; client 2026-11-09). */
+  followUp?: string | null;
   history: StageEvent[];
   updatedAt: string;
 }

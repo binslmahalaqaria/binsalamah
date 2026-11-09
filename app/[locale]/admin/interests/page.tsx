@@ -5,16 +5,14 @@ import { useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { propById } from "@/lib/crm/logic";
 import { today } from "@/lib/crm/util";
-import { ContactIcons, Empty, PageHeader, Pill, RadioChips, Select } from "@/components/crm/ui";
-import { InterestList, interestItems, isOpenInterest, reqInterestOffers } from "@/components/crm/Interests";
-import { TempPill } from "@/components/crm/bits";
-import type { Proposal } from "@/lib/crm/types";
+import { Empty, PageHeader, RadioChips, Select } from "@/components/crm/ui";
+import { InterestList, ReqInterestList, interestItems, isOpenInterest, reqInterestOffers } from "@/components/crm/Interests";
 import { RequestTabs } from "@/components/crm/PageTabs";
 
 const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["req", "لهم طلب"], ["closed", "المنتهية"]];
 
 export default function InterestsPage() {
-  const { data, loaded, openModal, openClient } = useCrm();
+  const { data, loaded, openModal } = useCrm();
   const [tab, setTab] = useState("due");
   const [q, setQ] = useState("");
   const [pid, setPid] = useState("");
@@ -36,9 +34,10 @@ export default function InterestsPage() {
       const c = data.clients.find((x) => x.id === p.clientId);
       return !needle || [c?.name, c?.phone, title(p.propertyId || null, p.propertyTitle || ""), p.note].some((v) => String(v || "").includes(needle));
     })
-  const reqGroups = new Map<string, Proposal[]>();
-  for (const p of reqOffers) reqGroups.set(p.clientId, [...(reqGroups.get(p.clientId) || []), p]);
-  const count = (k: string) => (k === "req" ? reqGroups.size : inTab(k).length);
+  const reqDue = reqOffers.filter((p) => !!p.followUp && p.followUp <= t);
+  const clientsOf = (xs: { clientId: string }[]) => new Set(xs.map((x) => x.clientId)).size;
+  // Counted in clients (one number to call each), the due tab includes interests on a request whose date has come.
+  const count = (k: string) => (k === "req" ? clientsOf(reqOffers) : clientsOf(inTab(k).map(({ c }) => ({ clientId: c.id }))) + (k === "due" ? clientsOf(reqDue) : 0));
   const list = inTab(tab)
     .filter(({ c, x }) => (!pid || x.propertyId === pid)
       && (!needle || [c.name, c.phone, title(x.propertyId, x.propertyTitle), x.note].some((v) => String(v || "").includes(needle))))
@@ -59,31 +58,8 @@ export default function InterestsPage() {
       </div>
       <div className="crm-card overflow-hidden">
         {tab === "req"
-          ? reqGroups.size ? [...reqGroups.entries()].map(([cid, ps]) => {
-            const c = data.clients.find((x) => x.id === cid);
-            if (!c) return null;
-            const r = data.requests.find((x) => x.id === ps[0].requestId);
-            return (
-              <div key={cid} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <b className="font-heading">{c.name}</b><TempPill t={c.temp} />
-                    <Pill tone="muted">له طلب{r?.ref ? " ط-" + r.ref : ""}</Pill>
-                  </div>
-                  {ps.map((p) => (
-                    <div key={p.id} className="truncate text-[13px] text-[var(--crm-ink-2)]">
-                      مهتم في: {title(p.propertyId || null, p.propertyTitle || "عقار")}{p.unit ? " · " + p.unit : ""}{!p.propertyId ? " (غير مضاف)" : ""}{p.feedback ? " — " + p.feedback : ""}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <ContactIcons phone={c.phone} />
-                  <button type="button" className="crm-btn sm primary" onClick={() => openClient(c.id)}>ملف العميل</button>
-                </div>
-              </div>
-            );
-          }) : <Empty>لا يوجد شيء هنا الآن.</Empty>
-          : list.length ? <InterestList items={list} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
+          ? reqOffers.length ? <ReqInterestList items={reqOffers} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>
+          : list.length || (tab === "due" && reqDue.length) ? <><InterestList items={list} />{tab === "due" && <ReqInterestList items={reqDue} />}</> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
       </div>
     </>
   );

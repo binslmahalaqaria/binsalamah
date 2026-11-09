@@ -651,7 +651,10 @@ async function offerWithStatus(d: CrmData, r: ReqRef, v: { propertyId: string | 
 export async function interestsToOffers(d: CrmData, c: Client, r: ReqRef, only?: string) {
   const open = (c.interests || []).filter((x) => ["متابعة", "ممتاز"].includes(x.status) && (!only || x.id === only));
   if (!open.length) return;
-  for (const x of open) await offerWithStatus(d, r, { propertyId: x.propertyId, title: x.propertyTitle, unit: x.unit, note: x.note }, x.status === "ممتاز" ? "مهتم" : "بانتظار الرد");
+  for (const x of open) {
+    const id = await offerWithStatus(d, r, { propertyId: x.propertyId, title: x.propertyTitle, unit: x.unit, note: x.note }, x.status === "ممتاز" ? "مهتم" : "بانتظار الرد");
+    if (id && x.followUp) await write("proposals", id, { followUp: x.followUp }, "update"); // keeps its check-back date
+  }
   const ids = new Set(open.map((x) => x.id));
   await write("clients", c.id, {
     interests: (c.interests || []).map((i) => (ids.has(i.id) ? { ...i, status: "حُوّل لطلب", followUp: null, requestId: r.id } : i)), updatedAt: nowStamp(),
@@ -659,12 +662,20 @@ export async function interestsToOffers(d: CrmData, c: Client, r: ReqRef, only?:
 }
 
 /** A client with a request asked about properties: they go to that request's offers as «مهتم», not to الاهتمامات. */
-export async function askedOnRequest(d: CrmData, c: Client, r: ReqRef, items: InterestItem[]) {
-  for (const v of items) await offerWithStatus(d, r, v, "مهتم");
+export async function askedOnRequest(d: CrmData, c: Client, r: ReqRef, items: InterestItem[], followUp?: string | null) {
+  for (const v of items) {
+    const id = await offerWithStatus(d, r, v, "مهتم");
+    if (id && followUp) await write("proposals", id, { followUp }, "update");
+  }
   await write("clients", c.id, {
     log: pushLog(c, { at: nowStamp(), byId: d.uid || null, type: "استفسر", text: "استفسر عن " + items.map((x) => x.title).join("، "), propertyId: items.find((x) => x.propertyId)?.propertyId || null, call: false }),
     updatedAt: nowStamp(),
   }, "update");
+}
+
+/** Sets or clears when to check back about an offer the client is interested in. */
+export async function setProposalFollowUp(p: Proposal, date: string | null) {
+  await write("proposals", p.id, { followUp: date || null, updatedAt: nowStamp() }, "update");
 }
 
 /** Back to the property search list (even from a later stage) unless a deal is recorded. */

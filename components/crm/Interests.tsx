@@ -8,8 +8,8 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterests, askedOnRequest, interestsToOffers, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
-import type { Client, Interest } from "@/lib/crm/types";
+import { addInterests, askedOnRequest, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
+import type { Client, Interest, Proposal } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
@@ -46,6 +46,57 @@ export const reqInterestOffers = (d: CrmData, clientId?: string) =>
     .filter((p) => (clientId ? p.clientId === clientId : d.isMgr ? !d.viewAs || p.assignee === d.viewAs : p.assignee === d.uid))
     .filter((p) => p.status === "مهتم" && (() => { const r = d.requests.find((x) => x.id === p.requestId); return !!r && OPEN_REQ(r); })())
     .sort((a, b) => String(b.updatedAt || b.sentAt).localeCompare(String(a.updatedAt || a.sentAt)));
+
+/** Of those, the ones whose check-back date has come. */
+export const dueReqInterests = (d: CrmData) => { const t = today(); return reqInterestOffers(d).filter((p) => !!p.followUp && p.followUp <= t); };
+/** How many clients to check back with today (interests and interests on a request), for the red badges. */
+export const dueInterestClients = (d: CrmData) => new Set([...dueInterests(d, true).map(({ c }) => c.id), ...dueReqInterests(d).map((p) => p.clientId)]).size;
+
+/** Clients with a request and what they are interested in: one row per client, each property with its own date. */
+export function ReqInterestList({ items }: { items: Proposal[] }) {
+  const { data, openClient, toast } = useCrm();
+  const t = today(), team = data.isMgr && !data.viewAs;
+  const groups = new Map<string, Proposal[]>();
+  for (const p of items) groups.set(p.clientId, [...(groups.get(p.clientId) || []), p]);
+  const first = (ps: Proposal[]) => ps.map((p) => p.followUp || "9999").sort()[0];
+  return (
+    <>
+      {[...groups.entries()].sort((a, b) => first(a[1]).localeCompare(first(b[1]))).map(([cid, ps]) => {
+        const c = clientById(data, cid);
+        if (!c) return null;
+        const r = data.requests.find((x) => x.id === ps[0].requestId);
+        const late = ps.some((p) => p.followUp && p.followUp < t);
+        return (
+          <div key={cid} className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (late ? "late" : "")}>
+            <div className="grid min-w-0 gap-1">
+              <div className="flex cursor-pointer flex-wrap items-center gap-1.5" onClick={() => openClient(c.id)}>
+                <b className="font-heading">{c.name}</b><TempPill t={c.temp} />
+                <Pill tone="muted">له طلب{r?.ref ? " ط-" + r.ref : ""}</Pill>
+                {team && c.assignee ? <span className="text-xs text-[var(--crm-ink-3)]">{nameOf(data, c.assignee)}</span> : null}
+              </div>
+              {ps.map((p) => (
+                <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                  <span className="min-w-0 text-[var(--crm-ink-2)]">
+                    مهتم في: {propById(data, p.propertyId)?.title || p.propertyTitle || "عقار"}{p.unit ? " · " + p.unit : ""}{!p.propertyId ? " (غير مضاف)" : ""}{p.feedback ? " — " + p.feedback : ""}
+                  </span>
+                  <span className={"text-xs " + (p.followUp && p.followUp < t ? "font-semibold text-[var(--crm-danger)]" : p.followUp === t ? "font-semibold" : "text-[var(--crm-ink-3)]")}>
+                    المتابعة: {p.followUp ? relDay(p.followUp) : "بدون موعد"}
+                  </span>
+                  <input type="date" aria-label="موعد المتابعة" className="!w-auto !py-0.5 !text-xs" value={p.followUp || ""}
+                    onChange={async (e) => { await setProposalFollowUp(p, e.target.value || null); toast(e.target.value ? "المتابعة " + relDay(e.target.value) : "بدون موعد"); }} />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <ContactIcons phone={c.phone} text={interestMessage(data, c, ps.map((p) => ({ propertyId: p.propertyId || null, propertyTitle: p.propertyTitle || "العقار" }) as Interest))} />
+              <button type="button" className="crm-btn sm primary" onClick={() => openClient(c.id)}>ملف العميل</button>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 /** Open interests whose follow-up is due today or overdue, oldest date first. */
 export const dueInterests = (d: CrmData, work = false) => {
@@ -188,8 +239,8 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
       // A client who already has a request: the properties go to that request's offers (one place per property).
       const req = !fresh ? data.requests.find((r) => r.clientId === who.id && OPEN_REQ(r)) : undefined;
       if (req) {
-        await askedOnRequest(data, who, req, items);
-        toast("للعميل طلب قائم — انسجلت في «العروض» داخل طلبه");
+        await askedOnRequest(data, who, req, items, followUp);
+        toast("للعميل طلب قائم — انسجلت في عروض طلبه، والمتابعة " + relDay(followUp));
       } else {
         await addInterests(data, who, items, followUp);
         toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));

@@ -25,7 +25,7 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
-import { InterestList, dueInterests } from "@/components/crm/Interests";
+import { InterestList, ReqInterestList, dueInterests, dueReqInterests } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -139,6 +139,8 @@ export default function HomeDashboard() {
   const overdueTasks = tasks.filter((x) => x.due && x.due < t).length + privDue.filter((x) => x.due && x.due < t).length;
 
   const interests = dueInterests(data, true);
+  const reqInterests = dueReqInterests(data); // interests on a request whose check-back date has come
+  const interestCount = new Set([...interests.map(({ c }) => c.id), ...reqInterests.map((p) => p.clientId)]).size;
 
   /* ---- attendance (checks the office location first when that rule is on) ---- */
   async function doCheck(kind: "in" | "out") {
@@ -342,8 +344,9 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={5} title="متابعة الاهتمامات" count={interests.length} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
+      <Section n={5} title="متابعة الاهتمامات" count={interestCount} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
         <InterestList items={interests} />
+        <ReqInterestList items={reqInterests} />
       </Section>
 
       <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">

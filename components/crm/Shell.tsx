@@ -26,7 +26,7 @@ import { ModalHost } from "./modals";
 import { Assistant } from "./Assistant";
 import { WaAlert } from "./WaAlert";
 import { WebLeadDispatcher } from "./WebLeadDispatcher";
-import { dueInterests } from "./Interests";
+import { dueInterestClients } from "./Interests";
 
 interface NavItem {
   href: string;
@@ -90,7 +90,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: homeBadge }]],
     ["المبيعات", [
-      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq + dueInterests(data, true).length, also: ["/admin/leads", "/admin/proposals", "/admin/viewings", "/admin/interests"] },
+      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq + dueInterestClients(data), also: ["/admin/leads", "/admin/proposals", "/admin/viewings", "/admin/interests"] },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
       ...(data.isMgr ? [{ href: "/admin/contact", k: "phone", label: "الأرقام", badge: toContact }] : []),
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),
