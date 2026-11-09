@@ -36,13 +36,17 @@ export default function RequestsPage() {
 
   let all = visibleRequests(data).slice();
   const qq = q.trim();
-  if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); const num = qq.replace(/^(ط|#)[-\s]*/, ""); return (/^\d+$/.test(num) && r.ref === Number(num)) || [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
-  if (fType) all = all.filter((r) => typesOf(r).includes(fType));
-  if (fPurpose) all = all.filter((r) => (r.purpose || "شراء") === fPurpose);
-  if (fFollow) all = all.filter((r) => followState(data, r) === fFollow);
-  if (fDist.trim()) all = all.filter((r) => splitList(r.districts).some((d) => d.includes(fDist.trim())));
+  // A request number («ط-12», «#12», «12», Arabic digits too) finds only that request, in any stage and whatever the
+  // filters (client 2026-11-09); longer numbers are searched as mobiles.
+  const refQ = (() => { const m = qq.replace(/[٠-٩]/g, (x) => String("٠١٢٣٤٥٦٧٨٩".indexOf(x))).match(/^(?:ط|#)?[-\s]*(\d{1,4})$/); return m ? Number(m[1]) : null; })();
+  if (refQ !== null) all = all.filter((r) => r.ref === refQ);
+  else if (qq) all = all.filter((r) => { const c = clientById(data, r.clientId); return [c?.name, c?.phone, r.districts, r.requirements, r.notes].join(" ").includes(qq); });
+  if (refQ === null && fType) all = all.filter((r) => typesOf(r).includes(fType));
+  if (refQ === null && fPurpose) all = all.filter((r) => (r.purpose || "شراء") === fPurpose);
+  if (refQ === null && fFollow) all = all.filter((r) => followState(data, r) === fFollow);
+  if (refQ === null && fDist.trim()) all = all.filter((r) => splitList(r.districts).some((d) => d.includes(fDist.trim())));
   const bmax = num(fBudget);
-  if (bmax) all = all.filter((r) => !r.budget || r.budget <= bmax);
+  if (refQ === null && bmax) all = all.filter((r) => !r.budget || r.budget <= bmax);
   const nF = [fType, fPurpose, fFollow, fDist.trim(), bmax].filter(Boolean).length;
   const cnt = (st: string) => all.filter((r) => (r.status || "جديد") === st).length;
   const nOpen = all.filter(OPEN_REQ).length;
@@ -160,7 +164,7 @@ export default function RequestsPage() {
         <Empty big><span className="grid justify-items-center gap-3">لا توجد طلبات بعد.<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "request" })}>+ طلب جديد</button></span></Empty>
       ) : (() => {
         // Newest request first (client 2026-10-31), across all the stages being shown.
-        const shown = all.filter((r) => groups.includes((r.status || "جديد") as never));
+        const shown = refQ !== null ? all : all.filter((r) => groups.includes((r.status || "جديد") as never));
         const body = [...shown].sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || ""))).map(row);
         return body.length ? (
           <div className="crm-card overflow-hidden"><div>

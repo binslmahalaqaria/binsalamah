@@ -418,6 +418,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-09** — **Searching by request number finds only that request.** Client: «ط-12» or «12» must show just that request. In الطلبات a query that is a request number (ط-12, #12, 12, Arabic digits too; up to 4 digits) now matches only `ref`, in any stage and ignoring the filters; before, «12» also matched every mobile, district or note containing 12. Longer numbers are searched as mobiles. Affects §9.
+
 - **2026-11-09** — **Calls: «استفسر» no longer counts, confirming a viewing does.** Client: a call is only when the employee calls. «استفسر» (the client asked) joined `SEND_T`, so it never counts, old entries included; «تأكيد زيارة» joined `CALL_T` and `confirmVisit()` writes it with `call: true`, so confirming counts, old confirmations included. Affects §9.
 
 - **2026-11-09** — **Sending the location or details is not a call.** Client: only real calls (new calls, after-visit calls…) count in the daily calls. «تم إرسال الموقع» and «تم إرسال التفاصيل» left `CALL_T`; new `SEND_T` and `isCall()` ignore them even on older log entries saved with `call: true`, so today's figures, the daily target, the call log and reports drop them at once. Affects §9.
