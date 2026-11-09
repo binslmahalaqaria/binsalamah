@@ -11,7 +11,7 @@ import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workCl
 import { addInterests, askedOnRequest, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest, Proposal } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
-import { ConfirmButton, ContactIcons, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
+import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, findDup } from "./forms";
 
@@ -109,7 +109,7 @@ const DAYS: [string, string][] = [["1", "غداً"], ["3", "بعد 3 أيام"],
 const pickDate = (v: string, date: string) => (v === "date" ? date : addDays(+v));
 
 export function InterestRow({ c, x, showClient = true }: InterestItem & { showClient?: boolean }) {
-  const { data, openClient, openModal } = useCrm();
+  const { data, openClient, openModal, toast } = useCrm();
   const t = today(), open = isOpenInterest(x), team = data.isMgr && !data.viewAs;
   const title = propById(data, x.propertyId)?.title || x.propertyTitle;
   return (
@@ -133,6 +133,11 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         {/* The WhatsApp icon opens the app with the follow-up message ready. */}
         <ContactIcons phone={c.phone} text={open ? interestMessage(data, c, [x]) : undefined} />
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
+        <Kebab items={[
+          { label: open ? "سجّل المتابعة" : "التفاصيل", onClick: () => openModal({ kind: "interestFollow", clientId: c.id, id: x.id }) },
+          // For an interest recorded by mistake (client 2026-11-09).
+          { label: "🗑 حذف", onClick: async () => { if (window.confirm("حذف اهتمام «" + title + "»؟ ما يرجع بعد الحذف.")) { await removeInterest(c, x); toast("تم الحذف"); } } },
+        ]} />
       </div>
     </div>
   );

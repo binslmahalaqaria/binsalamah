@@ -60,6 +60,8 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           p.status === "أُرسل" ? { label: "شاهد العرض — بانتظار رده", onClick: () => set("بانتظار الرد") } : null,
           { label: "تسجيل رأي العميل", onClick: () => { const fb = window.prompt("رأي العميل في العرض", p.feedback || ""); if (fb != null) set(p.status, fb); } },
           p.status !== "غير مناسب" ? { label: "غير مناسب", onClick: () => set("غير مناسب") } : { label: "إعادة كمهتم", onClick: () => set("مهتم") },
+          // For an offer or interest recorded by mistake (client 2026-11-09).
+          { label: "🗑 حذف", onClick: async () => { if (window.confirm("حذف «" + (pr?.title || p.propertyTitle || "العرض") + "» من عروض العميل؟ ما يرجع بعد الحذف.")) { await remove("proposals", p.id); toast("تم الحذف"); } } },
         ]} />
       </div>
       )}
