@@ -6,6 +6,7 @@
 
 | Date | Phase | Item Tested | Result | Notes | Tester |
 |---|---|---|---|---|---|
+| 2026-11-09 | Meta Pixel component | Type check | Pass (tsc), not run in a browser | `npx tsc --noEmit` clean; no CSP in the project. The pixel was not loaded or clicked through, and nothing is deployed yet. Checklist in TESTING.md «Meta Pixel» | Claude |
 | 2026-11-09 | Review of 2026-11-07/08 CRM changes | Fixed 2 | Read through every change: viewing result log overwrite fixed; update form created interests on plain calls and could double-save, fixed. tsc and lint clean. No live clicks (no data changes) |
 | 2026-11-08 | SEO district pages and listing data | Pass (local) | 5 district links on /ar/offers; /ar/area/الصحافة 200 with ItemList; property page title and RealEstateListing JSON-LD present; sitemap has the district URLs; unknown district 404 | Claude |
 | 2026-11-08 | One place per property (interests vs offers) | Not run (actions) | tsc and lint clean. Live pages to be checked by sight only; no data changed at the client's request |

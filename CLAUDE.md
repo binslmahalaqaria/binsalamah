@@ -360,6 +360,7 @@ Any change to these rules is a security-relevant change — must be reflected he
   OffersGrid.tsx                -> client-side type/city filtering + grid, used by /offers
   RegisterInterestForm.tsx      -> the public lead-capture form on the offer detail page
   WhatsAppButton.tsx            -> WhatsAppLink (plain link, any surface) + FloatingWhatsApp (site-wide floating button)
+  MetaPixel.tsx                 -> Meta Pixel (PageView + «Contact» on WhatsApp link clicks), public layout only
 /i18n
   routing.ts, navigation.ts, request.ts  -> next-intl config
 /public
@@ -387,6 +388,7 @@ This reflects the actual structure as of Phase 1 — update it the moment it div
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Number used for `wa.me` links | **not set yet** — still empty in `.env.local`, pending the company's WhatsApp number; may move to `/admin/settings` (Firestore) once Phase 2 settings screen exists |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to a local Firebase Admin service-account JSON key | **secret** — the actual key file is `service-account.json` in the project root, git-ignored, never committed. Used locally by both `scripts/seed-admin.ts` and `app/api/staff/route.ts` (via `lib/firebase-admin.ts`'s `applicationDefault()` fallback) |
 | `ANTHROPIC_API_KEY` | Claude API key for the CRM assistant (`app/api/assistant/route.ts`) | **secret**, server-only — never `NEXT_PUBLIC_`. Set on Vercel 2026-10-18 (key `binslmah-crm`, no expiry, Default workspace; Claude Console org «Bin Slmah Real Estate», prepaid credits, auto-reload off). Also used by `app/api/wa-suggest` |
+| `NEXT_PUBLIC_META_PIXEL_ID` | Meta Pixel / dataset ID for `components/MetaPixel.tsx` | public, optional — falls back to the built-in ID `1798642051341660` (dataset «بن سلمه - الموقع», added 2026-11-09). Set it only to point the site at a different pixel |
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | The service-account JSON as a **string**, used by `getServiceAccount()` in `app/api/staff/route.ts` (both for `firebase-admin/firestore` init and for signing the hand-rolled Google OAuth JWT-bearer assertion — see §1) | **secret** — set on Vercel as of 2026-09-13, **Production environment only** (not Preview), since there's no local file on serverless and this credential is powerful enough to be worth limiting to the one environment that actually needs it |
 
 All of the above are already filled into `.env.local` (git-ignored) for local dev. **Not yet done:** none of these are configured in Vercel yet, since the project hasn't been deployed there (see Phase 0 Roadmap).
@@ -417,6 +419,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 ## Update Log
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
+
+- **2026-11-09** — **Meta Pixel on the public site (for the Facebook/Instagram campaign).** Client is running ads from the new Meta business portfolio «بن سلمه العقارية»; a pixel dataset «بن سلمه - الموقع» was created there (ID read from the page: 1798642051341660, linked to ad account 410925230949692 only; the «connect all datasets to the Conversions API» checkbox was left off). New `components/MetaPixel.tsx` (client; `next/script` afterInteractive): loads `fbevents.js`, fires `PageView` on first load and on each client-side route change, and a `Contact` event when a visitor clicks any link to `wa.me` / `api.whatsapp.com` (one document-level listener, so the WhatsApp components are untouched). Mounted in `app/[locale]/(public)/layout.tsx` in both the open-site and coming-soon branches; **not** mounted under `/admin`. The ID is read from `NEXT_PUBLIC_META_PIXEL_ID`, falling back to the ID above. `tsc` clean; no CSP exists, so nothing blocks the script. **Not deployed or checked in a browser** — verify with Meta Pixel Helper after the next deploy. Affects §8, §10, §11.
 
 - **2026-11-09** — **Requests: multi-choice filters, and the export takes what is shown.** Client: choose several districts, types, budgets and so on, and export the result. The الطلبات filter panel now has: property types, zones and districts (several each), budget from–to (typed freely, read with `parseBudget`), area from–to (overlapping the request's range), purpose, interest level, follow-up state and, for managers, the employee (several each). Choices in one filter match any; filters combine. A request without the budget or area figure doesn't match a range. «تصدير Excel» exports exactly the shown list (search, filters and stage tab) with the count on the button, and adds interest level, zone and last update columns. Affects §9.
 

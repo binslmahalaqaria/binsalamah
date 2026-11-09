@@ -140,3 +140,10 @@
 - [ ] /ar/offers ends with district links; each opens /ar/area/<district> with the right title, H1 and listings; an unknown district is 404.
 - [ ] A property page title reads «<name> — <type> للبيع في حي <district>، الرياض» and contains RealEstateListing JSON-LD (Google Rich Results Test).
 - [ ] sitemap.xml lists the district pages.
+
+## Meta Pixel (2026-11-09)
+
+- [ ] After deploy, Meta Pixel Helper on a public page shows pixel 1798642051341660 and one `PageView`; moving to another page by a site link adds another `PageView`.
+- [ ] Clicking the floating WhatsApp button, a footer WhatsApp link, and a unit's WhatsApp button each send one `Contact` event.
+- [ ] `/ar/admin/...` pages load no `fbevents.js` and send nothing.
+- [ ] Events Manager for dataset «بن سلمه - الموقع» starts receiving events within a few minutes.

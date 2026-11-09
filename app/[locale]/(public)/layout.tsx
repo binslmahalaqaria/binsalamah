@@ -10,6 +10,7 @@ import { Splash } from "@/components/site/Splash";
 import { ComingSoon } from "@/components/site/ComingSoon";
 import { LegalFooter } from "@/components/site/LegalPage";
 import { isSiteOpen } from "@/lib/site-mode";
+import { MetaPixel } from "@/components/MetaPixel";
 
 // Read on every request so the owner's switch in the CRM takes effect at once.
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function PublicLayout({
       <div className="site flex min-h-screen flex-col bg-cream text-navy">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(whatsappNumber)) }} />
         <ComingSoon />
+        <MetaPixel />
       </div>
     );
   }
@@ -104,6 +106,7 @@ export default async function PublicLayout({
       </footer>
 
       <FloatingWhatsApp whatsappNumber={whatsappNumber} />
+      <MetaPixel />
     </div>
   );
 }
