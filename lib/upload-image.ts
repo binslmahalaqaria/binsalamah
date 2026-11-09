@@ -56,7 +56,8 @@ async function shrink(file: File): Promise<Blob> {
   // Best quality first, then smaller steps until it fits under the limit.
   for (const [max, q] of [[3200, 0.93], [2600, 0.88], [2000, 0.82]] as const) {
     const out = await encode(src, max, q);
-    if (out && out.size < LIMIT) return out.size < file.size || file.size >= LIMIT ? out : file;
+    // An iPhone HEIC original is never kept: browsers can't show it, so the JPEG goes up even when it is bigger.
+    if (out && out.size < LIMIT) return out.size < file.size || file.size >= LIMIT || isHeic(file) ? out : file;
   }
   throw new Error("الصورة كبيرة جداً (" + mb(file.size) + " م.ب)");
 }

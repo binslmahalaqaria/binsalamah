@@ -35,9 +35,10 @@ export default function InterestsPage() {
       return !needle || [c?.name, c?.phone, title(p.propertyId || null, p.propertyTitle || ""), p.note].some((v) => String(v || "").includes(needle));
     })
   const reqDue = reqOffers.filter((p) => !!p.followUp && p.followUp <= t);
+  const reqNext = reqOffers.filter((p) => !p.followUp || p.followUp > t); // also listed under «القادمة» (client 2026-11-09)
   const clientsOf = (xs: { clientId: string }[]) => new Set(xs.map((x) => x.clientId)).size;
   // Counted in clients (one number to call each), the due tab includes interests on a request whose date has come.
-  const count = (k: string) => (k === "req" ? clientsOf(reqOffers) : clientsOf(inTab(k).map(({ c }) => ({ clientId: c.id }))) + (k === "due" ? clientsOf(reqDue) : 0));
+  const count = (k: string) => (k === "req" ? clientsOf(reqOffers) : clientsOf(inTab(k).map(({ c }) => ({ clientId: c.id }))) + (k === "due" ? clientsOf(reqDue) : k === "next" ? clientsOf(reqNext) : 0));
   const list = inTab(tab)
     .filter(({ c, x }) => (!pid || x.propertyId === pid)
       && (!needle || [c.name, c.phone, title(x.propertyId, x.propertyTitle), x.note].some((v) => String(v || "").includes(needle))))
@@ -59,7 +60,7 @@ export default function InterestsPage() {
       <div className="crm-card overflow-hidden">
         {tab === "req"
           ? reqOffers.length ? <ReqInterestList items={reqOffers} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>
-          : list.length || (tab === "due" && reqDue.length) ? <><InterestList items={list} />{tab === "due" && <ReqInterestList items={reqDue} />}</> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
+          : list.length || (tab === "due" && reqDue.length) || (tab === "next" && reqNext.length) ? <><InterestList items={list} />{tab === "due" && <ReqInterestList items={reqDue} />}{tab === "next" && <ReqInterestList items={reqNext} />}</> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
       </div>
     </>
   );

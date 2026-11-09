@@ -10,7 +10,7 @@ import { PROP_TONE, VIEW_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
 import { confirmVisit, remove, setProposalStatus } from "@/lib/crm/actions";
 import type { Proposal, Viewing } from "@/lib/crm/types";
-import { ageDays, fmtVisit, money, today } from "@/lib/crm/util";
+import { ageDays, fmtVisit, money, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Kebab, Pill } from "./ui";
 
 export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?: boolean }) {
@@ -39,6 +39,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
           أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.note ? " · " + p.note : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
+          {p.status === "مهتم" && p.followUp ? <> · المتابعة: <span className={p.followUp < today() ? "font-semibold text-[var(--crm-danger)]" : ""}>{relDay(p.followUp)}</span></> : null}
           {data.isMgr && p.assignee ? " · " + nameOf(data, p.assignee) : ""}
         </div>
       </div>

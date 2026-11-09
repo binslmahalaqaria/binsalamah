@@ -48,7 +48,11 @@ export const reqInterestOffers = (d: CrmData, clientId?: string) =>
     .sort((a, b) => String(b.updatedAt || b.sentAt).localeCompare(String(a.updatedAt || a.sentAt)));
 
 /** Of those, the ones whose check-back date has come. */
-export const dueReqInterests = (d: CrmData) => { const t = today(); return reqInterestOffers(d).filter((p) => !!p.followUp && p.followUp <= t); };
+export const dueReqInterests = (d: CrmData) => {
+  // Same queue as dueInterests(d, true): a manager's home page and badges count their own clients only.
+  const t = today(), mine = new Set(workClients(d).map((c) => c.id));
+  return reqInterestOffers(d).filter((p) => mine.has(p.clientId) && !!p.followUp && p.followUp <= t);
+};
 /** How many clients to check back with today (interests and interests on a request), for the red badges. */
 export const dueInterestClients = (d: CrmData) => new Set([...dueInterests(d, true).map(({ c }) => c.id), ...dueReqInterests(d).map((p) => p.clientId)]).size;
 
