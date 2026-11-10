@@ -140,10 +140,8 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         {/* The WhatsApp icon opens the app with the follow-up message ready. */}
         <ContactIcons phone={c.phone} text={open ? interestMessage(data, c, [x]) : undefined} />
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
-        {/* Visits on an interest, like offers on a request (client 2026-11-10); the appointment is optional. */}
-        {open && (visit
-          ? <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "viewResult", viewingId: visit.id })}>تمت الزيارة</button>
-          : <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interestVisit", clientId: c.id, interestId: x.id })}>حدد زيارة</button>)}
+        {/* The visit date is taken in «سجّل المتابعة» (client 2026-11-10); once booked, its result is one tap away. */}
+        {open && visit && <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "viewResult", viewingId: visit.id })}>تمت الزيارة</button>}
         <Kebab items={[
           { label: open ? "سجّل المتابعة" : "التفاصيل", onClick: () => openModal({ kind: "interestFollow", clientId: c.id, id: x.id }) },
           open && visit ? { label: "تأجيل / إلغاء الزيارة", onClick: () => openModal({ kind: "interestVisit", clientId: c.id, interestId: x.id, viewingId: visit.id }) } : null,
@@ -329,12 +327,17 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
   const [days, setDays] = useState("3");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
+  const [visitAt, setVisitAt] = useState("");
   const [busy, setBusy] = useState(false);
   if (!c || !x) return null;
   const open = isOpenInterest(x);
   const p = propById(data, x.propertyId);
   const title = p?.title || x.propertyTitle;
   const needsDate = ["ممتاز", "يفكر", "لم يرد"].includes(result);
+  // A visit appointment taken in the same call (client 2026-11-10: in «سجّل المتابعة», not a separate button); optional.
+  const canVisit = ["ممتاز", "يفكر"].includes(result);
+  const booked = data.viewings.find((v) => v.clientId === c.id && v.interestId === x.id && ["مجدولة", "مؤجلة"].includes(v.status));
+  const withVisit = canVisit && !booked && !!visitAt;
 
   async function save() {
     if (!result) return toast("اختر نتيجة المتابعة");
@@ -355,10 +358,10 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
           _interestId: x!.id,
         } });
       }
-      const nx = needsDate ? pickDate(days, date) : null;
+      const nx = withVisit ? visitAt.slice(0, 10) : needsDate ? pickDate(days, date) : null;
       if (needsDate && !nx) return toast("اختر تاريخ المتابعة");
-      await followInterest(data, c!, x!, result as InterestResult, nx, note.trim());
-      toast(nx ? "تم — المتابعة القادمة " + relDay(nx) : "تم إغلاق الاهتمام");
+      await followInterest(data, c!, x!, result as InterestResult, nx, note.trim(), withVisit ? { at: visitAt } : null);
+      toast(withVisit ? "تم — موعد الزيارة " + fmtVisit(visitAt) : nx ? "تم — المتابعة القادمة " + relDay(nx) : "تم إغلاق الاهتمام");
       closeModal();
     } catch {
       toast("تعذّر الحفظ");
@@ -396,7 +399,12 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
               <RadioChips options={RESULTS} value={result} onChange={(v) => { setResult(v); setDays(v === "لم يرد" ? "1" : "3"); }} />
             </div>
             <Field label="ملاحظة (اختياري)"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
-            {needsDate && (
+            {canVisit && (booked
+              ? <p className="crm-hint m-0">موعد الزيارة: <b>{fmtVisit(booked.at)}</b> — للتأجيل أو الإلغاء من ⋮ في الاهتمام.</p>
+              : <Field label="موعد زيارة (اختياري)" hint="إذا أخذت منه موعد زيارة. يظهر في «الزيارات» ويذكّرك النظام قبله بيوم.">
+                  <input type="datetime-local" value={visitAt} onChange={(e) => setVisitAt(e.target.value)} />
+                </Field>)}
+            {needsDate && !withVisit && (
               <div>
                 <div className="crm-sec !mt-0 mb-2">المتابعة القادمة</div>
                 <RadioChips options={DAYS} value={days} onChange={setDays} />

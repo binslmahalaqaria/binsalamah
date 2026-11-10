@@ -159,7 +159,8 @@ export async function applyUpdate0(d: CrmData, id: string, type: string, next: s
       createdBy: d.uid, createdAt: nowStamp(), updatedAt: nowStamp(),
     });
   }
-  return true;
+  // The client's new log (truthy): a caller writing the client again builds on it instead of the older copy.
+  return patch.log as LogEntry[];
 }
 
 /** The fourth attempt: WhatsApp message sent. Not a call; 48 h without a reply moves the client to «لا يوجد رد». */
@@ -218,12 +219,22 @@ export async function addInterests(d: CrmData, c: Client, items: InterestItem[],
 }
 
 /** Logs the follow-up. Excellent keeps it open and makes the client hot; not interested closes this interest only, not the client. */
-export async function followInterest(d: CrmData, c: Client, x: Interest, result: InterestResult, next: string | null, note: string) {
+/**
+ * `visit` (client 2026-11-10): a visit appointment taken in the same call — booked as a viewing on the interest,
+ * and the interest's check-back becomes the visit day.
+ */
+export async function followInterest(d: CrmData, c: Client, x: Interest, result: InterestResult, next: string | null, note: string, visit?: { at: string } | null) {
   const status = result === "ممتاز" ? "ممتاز" : result === "غير مهتم" ? "غير مهتم" : x.status;
-  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, status, followUp: next, history: historyOf(x, d, result, note) } : i));
+  const followUp = visit ? visit.at.slice(0, 10) : next;
+  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, status, followUp, history: historyOf(x, d, result, [note, visit ? "موعد زيارة " + fmtVisit(visit.at) : ""].filter(Boolean).join(" — ")) } : i));
   await write("clients", c.id, { interests, ...(result === "ممتاز" ? { temp: "ساخن" } : {}), updatedAt: nowStamp() }, "update");
   // The client's own next call is left as it was: the interest has its own date.
-  await applyUpdate0(d, c.id, result === "لم يرد" ? "ما رد" : "اتصلت عليه", c.nextCall, "اهتمام " + x.propertyTitle + ": " + result + (note ? " — " + note : ""), x.propertyId);
+  const log = await applyUpdate0(d, c.id, result === "لم يرد" ? "ما رد" : "اتصلت عليه", c.nextCall, "اهتمام " + x.propertyTitle + ": " + result + (note ? " — " + note : ""), x.propertyId);
+  if (visit && log) {
+    const id = await interestViewing(d, c, x, visit.at, note);
+    // Built on the log just written (not the older copy), so the call entry stays.
+    if (id) await saveClientVisit(d, { ...c, log, interests }, visit.at, x.propertyId || null, x.propertyId ? "" : x.propertyTitle);
+  }
 }
 
 /** The interest became a request. */
@@ -348,14 +359,20 @@ export async function quickInterestVisit(d: CrmData, c: Client, x: Interest) {
  * A visit for a client without a request, on a property they asked about (client 2026-11-10): a viewing linked to
  * the interest (no request), the client's visit date and reminder, and the interest's check-back moved to the visit day.
  */
-export async function scheduleInterestViewing(d: CrmData, c: Client, x: Interest, at: string, note: string) {
+/** The viewing record for a visit on an interest; an open one for the same interest is moved instead (returns null then). */
+async function interestViewing(d: CrmData, c: Client, x: Interest, at: string, note: string) {
   const dup = d.viewings.find((v) => v.clientId === c.id && !v.requestId && v.interestId === x.id && ["مجدولة", "مؤجلة"].includes(v.status));
-  if (dup) { if (dup.at !== at) await postponeViewing(d, dup, at, note); return dup.id; }
-  const id = await write("viewings", null, {
+  if (dup) { if (dup.at !== at) await postponeViewing(d, dup, at, note); return null; }
+  return write("viewings", null, {
     requestId: null, clientId: c.id, interestId: x.id, propertyId: x.propertyId || null, propertyTitle: x.propertyId ? null : x.propertyTitle || null,
     at, status: "مجدولة", feedback: null, followUp: null, assignee: c.assignee || d.uid || null, by: d.uid || null,
     history: [ev(d, "مجدولة", note)], createdAt: nowStamp(), updatedAt: nowStamp(),
   });
+}
+
+export async function scheduleInterestViewing(d: CrmData, c: Client, x: Interest, at: string, note: string) {
+  const id = await interestViewing(d, c, x, at, note);
+  if (!id) return null;
   const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, followUp: at.slice(0, 10), history: historyOf(i, d, "حدد زيارة", fmtVisit(at)) } : i));
   await saveClientVisit(d, c, at, x.propertyId || null, [x.propertyId ? "" : x.propertyTitle, note].filter(Boolean).join(" — "), { interests });
   return id;
