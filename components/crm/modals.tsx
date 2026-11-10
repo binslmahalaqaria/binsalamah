@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  addInterests, applyUpdate, interestOnRequest, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  addInterests, applyUpdate, interestOnRequest, scheduleInterestViewing, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -31,6 +31,7 @@ export function ModalHost() {
     case "task": return <TaskForm key={modal.id || "new"} id={modal.id} preset={modal.preset} />;
     case "update": return <UpdateModal key={modal.clientId} clientId={modal.clientId} type={modal.type} propertyId={modal.propertyId} reqId={modal.reqId} />;
     case "visit": return <VisitModal reqId={modal.reqId} propertyId={modal.propertyId} propertyTitle={modal.propertyTitle} viewingId={modal.viewingId} />;
+    case "interestVisit": return <InterestVisitModal clientId={modal.clientId} interestId={modal.interestId} viewingId={modal.viewingId} />;
     case "viewResult": return <ViewResultModal viewingId={modal.viewingId} />;
     case "close": return <CloseModal reqId={modal.reqId} to={modal.to} />;
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
@@ -228,9 +229,51 @@ function VisitModal({ reqId, propertyId, propertyTitle, viewingId }: { reqId: st
   );
 }
 
+/* ---------- visit on an interest (client without a request; client 2026-11-10) ---------- */
+function InterestVisitModal({ clientId, interestId, viewingId }: { clientId: string; interestId: string; viewingId?: string }) {
+  const { data, closeModal, toast } = useCrm();
+  const c = clientById(data, clientId);
+  const x = c?.interests?.find((i) => i.id === interestId);
+  const v = viewingId ? data.viewings.find((w) => w.id === viewingId) : undefined;
+  const [at, setAt] = useState(v?.at || "");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  if (!c || !x) return null;
+  const title = propById(data, x.propertyId)?.title || x.propertyTitle;
+  return (
+    <ModalFrame title={(v ? "تأجيل الزيارة: " : "موعد زيارة: ") + c.name} onClose={closeModal} width={480}
+      footer={
+        <>
+          <div className="flex gap-2">
+            <button type="button" className="crm-btn primary" disabled={saving} onClick={async () => {
+              if (!at) return toast("حدد التاريخ والوقت");
+              if (saving) return;
+              setSaving(true);
+              try {
+                if (v) await postponeViewing(data, v, at, note.trim());
+                else await scheduleInterestViewing(data, c, x, at, note.trim());
+                toast((v ? "أُجّلت الزيارة إلى " : "تم حفظ موعد الزيارة ") + fmtVisit(at));
+                closeModal();
+              } finally { setSaving(false); }
+            }}>{v ? "حفظ الموعد الجديد" : "حفظ الموعد"}</button>
+            <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
+          </div>
+          {v && <button type="button" className="crm-btn danger" onClick={async () => { await cancelViewing(data, v, note.trim()); toast("أُلغيت الزيارة"); closeModal(); }}>إلغاء الزيارة</button>}
+        </>
+      }>
+      <div className="grid gap-3">
+        <Field label="العقار"><input value={title + (x.propertyId ? "" : " (غير مضاف)")} disabled aria-label="العقار" /></Field>
+        <Field label="التاريخ والوقت"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
+        <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+      </div>
+      <p className="crm-hint mt-2">تظهر في «الزيارات»، وقبلها بيوم يذكّرك النظام تأكدها. إذا زار بدون موعد، استخدم «تمت الزيارة (بدون موعد)» من قائمة ⋮.</p>
+    </ModalFrame>
+  );
+}
+
 /* ---------- viewing result (trial 2026-10-22) ---------- */
 function ViewResultModal({ viewingId }: { viewingId: string }) {
-  const { data, closeModal, toast } = useCrm();
+  const { data, closeModal, toast, openModal } = useCrm();
   const v = data.viewings.find((x) => x.id === viewingId);
   const [res, setRes] = useState<"interested" | "unsuitable" | "thinking" | "">("");
   const [fb, setFb] = useState("");
@@ -243,6 +286,17 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
         <button type="button" className="crm-btn primary" onClick={async () => {
           if (!res) return toast("اختر رأي العميل");
           await viewingResult(data, v, res, fb.trim(), next === "none" ? null : addDays(+next));
+          if (!v.requestId) {
+            toast(res === "unsuitable" ? "سُجّل الانطباع وانقفل الاهتمام" : "سُجّل الانطباع في اهتمامه");
+            // Suitable after visiting an interest: the next step is a request, so offer it (client 2026-11-10).
+            if (res === "interested" && v.interestId && window.confirm("العميل مناسب له العقار — تحوّله طلب الحين؟"))
+              return openModal({ kind: "request", preset: {
+                clientId: v.clientId, assignee: c?.assignee || data.uid, _clientName: c?.name, _interestId: v.interestId,
+                purpose: p?.purpose || undefined, propTypes: p?.type ? [p.type] : undefined, districts: p?.district || undefined, budget: p?.price ?? undefined,
+                requirements: "زار وأعجبه: " + (p?.title || v.propertyTitle || "العقار") + (fb.trim() ? " — " + fb.trim() : ""),
+              } });
+            return closeModal();
+          }
           toast(res === "interested" ? "سُجّل الانطباع — غيّر مرحلة الطلب بنفسك إذا لزم" : res === "unsuitable" ? "سُجّل الانطباع — غيّر مرحلة الطلب بنفسك إذا لزم" : "سُجّلت النتيجة وموعد المتابعة");
           closeModal();
         }}>حفظ</button>

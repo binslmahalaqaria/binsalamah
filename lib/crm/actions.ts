@@ -6,7 +6,7 @@
  * and overdue clients escalate back to the sales manager.
  */
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, runTransaction, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, runTransaction, setDoc, updateDoc,
   writeBatch, type DocumentReference,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -17,10 +17,11 @@ import {
 } from "./logic";
 import type { AttendanceDay, Client, Interest, LogEntry, Property, Proposal, Request, Unit, Viewing } from "./types";
 import { pushPropertyToOffers } from "./web-sync";
-import { addDays, dayDiff, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
+import { addDays, dayDiff, enDigits, fmtVisit, localDay, moneyFull, normPhone, nowStamp, num, today } from "./util";
 
 const LOG_MAX = 80;
-const clean = <T extends object>(o: T) => JSON.parse(JSON.stringify(o)) as T; // drop undefined
+// Drops undefined; every text saved keeps English digits only (client 2026-11-10).
+const clean = <T extends object>(o: T) => JSON.parse(JSON.stringify(o), (_k, v) => (typeof v === "string" ? enDigits(v) : v)) as T;
 
 export async function write(col: string, id: string | null, data: object, mode: "set" | "update" = "set") {
   assertWritable();
@@ -298,6 +299,11 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
   const r = d.requests.find((x) => x.id === reqId);
   const c = r && clientById(d, r.clientId);
   if (!c) return false;
+  return saveClientVisit(d, c, at, propId, note);
+}
+
+/** The client side of a visit (date, reminder call the day before, log); `extra` is merged into the same write. */
+export async function saveClientVisit(d: CrmData, c: Client, at: string | null, propId: string | null, note: string, extra: Record<string, unknown> = {}) {
   const clear = !at;
   const day = at ? at.slice(0, 10) : null;
   // Call the day before the visit to confirm it.
@@ -320,10 +326,39 @@ export async function saveVisit(d: CrmData, reqId: string, at: string | null, pr
       lastUpdateAt: nowStamp(),
       nextCall: day && diff > 0 && !c.noCall ? addDays(diff - 1) : c.nextCall || null,
       updatedAt: nowStamp(),
+      ...extra,
     },
     "update"
   );
   return true;
+}
+
+/** «تمت الزيارة» on an interest with no appointment booked: the visit is recorded as of now, ready for its result. */
+export async function quickInterestVisit(d: CrmData, c: Client, x: Interest) {
+  const n = new Date(), p = (k: number) => String(k).padStart(2, "0");
+  const at = today() + "T" + p(n.getHours()) + ":" + p(n.getMinutes());
+  return write("viewings", null, {
+    requestId: null, clientId: c.id, interestId: x.id, propertyId: x.propertyId || null, propertyTitle: x.propertyId ? null : x.propertyTitle || null,
+    at, status: "مجدولة", feedback: null, followUp: null, assignee: c.assignee || d.uid || null, by: d.uid || null,
+    history: [ev(d, "مجدولة", "زيارة بدون موعد مسبق")], createdAt: nowStamp(), updatedAt: nowStamp(),
+  });
+}
+
+/**
+ * A visit for a client without a request, on a property they asked about (client 2026-11-10): a viewing linked to
+ * the interest (no request), the client's visit date and reminder, and the interest's check-back moved to the visit day.
+ */
+export async function scheduleInterestViewing(d: CrmData, c: Client, x: Interest, at: string, note: string) {
+  const dup = d.viewings.find((v) => v.clientId === c.id && !v.requestId && v.interestId === x.id && ["مجدولة", "مؤجلة"].includes(v.status));
+  if (dup) { if (dup.at !== at) await postponeViewing(d, dup, at, note); return dup.id; }
+  const id = await write("viewings", null, {
+    requestId: null, clientId: c.id, interestId: x.id, propertyId: x.propertyId || null, propertyTitle: x.propertyId ? null : x.propertyTitle || null,
+    at, status: "مجدولة", feedback: null, followUp: null, assignee: c.assignee || d.uid || null, by: d.uid || null,
+    history: [ev(d, "مجدولة", note)], createdAt: nowStamp(), updatedAt: nowStamp(),
+  });
+  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, followUp: at.slice(0, 10), history: historyOf(i, d, "حدد زيارة", fmtVisit(at)) } : i));
+  await saveClientVisit(d, c, at, x.propertyId || null, [x.propertyId ? "" : x.propertyTitle, note].filter(Boolean).join(" — "), { interests });
+  return id;
 }
 
 /** Puts a booked/sold unit (or whole property) back on the market. */
@@ -745,13 +780,16 @@ export async function scheduleViewing(d: CrmData, reqId: string, at: string, pro
 /** Postpones a viewing to a new time (status «مؤجلة»; still upcoming). */
 export async function postponeViewing(d: CrmData, v: Viewing, at: string, note: string) {
   await write("viewings", v.id, { at, status: "مؤجلة", history: [...(v.history || []), ev(d, "مؤجلة", note || "إلى " + fmtVisit(at))], updatedAt: nowStamp() }, "update");
-  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, (v.propertyTitle ? v.propertyTitle + " — " : "") + "تأجيل الزيارة" + (note ? ": " + note : ""));
+  const text = (v.propertyTitle ? v.propertyTitle + " — " : "") + "تأجيل الزيارة" + (note ? ": " + note : "");
+  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, text);
+  else { const c = clientById(d, v.clientId); if (c) await saveClientVisit(d, c, at, v.propertyId, text); }
 }
 
 /** Cancels a viewing (kept in the record as «ملغاة»). */
 export async function cancelViewing(d: CrmData, v: Viewing, note: string) {
   await write("viewings", v.id, { status: "ملغاة", history: [...(v.history || []), ev(d, "ملغاة", note)], updatedAt: nowStamp() }, "update");
   if (v.requestId) await saveVisit(d, v.requestId, null, null, note);
+  else { const c = clientById(d, v.clientId); if (c) await saveClientVisit(d, c, null, null, note); }
 }
 
 /**
@@ -764,7 +802,19 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
     history: [...(v.history || []), ev(d, "تمت", { interested: "مهتم", unsuitable: "غير مناسب", thinking: "يفكر" }[result] + (feedback ? " — " + feedback : ""))],
   }, "update");
   await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
-  const p = d.proposals.find((x) => x.requestId === v.requestId && (v.propertyId ? x.propertyId === v.propertyId : !x.propertyId && !!v.propertyTitle && x.propertyTitle === v.propertyTitle));
+  // A visit on an interest (no request): the interest gets the result and the follow-up date (client 2026-11-10).
+  // Written without the log: applyUpdate0 has just written it from the same copy.
+  const ic = v.interestId ? clientById(d, v.clientId) : undefined;
+  const ix = ic?.interests?.find((i) => i.id === v.interestId);
+  if (ic && ix) {
+    const label = { interested: "زار — مناسب", unsuitable: "زار — غير مناسب", thinking: "زار — يفكر" }[result];
+    const status = result === "interested" ? "ممتاز" : result === "unsuitable" ? "غير مهتم" : ix.status;
+    await write("clients", ic.id, {
+      interests: (ic.interests || []).map((i) => (i.id === ix.id ? { ...i, status, followUp: result === "unsuitable" ? null : followUp, history: historyOf(i, d, label, feedback) } : i)),
+      ...(result === "interested" ? { temp: "ساخن" } : {}), updatedAt: nowStamp(),
+    }, "update");
+  }
+  const p = v.requestId ? d.proposals.find((x) => x.requestId === v.requestId && (v.propertyId ? x.propertyId === v.propertyId : !x.propertyId && !!v.propertyTitle && x.propertyTitle === v.propertyTitle)) : undefined;
   if (result === "interested") {
     if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد الزيارة", { log: false });
   } else if (result === "unsuitable") {
@@ -790,6 +840,46 @@ export async function cleanOldCallDates(d: CrmData) {
     await b.commit();
   }
   await setDoc(flag, { callDates20261107: true, cleared20261107: stale.length, at: nowStamp() }, { merge: true });
+}
+
+/** Strings inside plain values (arrays, plain objects); Firestore Timestamps and other objects are left as they are. */
+const isPlainObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && Object.getPrototypeOf(v) === Object.prototype;
+const hasArDigits = (v: unknown): boolean =>
+  typeof v === "string" ? /[٠-٩۰-۹]/.test(v) : Array.isArray(v) ? v.some(hasArDigits) : isPlainObj(v) ? Object.values(v).some(hasArDigits) : false;
+const toEnDeep = (v: unknown): unknown =>
+  typeof v === "string" ? enDigits(v) : Array.isArray(v) ? v.map(toEnDeep) : isPlainObj(v) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toEnDeep(x)])) : v;
+
+/**
+ * One-time (client 2026-11-10: every number in the system in English digits): rewrites Arabic-Indic digits already
+ * saved in the CRM collections and the website listings. Owner session; flagged in settings/migrations so it runs once.
+ * Only the fields that contain such digits are updated.
+ */
+export async function englishDigitsOnce(d: CrmData) {
+  if (!d.isAdmin) return;
+  const flag = doc(db, "settings", "migrations");
+  const f = await getDoc(flag);
+  if (f.exists() && f.data().digits20261111) return;
+  const counts: Record<string, number> = {};
+  let failed = false;
+  for (const col of ["clients", "requests", "properties", "proposals", "viewings", "tasks", "offers"]) {
+    try {
+      const snap = await getDocs(collection(db, col));
+      const todo: [DocumentReference, Record<string, unknown>][] = [];
+      snap.forEach((x) => {
+        const patch: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(x.data())) if (hasArDigits(v)) patch[k] = toEnDeep(v);
+        if (Object.keys(patch).length) todo.push([x.ref, patch]);
+      });
+      for (let k = 0; k < todo.length; k += 400) {
+        const b = writeBatch(db);
+        todo.slice(k, k + 400).forEach(([ref, patch]) => b.update(ref, patch));
+        await b.commit();
+      }
+      counts[col] = todo.length;
+    } catch { failed = true; }
+  }
+  // A collection that failed is retried on the next owner session.
+  if (!failed) await setDoc(flag, { digits20261111: true, digitsFixed20261111: counts, at: nowStamp() }, { merge: true });
 }
 
 /**

@@ -5,6 +5,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { DESC_AR, DESC_EN, KEYWORDS, NAME_AR, NAME_EN, SITE_URL } from "@/lib/seo";
+import { EnglishDigits } from "@/components/EnglishDigits";
 import "../globals.css";
 
 // Real brand font (2026-09-14 identity refresh) — not on Google Fonts, so
@@ -89,6 +90,7 @@ export default async function LocaleLayout({
       <body
         className={`${darahModern.variable} ${rubik.variable} ${plexArabic.variable} min-h-screen font-sans antialiased`}
       >
+        <EnglishDigits />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

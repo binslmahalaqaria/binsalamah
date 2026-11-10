@@ -8,9 +8,9 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterests, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
+import { addInterests, quickInterestVisit, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest, Proposal } from "@/lib/crm/types";
-import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
+import { addDays, ageDays, fmtStamp, fmtVisit, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, dupMsg, findDup, takenMsg } from "./forms";
@@ -116,6 +116,8 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
   const { data, openClient, openModal, toast } = useCrm();
   const t = today(), open = isOpenInterest(x), team = data.isMgr && !data.viewAs;
   const title = propById(data, x.propertyId)?.title || x.propertyTitle;
+  // The open visit booked on this interest, if any.
+  const visit = data.viewings.find((v) => v.clientId === c.id && v.interestId === x.id && ["مجدولة", "مؤجلة"].includes(v.status));
   return (
     <div className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (open && x.followUp && x.followUp < t ? "late" : "")}>
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
@@ -130,6 +132,7 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         <div className="text-xs text-[var(--crm-ink-3)]">
           استفسر {ageDays(x.at)}
           {open && x.followUp && <> · المتابعة: <span className={x.followUp < t ? "font-semibold text-[var(--crm-danger)]" : x.followUp === t ? "font-semibold" : ""}>{relDay(x.followUp)}</span></>}
+          {open && visit && <> · <span className="font-semibold text-[var(--crm-gold-ink)]">زيارة {fmtVisit(visit.at)}</span></>}
           {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
         </div>
       </div>
@@ -137,8 +140,14 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         {/* The WhatsApp icon opens the app with the follow-up message ready. */}
         <ContactIcons phone={c.phone} text={open ? interestMessage(data, c, [x]) : undefined} />
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
+        {/* Visits on an interest, like offers on a request (client 2026-11-10); the appointment is optional. */}
+        {open && (visit
+          ? <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "viewResult", viewingId: visit.id })}>تمت الزيارة</button>
+          : <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interestVisit", clientId: c.id, interestId: x.id })}>حدد زيارة</button>)}
         <Kebab items={[
           { label: open ? "سجّل المتابعة" : "التفاصيل", onClick: () => openModal({ kind: "interestFollow", clientId: c.id, id: x.id }) },
+          open && visit ? { label: "تأجيل / إلغاء الزيارة", onClick: () => openModal({ kind: "interestVisit", clientId: c.id, interestId: x.id, viewingId: visit.id }) } : null,
+          open && !visit ? { label: "تمت الزيارة (بدون موعد)", onClick: async () => { const id = await quickInterestVisit(data, c, x); if (id) openModal({ kind: "viewResult", viewingId: id }); } } : null,
           // For an interest recorded by mistake (client 2026-11-09).
           { label: "🗑 حذف", onClick: async () => { if (window.confirm("حذف اهتمام «" + title + "»؟ ما يرجع بعد الحذف.")) { await removeInterest(c, x); toast("تم الحذف"); } } },
         ]} />

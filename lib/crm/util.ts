@@ -5,6 +5,10 @@
  */
 
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+/** Arabic-Indic (and Persian) digits → English digits (client 2026-11-10: the system keeps English digits only). */
+export const enDigits = (s: string) =>
+  /[٠-٩۰-۹]/.test(s) ? s.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d))) : s;
 
 /** Parses user-typed numbers, accepting Arabic-Indic digits and thousands separators. */
 export function num(v: unknown): number | null {

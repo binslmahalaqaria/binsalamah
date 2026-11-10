@@ -101,6 +101,7 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
           {!past && !confirmed && c && <button type="button" className="crm-btn sm" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الموعد</button>}
           <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "viewResult", viewingId: v.id })}>{past ? "سجّل الانطباع" : "تمت الزيارة"}</button>
           {v.requestId && <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: v.requestId!, viewingId: v.id })}>تأجيل / إلغاء</button>}
+          {!v.requestId && v.interestId && <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interestVisit", clientId: v.clientId, interestId: v.interestId!, viewingId: v.id })}>تأجيل / إلغاء</button>}
         </div>
       )}
     </div>

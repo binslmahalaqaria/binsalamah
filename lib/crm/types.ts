@@ -432,6 +432,8 @@ export interface Viewing {
   propertyId: string | null;
   /** A property not in the system (its name), when propertyId is empty (client 2026-11-10). */
   propertyTitle?: string | null;
+  /** A visit on an interest of a client without a request (requestId is then null; client 2026-11-10). */
+  interestId?: string | null;
   /** Local datetime "YYYY-MM-DDTHH:mm". */
   at: string;
   /** مجدولة · تمت · مؤجلة · ملغاة */

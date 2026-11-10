@@ -16,7 +16,7 @@ import { can, isActive, members, myTasksOpen, nameOf } from "@/lib/crm/logic";
 import { addDays, today } from "@/lib/crm/util";
 import { TO_CONTACT } from "@/lib/crm/constants";
 import { migrateOfferLinks } from "@/lib/offers";
-import { assignPropRefs, assignRequestRefs, cleanOldCallDates, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
+import { assignPropRefs, assignRequestRefs, cleanOldCallDates, englishDigitsOnce, feedNumbers, runEscalation, runNoResponse } from "@/lib/crm/actions";
 import { TaskAlerts } from "./TaskAlerts";
 import { ChatAlerts } from "./ChatAlerts";
 import { Logo } from "@/components/Logo";
@@ -152,6 +152,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     if (!loaded || previewAs || cleaned.current || !data.isAdmin) return;
     cleaned.current = true;
     cleanOldCallDates(data).catch(() => { cleaned.current = false; });
+    englishDigitsOnce(data).catch(() => {});
   }, [loaded, data, previewAs]);
 
   // Listings saved before 2026-11-06 still hold their location and project file on the public doc: move them.
