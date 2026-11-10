@@ -7,7 +7,7 @@
 import { useCrm } from "@/lib/crm/store";
 import { NO_RESP } from "@/lib/crm/constants";
 import { SubTabs } from "./ui";
-import { dueInterestClients } from "./Interests";
+import { dueInterests, dueReqInterests } from "./Interests";
 
 /** العملاء: all clients / those who did not answer (the numbers list is its own section, «الأرقام»). */
 export function ClientTabs() {
@@ -31,11 +31,13 @@ export function PropertyTabs() {
 /** الطلبات: requests / the raw website forms (already turned into requests, plus job applications). */
 export function RequestTabs() {
   const { data, previewAs } = useCrm();
-  const due = dueInterestClients(data);
+  // Clients to call back today: without a request under الاهتمامات, with one under العروض (client 2026-11-10).
+  const due = new Set(dueInterests(data, true).map(({ c }) => c.id)).size;
+  const dueOffers = new Set(dueReqInterests(data).map((p) => p.clientId)).size;
   return <SubTabs tabs={[
     { href: "/admin/requests", label: "الطلبات" },
     // The customer journey after the request.
-    { href: "/admin/proposals", label: "العروض" },
+    { href: "/admin/proposals", label: "العروض", badge: dueOffers || undefined, alert: true },
     // Clients without a request who asked about a property (with a request it is an offer instead).
     { href: "/admin/interests", label: "الاهتمامات", badge: due || undefined, alert: true },
     { href: "/admin/viewings", label: "الزيارات" },

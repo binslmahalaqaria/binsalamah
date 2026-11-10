@@ -6,10 +6,10 @@ import { useCrm } from "@/lib/crm/store";
 import { propById } from "@/lib/crm/logic";
 import { today } from "@/lib/crm/util";
 import { Empty, PageHeader, RadioChips, Select } from "@/components/crm/ui";
-import { InterestList, ReqInterestList, interestItems, isOpenInterest, reqInterestOffers } from "@/components/crm/Interests";
+import { InterestList, interestItems, isOpenInterest } from "@/components/crm/Interests";
 import { RequestTabs } from "@/components/crm/PageTabs";
 
-const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["req", "لهم طلب"], ["closed", "المنتهية"]];
+const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["closed", "المنتهية"]];
 
 export default function InterestsPage() {
   const { data, loaded, openModal } = useCrm();
@@ -26,19 +26,9 @@ export default function InterestsPage() {
   });
   const title = (id: string | null, fallback: string) => propById(data, id)?.title || fallback;
   const needle = q.trim();
-  // Clients with an open request: their interests are offers «مهتم» (العروض); listed here one row per client,
-  // opening the client file, while the request itself stays in الطلبات (client 2026-11-09).
-  const reqOffers = reqInterestOffers(data)
-    .filter((p) => !pid || p.propertyId === pid)
-    .filter((p) => {
-      const c = data.clients.find((x) => x.id === p.clientId);
-      return !needle || [c?.name, c?.phone, title(p.propertyId || null, p.propertyTitle || ""), p.note].some((v) => String(v || "").includes(needle));
-    })
-  const reqDue = reqOffers.filter((p) => !!p.followUp && p.followUp <= t);
-  const reqNext = reqOffers.filter((p) => !p.followUp || p.followUp > t); // also listed under «القادمة» (client 2026-11-09)
-  const clientsOf = (xs: { clientId: string }[]) => new Set(xs.map((x) => x.clientId)).size;
-  // Counted in clients (one number to call each), the due tab includes interests on a request whose date has come.
-  const count = (k: string) => (k === "req" ? clientsOf(reqOffers) : clientsOf(inTab(k).map(({ c }) => ({ clientId: c.id }))) + (k === "due" ? clientsOf(reqDue) : k === "next" ? clientsOf(reqNext) : 0));
+  // Only clients without a request (client 2026-11-10): with a request their interests are offers «مهتم» in العروض
+  // and the client file, not here.
+  const count = (k: string) => new Set(inTab(k).map(({ c }) => c.id)).size;
   const list = inTab(tab)
     .filter(({ c, x }) => (!pid || x.propertyId === pid)
       && (!needle || [c.name, c.phone, title(x.propertyId, x.propertyTitle), x.note].some((v) => String(v || "").includes(needle))))
@@ -58,9 +48,7 @@ export default function InterestsPage() {
         <Select value={pid} onChange={setPid} blank="كل العقارات" options={props} ariaLabel="العقار" />
       </div>
       <div className="crm-card overflow-hidden">
-        {tab === "req"
-          ? reqOffers.length ? <ReqInterestList items={reqOffers} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>
-          : list.length || (tab === "due" && reqDue.length) || (tab === "next" && reqNext.length) ? <><InterestList items={list} />{tab === "due" && <ReqInterestList items={reqDue} />}{tab === "next" && <ReqInterestList items={reqNext} />}</> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
+        {list.length ? <InterestList items={list} /> : <Empty>لا يوجد شيء هنا الآن.</Empty>}
       </div>
     </>
   );
