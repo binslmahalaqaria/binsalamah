@@ -57,6 +57,8 @@ export interface Client {
   visitAt: string | null;
   visitProperty?: string | null;
   visitConfirmed?: boolean;
+  /** Staff uid who added the client (from 2026-11-10); only they or a manager can delete the client. */
+  createdBy?: string | null;
   notes: string | null;
   log: LogEntry[];
   lastUpdate?: string | null;
@@ -428,6 +430,8 @@ export interface Viewing {
   requestId: string | null;
   clientId: string;
   propertyId: string | null;
+  /** A property not in the system (its name), when propertyId is empty (client 2026-11-10). */
+  propertyTitle?: string | null;
   /** Local datetime "YYYY-MM-DDTHH:mm". */
   at: string;
   /** مجدولة · تمت · مؤجلة · ملغاة */

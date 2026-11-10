@@ -53,6 +53,21 @@ export function findDup(d: CrmData, phone: string, exceptId?: string | null) {
   return d.clients.find((c) => c.id !== exceptId && normPhone(c.phone) === n) || null;
 }
 
+/**
+ * The message when a number is already a client (client 2026-11-10): whose client it is, and that only that employee
+ * adds to it — or a manager assigns it to you.
+ */
+export function dupMsg(d: CrmData, c: Client) {
+  if (c.assignee && c.assignee === d.uid) return "العميل مسجّل عندك من قبل باسم " + c.name + " — افتح ملفه وسجّل عليه";
+  const who = c.assignee ? "الموظف " + nameOf(d, c.assignee) : "غير مسند لأحد";
+  return "هذا العميل مسجّل من قبل باسم " + c.name + " — عند " + who + (d.isMgr ? "" : ". " + (c.assignee ? "هو اللي يضيف له، أو " : "") + "المدير يقدر يسنده لك");
+}
+/** The save failed on the number: name the client who has it when we can see them. */
+export const takenMsg = (d: CrmData, phone: string | null | undefined, exceptId?: string | null) => {
+  const c = phone ? findDup(d, phone, exceptId) : null;
+  return c ? dupMsg(d, c) : PHONE_TAKEN;
+};
+
 export function DupHint({ phone, exceptId }: { phone: string; exceptId?: string | null }) {
   const { data, openClient, closeModal } = useCrm();
   const c = findDup(data, phone, exceptId);
@@ -60,8 +75,8 @@ export function DupHint({ phone, exceptId }: { phone: string; exceptId?: string 
   const mine = data.isMgr || c.assignee === data.uid;
   return (
     <div className="mt-1.5 grid justify-items-start gap-1.5 rounded-lg bg-[var(--crm-warn-soft)] px-2.5 py-2 text-[13px] text-[var(--crm-warn)]">
-      <span><b>العميل مسجّل من قبل:</b> {c.name}{c.assignee ? " — عند " + nameOf(data, c.assignee) : " — غير مسند"}</span>
-      <span>لا يمكن تسجيله مرة أخرى.</span>
+      <span><b>العميل مسجّل من قبل:</b> {c.name}{c.assignee ? " — عند الموظف " + nameOf(data, c.assignee) : " — غير مسند"}</span>
+      <span>لا يمكن تسجيله مرة أخرى.{!mine && (c.assignee ? " الموظف " + nameOf(data, c.assignee) + " هو اللي يضيف له، أو المدير يسنده لك." : " المدير يقدر يسنده لك.")}</span>
       {mine && <button type="button" className="crm-btn sm" onClick={() => { closeModal(); openClient(c.id); }}>افتح ملفه</button>}
     </div>
   );
@@ -106,10 +121,7 @@ export function ClientForm({ id }: { id?: string }) {
 
   async function save() {
     if (!f.name.trim()) return toast("يرجى تعبئة حقل: اسم العميل");
-    if (f.phone && findDup(data, f.phone, rec?.id)) {
-      const dup = findDup(data, f.phone, rec?.id)!;
-      return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
-    }
+    if (f.phone && findDup(data, f.phone, rec?.id)) return toast(dupMsg(data, findDup(data, f.phone, rec?.id)!));
     setBusy(true);
     try {
       const body: Partial<Client> = {
@@ -131,12 +143,12 @@ export function ClientForm({ id }: { id?: string }) {
         toast("تم الحفظ");
         closeModal();
       } else {
-        const nid = await createClient({ ...body, log: [], createdAt: nowStamp() });
+        const nid = await createClient({ ...body, log: [], createdBy: data.uid || null, createdAt: nowStamp() });
         toast("تم حفظ العميل، يرجى الآن تسجيل طلبه");
         openModal({ kind: "request", preset: { clientId: nid, assignee: body.assignee || data.uid, source: body.source || null, _clientName: body.name } });
       }
     } catch (e) {
-      toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ");
+      toast(isPhoneTaken(e) ? takenMsg(data, f.phone, rec?.id) : "تعذّر الحفظ");
     } finally {
       setBusy(false);
     }
@@ -150,7 +162,8 @@ export function ClientForm({ id }: { id?: string }) {
             <button type="button" className="crm-btn primary" disabled={busy} onClick={save}>حفظ</button>
             <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
           </div>
-          {rec && data.isMgr && (
+          {/* A manager, or the employee who added this client (client 2026-11-10). */}
+          {rec && (data.isMgr || (!!rec.createdBy && rec.createdBy === data.uid)) && (
             <ConfirmButton onConfirm={async () => { await deleteClient(data, rec); toast("تم حذف العميل وطلباته"); closeModal(); }}>حذف{data.requests.some((r) => r.clientId === rec.id) ? " مع طلباته" : ""}</ConfirmButton>
           )}
         </>
@@ -287,10 +300,10 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       if (!body.clientId) {
         if (!f.newName.trim()) return toast("اختر عميل موجود أو اكتب اسم عميل جديد");
         const dup = f.newPhone && findDup(data, f.newPhone);
-        if (dup) return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
+        if (dup) return toast(dupMsg(data, dup));
         body.clientId = await createClient({
           name: f.newName.trim(), phone: f.newPhone.trim() || null, temp: f.temp || null, status: "نشط",
-          nextCall: null, log: [], source: body.source || null, assignee: body.assignee || data.uid,
+          nextCall: null, log: [], source: body.source || null, assignee: body.assignee || data.uid, createdBy: data.uid || null,
           createdAt: nowStamp(), updatedAt: nowStamp(), ...demand,
         });
       } else if (!rec) {
@@ -319,7 +332,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
       closeModal();
       if (closeTo && reqId) openModal({ kind: "close", reqId, to: closeTo });
     } catch (e) {
-      toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ، يرجى المحاولة مجدداً");
+      toast(isPhoneTaken(e) ? takenMsg(data, f.newPhone) : "تعذّر الحفظ، يرجى المحاولة مجدداً");
     } finally {
       setBusy(false);
     }

@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  addInterests, applyUpdate, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  addInterests, applyUpdate, interestOnRequest, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -18,7 +18,7 @@ import { ConfirmButton, Field, ModalFrame, Pill, RadioChips, Select } from "./ui
 import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
 import { SendZipToClient } from "./SendZipToClient";
-import { SentMarks } from "./SentBadge";
+import { SentMarks, okToResend } from "./SentBadge";
 import { ClientInterests, InterestFollow, InterestForm } from "./Interests";
 
 export function ModalHost() {
@@ -30,7 +30,7 @@ export function ModalHost() {
     case "property": return <PropertyForm key={modal.id || "new"} id={modal.id} />;
     case "task": return <TaskForm key={modal.id || "new"} id={modal.id} preset={modal.preset} />;
     case "update": return <UpdateModal key={modal.clientId} clientId={modal.clientId} type={modal.type} propertyId={modal.propertyId} reqId={modal.reqId} />;
-    case "visit": return <VisitModal reqId={modal.reqId} propertyId={modal.propertyId} viewingId={modal.viewingId} />;
+    case "visit": return <VisitModal reqId={modal.reqId} propertyId={modal.propertyId} propertyTitle={modal.propertyTitle} viewingId={modal.viewingId} />;
     case "viewResult": return <ViewResultModal viewingId={modal.viewingId} />;
     case "close": return <CloseModal reqId={modal.reqId} to={modal.to} />;
     case "cancel": return <CancelModal reqId={modal.reqId} to={modal.to} />;
@@ -88,6 +88,9 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       if (!date) return toast("اختر التاريخ");
       nx = date;
     } else if (next !== "none") nx = addDays(+next);
+    // Sending a property that already went to this client: say so first (client 2026-11-10).
+    if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) &&
+      !okToResend(data, clientId, [...props.map((pid) => ({ pid })), ...extras.filter((x) => x.title.trim()).map((x) => ({ title: x.title.trim() }))])) return;
     try {
       const titles = [...props.map((id) => data.props.find((p) => p.id === id)?.title), ...extras.map((x) => x.title.trim())].filter(Boolean);
       const text = [note.trim(), titles.length > 1 ? "العقارات: " + titles.join("، ") : ""].filter(Boolean).join(" — ");
@@ -104,8 +107,17 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     const typed = extras.filter((x) => x.title.trim());
     try {
       if (openR) {
-        if (sendT && props.length) await recordSends(data, openR.id, props);
-        for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, sendT ? "أُرسل" : "مهتم");
+        if (sendT) {
+          if (props.length) await recordSends(data, openR.id, props);
+          for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, "أُرسل");
+        } else {
+          // Asked about / interested (client 2026-11-10: this is where a client with a request gets an interest):
+          // offers «مهتم» on the request with the check-back date, shown in الاهتمامات.
+          await interestOnRequest(data, openR, [
+            ...(aboutProps ? props : []).map((id) => ({ propertyId: id, title: data.props.find((p) => p.id === id)?.title || "عقار", unit: null, note: null })),
+            ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: x.details.trim() || null })),
+          ], nx);
+        }
       } else if (c && !u?.status && ((aboutProps && props.length) || typed.length)) {
         // (Not when the result itself archives the client, e.g. «غير مهتم».)
         await addInterests(data, c, [
@@ -118,7 +130,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     }
     if (["تم إرسال الموقع", "تم إرسال التفاصيل"].includes(type) && openR) {
       toast("سُجّل الإرسال — حدّد موعد الزيارة، أو أغلق النافذة إن لم يُتفق بعد");
-      return openModal({ kind: "visit", reqId: openR.id, propertyId: props[0] || undefined });
+      return openModal({ kind: "visit", reqId: openR.id, propertyId: props[0] || undefined, propertyTitle: props[0] ? undefined : typed[0]?.title.trim() || undefined });
     }
     toast("تم — " + (nx ? "الاتصال القادم " + relDay(nx) + " (" + nx + ")" : "بدون موعد اتصال"));
     closeModal();
@@ -162,16 +174,18 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
 }
 
 /* ---------- visit appointment ---------- */
-function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyId?: string; viewingId?: string }) {
+function VisitModal({ reqId, propertyId, propertyTitle, viewingId }: { reqId: string; propertyId?: string; propertyTitle?: string; viewingId?: string }) {
   const { data, closeModal, toast } = useCrm();
   const r = data.requests.find((x) => x.id === reqId);
   const c = r && clientById(data, r.clientId);
   // Postponing an existing viewing (trial 2026-10-22) or booking a new one.
   const v = viewingId ? data.viewings.find((x) => x.id === viewingId) : undefined;
   const ms = useMemo(() => (r ? data.props.filter((p) => match(r, p)) : []), [data.props, r]);
+  // Properties not in the system on this request (its offers), chosen by name — «t:<name>» in the list (client 2026-11-10).
+  const unlisted = useMemo(() => [...new Set([propertyTitle || "", ...data.proposals.filter((x) => x.requestId === reqId && !x.propertyId).map((x) => (x.propertyTitle || "").trim())].filter(Boolean))], [data.proposals, reqId, propertyTitle]);
   const sentProp = r?.sent?.length ? r.sent[r.sent.length - 1] : "";
   const [at, setAt] = useState(v?.at || c?.visitAt || "");
-  const [pid, setPid] = useState(v?.propertyId || propertyId || c?.visitProperty || sentProp || ms[0]?.id || "");
+  const [pid, setPid] = useState(propertyTitle ? "t:" + propertyTitle : v?.propertyId || propertyId || c?.visitProperty || sentProp || ms[0]?.id || "");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   if (!r || !c) return null;
@@ -185,6 +199,7 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
               if (saving) return;
               setSaving(true);
               if (v) await postponeViewing(data, v, at, note.trim());
+              else if (pid.startsWith("t:")) await scheduleViewing(data, r.id, at, null, note.trim(), pid.slice(2));
               else await scheduleViewing(data, r.id, at, pid || null, note.trim());
               toast((v ? "أُجّلت الزيارة إلى " : "تم حفظ موعد الزيارة ") + fmtVisit(at));
               closeModal();
@@ -200,7 +215,10 @@ function VisitModal({ reqId, propertyId, viewingId }: { reqId: string; propertyI
         <Field label="التاريخ والوقت"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
         {!v && (
           <Field label="العقار">
-            <Select value={pid} onChange={setPid} options={data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string])} blank="—" />
+            <Select value={pid} onChange={setPid} blank="—" options={[
+              ...unlisted.map((t) => ["t:" + t, t + " (غير مضاف)"] as [string, string]),
+              ...data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string]),
+            ]} />
           </Field>
         )}
         <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} placeholder={v ? "مثال: العميل مسافر" : "مثال: سيحضر مع زوجته"} onChange={(e) => setNote(e.target.value)} /></Field>
@@ -230,7 +248,7 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
         }}>حفظ</button>
         <button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button>
       </div>}>
-      <p className="m-0 mb-2 text-[13.5px]">{p?.title || "—"} · {fmtVisit(v.at)}</p>
+      <p className="m-0 mb-2 text-[13.5px]">{p?.title || v.propertyTitle || "—"} · {fmtVisit(v.at)}</p>
       <div className="crm-sec !mt-0 mb-2">انطباع العميل بعد الزيارة</div>
       <RadioChips options={[["interested", "مناسب — نكمل معه"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
       <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
@@ -454,8 +472,8 @@ function ReqMatchesModal({ reqId }: { reqId: string }) {
                   <SentMarks c={c} p={p} />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => setSendP(p)}>📤 إرسال للعميل</button>}
-                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>من جوالي</a>}
+                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => { if (okToResend(data, c?.id, [{ pid: p.id }])) setSendP(p); }}>📤 إرسال للعميل</button>}
+                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={(e) => { if (!okToResend(data, c?.id, [{ pid: p.id }])) { e.preventDefault(); return; } reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); }); }}>من جوالي</a>}
                 </div>
               </div>
             );
@@ -495,8 +513,8 @@ function PropReqsModal({ propId }: { propId: string }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <SentMarks c={c} p={p} />
-                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => setSendTo({ c, reqId: r.id })}>📤 إرسال للعميل</button>}
-                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={() => reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); })}>من جوالي</a>}
+                  {c?.phone && <button type="button" className="crm-btn sm wa" onClick={() => { if (okToResend(data, c.id, [{ pid: p.id }])) setSendTo({ c, reqId: r.id }); }}>📤 إرسال للعميل</button>}
+                  {wa && <a className="crm-btn sm" href={wa} target="_blank" rel="noopener" title="يفتح واتساب جوالك بالرسالة" onClick={(e) => { if (!okToResend(data, c?.id, [{ pid: p.id }])) { e.preventDefault(); return; } reqSent(data, r.id, p.id).then(() => { toast("تم التسجيل: إرسال " + p.title + " — حدّد موعد الزيارة"); openModal({ kind: "visit", reqId: r.id, propertyId: p.id }); }); }}>من جوالي</a>}
                 </div>
               </div>
             );

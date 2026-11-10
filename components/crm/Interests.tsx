@@ -8,12 +8,12 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterests, askedOnRequest, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, PHONE_TAKEN, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
+import { addInterests, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest, Proposal } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
-import { DupHint, findDup } from "./forms";
+import { DupHint, dupMsg, findDup, takenMsg } from "./forms";
 
 export const INT_OPEN = ["متابعة", "ممتاز"];
 
@@ -197,7 +197,7 @@ export function ClientInterests({ clientId }: { clientId: string }) {
 
 /** Record that a client asked about a property: an existing client, or a new name and number. */
 export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: string; propertyId?: string }) {
-  const { data, closeModal, toast } = useCrm();
+  const { data, closeModal, openModal, toast } = useCrm();
   const [clientId, setClientId] = useState(c0 || "");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -214,10 +214,14 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
   if (preset && !clients.some(([v]) => v === preset.id)) clients.unshift([preset.id, preset.name]);
   const prop = picked.length === 1 ? propById(data, picked[0]) : undefined;
   const units = prop ? unitsOf(prop) : [];
+  // «تسجيل اهتمام» is for a new client or one without a request (client 2026-11-10); with a request it is recorded
+  // from «تحديث» in their file (a property in the system or «+ عقار غير مضاف»), as an offer on the request.
+  const openReq = clientId ? data.requests.find((r) => r.clientId === clientId && OPEN_REQ(r)) : undefined;
   const setExtra = (i: number, k: "title" | "details", v: string) => setExtras((xs) => xs.map((x, n) => (n === i ? { ...x, [k]: v } : x)));
 
   async function save() {
     if (!clientId && !name.trim()) return toast("اختر عميلاً موجوداً أو اكتب اسم العميل");
+    if (openReq) return toast("هذا العميل له طلب — سجّل العقار من «تحديث» في ملفه");
     const typed = extras.filter((x) => x.title.trim());
     if (extras.some((x) => !x.title.trim() && x.details.trim())) return toast("اكتب اسم العقار غير المضاف");
     if (!picked.length && !typed.length) return toast("اختر العقار الذي استفسر عنه");
@@ -225,7 +229,7 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
     if (!followUp) return toast("اختر تاريخ المتابعة");
     if (!clientId && phone) {
       const dup = findDup(data, phone);
-      if (dup) return toast("العميل مسجّل من قبل باسم " + dup.name + (dup.assignee ? " عند " + nameOf(data, dup.assignee) : ""));
+      if (dup) return toast(dupMsg(data, dup));
     }
     setBusy(true);
     try {
@@ -234,7 +238,7 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
       if (!id) {
         const body = {
           name: name.trim(), phone: phone.trim() || null, source: null, temp: null, status: "نشط", nextCall: null, visitAt: null, notes: null, log: [],
-          assignee: data.isMgr && data.viewAs && data.viewAs !== "none" ? data.viewAs : data.uid, assignedAt: nowStamp(), assignedBy: data.uid,
+          assignee: data.isMgr && data.viewAs && data.viewAs !== "none" ? data.viewAs : data.uid, assignedAt: nowStamp(), assignedBy: data.uid, createdBy: data.uid || null,
           createdAt: nowStamp(), updatedAt: nowStamp(),
         };
         id = await createClient(body);
@@ -245,18 +249,11 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
         ...typed.map((x) => ({ propertyId: null, title: x.title.trim(), unit: null, note: [x.details.trim(), note.trim()].filter(Boolean).join(" — ") || null })),
       ];
       const who = fresh || clientById(data, id)!;
-      // A client who already has a request: the properties go to that request's offers (one place per property).
-      const req = !fresh ? data.requests.find((r) => r.clientId === who.id && OPEN_REQ(r)) : undefined;
-      if (req) {
-        await askedOnRequest(data, who, req, items, followUp);
-        toast("للعميل طلب قائم — انسجلت في عروض طلبه، والمتابعة " + relDay(followUp));
-      } else {
-        await addInterests(data, who, items, followUp);
-        toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));
-      }
+      await addInterests(data, who, items, followUp);
+      toast((items.length > 1 ? "سُجّلت " + items.length + " اهتمامات" : "سُجّل الاهتمام") + " — المتابعة " + relDay(followUp));
       closeModal();
     } catch (e) {
-      toast(isPhoneTaken(e) ? PHONE_TAKEN : "تعذّر الحفظ");
+      toast(isPhoneTaken(e) ? takenMsg(data, phone) : "تعذّر الحفظ");
     } finally {
       setBusy(false);
     }
@@ -267,6 +264,12 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" disabled={busy} onClick={save}>حفظ</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="grid gap-3">
         <Field label="عميل موجود"><Select value={clientId} onChange={setClientId} options={clients} blank="— عميل جديد —" /></Field>
+        {openReq && (
+          <div className="grid justify-items-start gap-1.5 rounded-lg bg-[var(--crm-warn-soft)] px-2.5 py-2 text-[13px] text-[var(--crm-warn)]">
+            <span><b>هذا العميل له طلب.</b> الاهتمام يتسجل من «تحديث» في ملفه: اختر العقار، أو «+ عقار غير مضاف»، ويروح لعروض طلبه ويظهر في الاهتمامات.</span>
+            <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId, type: "سجّل اهتمام", reqId: openReq.id })}>افتح التحديث</button>
+          </div>
+        )}
         {!clientId && (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="اسم العميل *"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>

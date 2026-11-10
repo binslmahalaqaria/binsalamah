@@ -673,6 +673,17 @@ export async function askedOnRequest(d: CrmData, c: Client, r: ReqRef, items: In
   }, "update");
 }
 
+/**
+ * Properties a client with a request asked about, from «تحديث» (client 2026-11-10): offers «مهتم» with the check-back
+ * date. Writes no log entry (the update already wrote one; a second write from the same copy would overwrite it).
+ */
+export async function interestOnRequest(d: CrmData, r: ReqRef, items: InterestItem[], followUp: string | null) {
+  for (const v of items) {
+    const id = await offerWithStatus(d, r, v, "مهتم");
+    if (id && followUp) await write("proposals", id, { followUp }, "update");
+  }
+}
+
 /** Sets or clears when to check back about an offer the client is interested in. */
 export async function setProposalFollowUp(p: Proposal, date: string | null) {
   await write("proposals", p.id, { followUp: date || null, updatedAt: nowStamp() }, "update");
@@ -714,25 +725,27 @@ export async function setProposalStatus(d: CrmData, p: Proposal, status: string,
 }
 
 /** Books a viewing: a viewing record, the client's visit (reminder/call the day before), the request to «زيارة», the offer linked. */
-export async function scheduleViewing(d: CrmData, reqId: string, at: string, propId: string | null, note: string) {
+export async function scheduleViewing(d: CrmData, reqId: string, at: string, propId: string | null, note: string, title: string | null = null) {
   const r = d.requests.find((x) => x.id === reqId);
   if (!r) return false;
+  // A property not in the system is visited by its name (client 2026-11-10: it used to fall back to a listed property).
+  const t = propId ? null : (title || "").trim() || null;
   // Never a second open viewing for the same request and property: the existing one is moved instead.
-  const dup = d.viewings.find((x) => x.requestId === r.id && (x.propertyId || null) === (propId || null) && ["مجدولة", "مؤجلة"].includes(x.status));
+  const dup = d.viewings.find((x) => x.requestId === r.id && (x.propertyId || null) === (propId || null) && (propId || (x.propertyTitle || null) === t) && ["مجدولة", "مؤجلة"].includes(x.status));
   if (dup) { if (dup.at !== at) await postponeViewing(d, dup, at, note); return true; }
   await write("viewings", null, {
-    requestId: r.id, clientId: r.clientId, propertyId: propId, at, status: "مجدولة", feedback: null, followUp: null,
+    requestId: r.id, clientId: r.clientId, propertyId: propId, propertyTitle: t, at, status: "مجدولة", feedback: null, followUp: null,
     assignee: r.assignee || clientById(d, r.clientId)?.assignee || d.uid || null, by: d.uid || null,
     history: [ev(d, "مجدولة", note)], createdAt: nowStamp(), updatedAt: nowStamp(),
   });
-  await saveVisit(d, r.id, at, propId, note);
+  await saveVisit(d, r.id, at, propId, t ? t + (note ? " — " + note : "") : note);
   return true;
 }
 
 /** Postpones a viewing to a new time (status «مؤجلة»; still upcoming). */
 export async function postponeViewing(d: CrmData, v: Viewing, at: string, note: string) {
   await write("viewings", v.id, { at, status: "مؤجلة", history: [...(v.history || []), ev(d, "مؤجلة", note || "إلى " + fmtVisit(at))], updatedAt: nowStamp() }, "update");
-  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, "تأجيل الزيارة" + (note ? ": " + note : ""));
+  if (v.requestId) await saveVisit(d, v.requestId, at, v.propertyId, (v.propertyTitle ? v.propertyTitle + " — " : "") + "تأجيل الزيارة" + (note ? ": " + note : ""));
 }
 
 /** Cancels a viewing (kept in the record as «ملغاة»). */
@@ -751,7 +764,7 @@ export async function viewingResult(d: CrmData, v: Viewing, result: "interested"
     history: [...(v.history || []), ev(d, "تمت", { interested: "مهتم", unsuitable: "غير مناسب", thinking: "يفكر" }[result] + (feedback ? " — " + feedback : ""))],
   }, "update");
   await applyUpdate0(d, v.clientId, "زار العقار", followUp, (feedback || "") + (result === "interested" ? " (مهتم)" : result === "unsuitable" ? " (غير مناسب)" : ""), v.propertyId);
-  const p = v.propertyId && d.proposals.find((x) => x.requestId === v.requestId && x.propertyId === v.propertyId);
+  const p = d.proposals.find((x) => x.requestId === v.requestId && (v.propertyId ? x.propertyId === v.propertyId : !x.propertyId && !!v.propertyTitle && x.propertyTitle === v.propertyTitle));
   if (result === "interested") {
     if (p && p.status !== "مهتم") await setProposalStatus(d, p, "مهتم", "بعد الزيارة", { log: false });
   } else if (result === "unsuitable") {

@@ -172,7 +172,7 @@ export function JourneyBox({ r }: { r: Request }) {
       </Row>
       {j.visit ? (
         <Row tone={j.visit.past ? "warn" : j.visit.ok ? "ok" : "warn"}>
-          موعد {fmtVisit(j.visit.at)}{j.visit.prop ? " · " + j.visit.prop.title : ""}{" "}
+          موعد {fmtVisit(j.visit.at)}{j.visit.prop ? " · " + j.visit.prop.title : j.visit.title ? " · " + j.visit.title : ""}{" "}
           {j.visit.past ? <Pill tone="hot">انقضى</Pill> : j.visit.ok ? <Pill tone="ok">مؤكد</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}
         </Row>
       ) : j.visited ? (

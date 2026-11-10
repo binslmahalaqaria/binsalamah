@@ -371,7 +371,7 @@ export const propMsg = (p: Property, unitsList?: Unit[] | null) =>
 export interface Journey {
   c: Client | undefined;
   sent: { at: string; prop?: Property; type?: string } | null;
-  visit: { at: string; ok: boolean; prop?: Property; past: boolean } | null;
+  visit: { at: string; ok: boolean; prop?: Property; title?: string | null; past: boolean } | null;
   visited: { at: string } | null;
 }
 export function journey(d: CrmData, r: Request): Journey {
@@ -390,7 +390,7 @@ export function journey(d: CrmData, r: Request): Journey {
   const legacy = !vw && c?.visitAt && !d.viewings.some((v) => v.clientId === r.clientId) && d.requests.filter((x) => x.clientId === r.clientId && OPEN_REQ(x)).length === 1;
   const vat = vw ? vw.at : legacy ? c!.visitAt : null;
   const visit = vat
-    ? { at: vat, ok: !!c?.visitConfirmed && c?.visitAt === vat, prop: propById(d, vw ? vw.propertyId : c!.visitProperty), past: vat.slice(0, 10) < today() }
+    ? { at: vat, ok: !!c?.visitConfirmed && c?.visitAt === vat, prop: propById(d, vw ? vw.propertyId : c!.visitProperty), title: vw?.propertyTitle || null, past: vat.slice(0, 10) < today() }
     : null;
   const vl = log.find((l) => l.type === "زار العقار" && String(l.at) >= since);
   return { c, sent, visit, visited: vl ? { at: vl.at } : null };
@@ -712,4 +712,28 @@ export function sentSummary(d: CrmData, c: Client | undefined | null) {
   }
   if (!kinds.size) return null;
   return { kinds: SENT_KINDS.filter(([k]) => kinds.has(k)).map(([, l]) => l), all };
+}
+
+/**
+ * When a property (from the system by id, or not added by its name) was last sent to this client, else null
+ * (client 2026-11-10: warn before sending the same property twice). Looks at the CRM's send marks, the client's
+ * send log entries and the offers on any of their requests (an offer recorded only as an interest does not count).
+ */
+export function sentBefore(d: CrmData, clientId: string | null | undefined, pid?: string | null, title?: string | null): string | null {
+  const c = clientById(d, clientId);
+  if (!c || (!pid && !title?.trim())) return null;
+  const t = (title || "").trim();
+  const ats: string[] = [];
+  if (pid) {
+    const v = c.sentProps?.[pid];
+    if (v) ats.push(...[v.msg, v.drive, v.pdf].filter((x): x is string => !!x));
+  }
+  for (const e of c.log || [])
+    if (["تم إرسال التفاصيل", "تم إرسال الموقع"].includes(e.type) && ((pid && e.propertyId === pid) || (t && (e.text || "").includes(t)))) ats.push(e.at);
+  for (const p of d.proposals) {
+    if (p.clientId !== c.id || !p.sentAt) continue;
+    if (pid ? p.propertyId !== pid : p.propertyId || (p.propertyTitle || "").trim() !== t) continue;
+    if (p.status !== "مهتم" || (p.history || []).length > 1) ats.push(p.sentAt);
+  }
+  return ats.sort().pop() || null;
 }

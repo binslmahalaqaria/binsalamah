@@ -6,8 +6,23 @@
  * (shown on the client and request lists).
  */
 import { useCrm } from "@/lib/crm/store";
-import { SENT_KINDS, sendableKinds, sentSummary } from "@/lib/crm/logic";
+import { SENT_KINDS, propById, sendableKinds, sentBefore, sentSummary } from "@/lib/crm/logic";
+import type { CrmData } from "@/lib/crm/logic";
 import type { Client, Property } from "@/lib/crm/types";
+import { localDay, relDay } from "@/lib/crm/util";
+
+/**
+ * Before sending (client 2026-11-10): if any of these properties already went to the client, say so and ask.
+ * Returns true to go ahead. `items`: properties in the system by id, or not added by name.
+ */
+export function okToResend(d: CrmData, clientId: string | null | undefined, items: { pid?: string | null; title?: string | null }[]): boolean {
+  const seen = items
+    .map((x) => ({ at: sentBefore(d, clientId, x.pid, x.title), name: (x.pid ? propById(d, x.pid)?.title : x.title) || "العقار" }))
+    .filter((x) => x.at);
+  if (!seen.length) return true;
+  const lines = seen.map((x) => "• «" + x.name + "» — " + relDay(localDay(x.at!)) + " (" + localDay(x.at!) + ")");
+  return window.confirm("تنبيه: قد انرسل له هذا العقار من قبل:\n" + lines.join("\n") + "\n\nترسله مرة ثانية؟");
+}
 
 export function SentMarks({ c, p }: { c: Client | undefined | null; p: Property }) {
   const v = c?.sentProps?.[p.id];

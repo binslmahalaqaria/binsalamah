@@ -55,7 +55,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>
         </>}
         {["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) && (
-          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId || undefined })}>حدد زيارة</button>
+          <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId || undefined, propertyTitle: p.propertyId ? undefined : p.propertyTitle || undefined })}>حدد زيارة</button>
         )}
         <Kebab items={[
           p.status === "أُرسل" ? { label: "شاهد العرض — بانتظار رده", onClick: () => set("بانتظار الرد") } : null,
@@ -87,7 +87,7 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
           {past ? <Pill tone="hot">تمت الزيارة — اتصل وسجّل انطباعه</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
         </div>
         <div className="text-xs text-[var(--crm-ink-3)]">
-          {fmtVisit(v.at)}{pr ? " · " + (pr.ref ? "#" + pr.ref + " " : "") + pr.title : ""}{v.feedback ? " · " + v.feedback : ""}{v.followUp ? " · المتابعة " + v.followUp : ""}
+          {fmtVisit(v.at)}{pr ? " · " + (pr.ref ? "#" + pr.ref + " " : "") + pr.title : v.propertyTitle ? " · " + v.propertyTitle + " (غير مضاف)" : ""}{v.feedback ? " · " + v.feedback : ""}{v.followUp ? " · المتابعة " + v.followUp : ""}
           {data.isMgr && v.assignee ? " · " + nameOf(data, v.assignee) : ""}
         </div>
       </div>

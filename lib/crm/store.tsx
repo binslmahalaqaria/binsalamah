@@ -31,7 +31,7 @@ export type Modal =
   | { kind: "property"; id?: string }
   | { kind: "task"; id?: string; preset?: Partial<Task> }
   | { kind: "update"; clientId: string; type?: string; propertyId?: string; reqId?: string }
-  | { kind: "visit"; reqId: string; propertyId?: string; viewingId?: string }
+  | { kind: "visit"; reqId: string; propertyId?: string; propertyTitle?: string; viewingId?: string }
   | { kind: "close"; reqId: string; to: string }
   | { kind: "cancel"; reqId: string; to?: string }
   | { kind: "reqMatches"; reqId: string }

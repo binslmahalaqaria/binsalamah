@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { matchesForReq, propMsg, propPrice, reqsOf } from "@/lib/crm/logic";
 import { markSent, reqSent } from "@/lib/crm/actions";
+import { okToResend } from "./SentBadge";
 import type { Client, Property } from "@/lib/crm/types";
 
 export function WaSendProperty({ client, onClose, send }: {
@@ -39,6 +40,8 @@ export function WaSendProperty({ client, onClose, send }: {
   }, [data.props, matched, q]);
 
   const choose = (p: Property) => {
+    // Already sent to this client: say so first (client 2026-11-10).
+    if (client && !okToResend(data, client.id, [{ pid: p.id }])) return;
     setPick(p);
     setImgs((p.images || []).slice(0, 4));
     setMsg(propMsg(p));

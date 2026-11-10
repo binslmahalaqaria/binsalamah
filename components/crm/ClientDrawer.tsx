@@ -182,7 +182,8 @@ export function ClientDrawer() {
           <section className="crm-card grid gap-2 p-3.5">
             <div className="flex items-center justify-between">
               <h3 className="text-[14.5px]">الاهتمامات</h3>
-              <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interest", clientId: c.id })}>+ اهتمام بعقار</button>
+              {/* With a request the interest is recorded from «تحديث», as an offer on it (client 2026-11-10). */}
+              <button type="button" className="crm-btn sm" onClick={() => { const r = data.requests.find((x) => x.clientId === c.id && OPEN_REQ(x)); openModal(r ? { kind: "update", clientId: c.id, type: "سجّل اهتمام", reqId: r.id } : { kind: "interest", clientId: c.id }); }}>+ اهتمام بعقار</button>
             </div>
             {(c.interests || []).length > 0 && (
               <div className="overflow-hidden rounded-xl border border-[var(--crm-line)]">{c.interests!.map((x) => <InterestRow key={x.id} c={c} x={x} showClient={false} />)}</div>

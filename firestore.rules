@@ -89,9 +89,13 @@ service cloud.firestore {
     // (the CRM shows employees only their own records; that's a UI
     // filter, matching the original CRM). Deleting clients is for
     // managers; other deletes are open to staff like the original.
+    // createdBy (2026-11-10): who added the client; staff can only stamp themselves and never change it.
+    // Deleting is for managers, or the employee who added that client.
     match /clients/{id} {
-      allow read, create, update: if isActiveStaff();
-      allow delete: if isManager();
+      allow read: if isActiveStaff();
+      allow create: if isActiveStaff() && (isManager() || request.resource.data.get('createdBy', null) in [null, request.auth.uid]);
+      allow update: if isActiveStaff() && (isManager() || request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null));
+      allow delete: if isManager() || (isActiveStaff() && resource.data.get('createdBy', null) == request.auth.uid);
     }
     // One client per phone number: phones/{normalised number} is created with
     // each new client and can never be overwritten (no update), so a second
