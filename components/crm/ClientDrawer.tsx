@@ -111,6 +111,12 @@ export function ClientDrawer() {
             <div className="flex flex-wrap gap-1.5">
               <button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "update", clientId: c.id })}>تحديث</button>
               <button type="button" className="crm-btn" onClick={async () => { const n = await postpone(data, c.id); if (n) toast("تم التأجيل إلى " + n); }}>تأجيل 3 أيام</button>
+              {/* Or any day from the calendar (client 2026-11-11). */}
+              <span className="relative inline-flex">
+                <button type="button" className="crm-btn" title="اختر يوم الاتصال" onClick={(e) => { const i = e.currentTarget.nextElementSibling as HTMLInputElement | null; try { i?.showPicker(); } catch { i?.focus(); } }}>📅 تاريخ محدد</button>
+                <input type="date" min={today()} aria-label="موعد الاتصال" tabIndex={-1} className="pointer-events-none absolute inset-0 opacity-0"
+                  onChange={async (e) => { const v = e.target.value; if (!v) return; const n = await postpone(data, c.id, v); if (n) toast("الاتصال القادم " + relDay(n) + " (" + n + ")"); }} />
+              </span>
               {c.nextCall && <button type="button" className="crm-btn" onClick={async () => { await clearNextCall(data, c); toast("أُلغي موعد الاتصال"); }}>بدون موعد</button>}
               {vis && !vis.ok && (
                 <button type="button" className="crm-btn" onClick={async () => { await confirmVisit(data, c.id); toast("تم تأكيد الموعد"); }}>تأكيد الزيارة</button>

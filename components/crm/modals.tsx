@@ -278,6 +278,7 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
   const [res, setRes] = useState<"interested" | "unsuitable" | "thinking" | "">("");
   const [fb, setFb] = useState("");
   const [next, setNext] = useState("1");
+  const [day, setDay] = useState("");
   if (!v) return null;
   const c = clientById(data, v.clientId), p = propById(data, v.propertyId);
   return (
@@ -285,7 +286,8 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
       footer={<div className="flex gap-2">
         <button type="button" className="crm-btn primary" onClick={async () => {
           if (!res) return toast("اختر رأي العميل");
-          await viewingResult(data, v, res, fb.trim(), next === "none" ? null : addDays(+next));
+          if (next === "date" && !day) return toast("اختر تاريخ المتابعة");
+          await viewingResult(data, v, res, fb.trim(), next === "none" ? null : next === "date" ? day : addDays(+next));
           if (!v.requestId) {
             toast(res === "unsuitable" ? "سُجّل الانطباع وانقفل الاهتمام" : "سُجّل الانطباع في اهتمامه");
             // Suitable after visiting an interest: the next step is a request, so offer it (client 2026-11-10).
@@ -307,7 +309,8 @@ function ViewResultModal({ viewingId }: { viewingId: string }) {
       <RadioChips options={[["interested", "مناسب — نكمل معه"], ["thinking", "يفكر — متابعة لاحقاً"], ["unsuitable", "غير مناسب"]]} value={res} onChange={(x) => setRes(x as typeof res)} />
       <Field label="ملاحظات العميل"><textarea rows={2} value={fb} placeholder="مثال: أعجبته المساحة لكن السعر مرتفع" onChange={(e) => setFb(e.target.value)} /></Field>
       <div className="crm-sec mb-2">متابعة بعد الزيارة</div>
-      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
+      <RadioChips options={[["1", "غداً"], ["3", "بعد 3 أيام"], ["7", "بعد أسبوع"], ["date", "تاريخ محدد"], ["none", "بدون موعد"]]} value={next} onChange={setNext} />
+      {next === "date" && <input type="date" className="mt-2" min={today()} value={day} onChange={(e) => setDay(e.target.value)} />}
     </ModalFrame>
   );
 }

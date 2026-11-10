@@ -277,14 +277,15 @@ export async function clearNextCall(d: CrmData, c: Client) {
   }, "update");
 }
 
-export async function postpone(d: CrmData, id: string) {
+/** Moves the next call 3 days on, or to `date` when one is picked (client 2026-11-11). */
+export async function postpone(d: CrmData, id: string, date?: string) {
   const c = clientById(d, id);
   if (!c) return null;
-  const next = addDays(3);
+  const next = date || addDays(3);
   await write(
     "clients",
     id,
-    { nextCall: next, noCall: false, log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأجيل", text: "تأجيل الاتصال 3 أيام" }), updatedAt: nowStamp() },
+    { nextCall: next, noCall: false, log: pushLog(c, { at: nowStamp(), byId: d.uid, type: "تأجيل", text: date ? "تأجيل الاتصال إلى " + date : "تأجيل الاتصال 3 أيام" }), updatedAt: nowStamp() },
     "update"
   );
   return next;
