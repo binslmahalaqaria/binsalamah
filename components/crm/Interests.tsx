@@ -198,7 +198,7 @@ export function ClientInterests({ clientId }: { clientId: string }) {
 /** Record that a client asked about a property: an existing client, or a new name and number. */
 export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: string; propertyId?: string }) {
   const { data, closeModal, openModal, toast } = useCrm();
-  const [clientId, setClientId] = useState(c0 || "");
+  const clientId = c0 || "";
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [picked, setPicked] = useState<string[]>(p0 ? [p0] : []);
@@ -209,9 +209,7 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
   const [days, setDays] = useState("3");
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState(false);
-  const clients = visibleClients(data).map((c) => [c.id, c.name] as [string, string]);
   const preset = clientById(data, c0);
-  if (preset && !clients.some(([v]) => v === preset.id)) clients.unshift([preset.id, preset.name]);
   const prop = picked.length === 1 ? propById(data, picked[0]) : undefined;
   const units = prop ? unitsOf(prop) : [];
   // «تسجيل اهتمام» is for a new client or one without a request (client 2026-11-10); with a request it is recorded
@@ -263,7 +261,9 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
     <ModalFrame title="تسجيل اهتمام بعقار" onClose={closeModal} width={520}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" disabled={busy} onClick={save}>حفظ</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="grid gap-3">
-        <Field label="عميل موجود"><Select value={clientId} onChange={setClientId} options={clients} blank="— عميل جديد —" /></Field>
+        {/* New clients only (client 2026-11-10): no list of registered clients here. An existing client's interest is
+            recorded from their file (this form opened for them, or «تحديث» when they have a request). */}
+        {preset && <Field label="العميل"><input value={preset.name} disabled aria-label="العميل" /></Field>}
         {openReq && (
           <div className="grid justify-items-start gap-1.5 rounded-lg bg-[var(--crm-warn-soft)] px-2.5 py-2 text-[13px] text-[var(--crm-warn)]">
             <span><b>هذا العميل له طلب.</b> الاهتمام يتسجل من «تحديث» في ملفه: اختر العقار، أو «+ عقار غير مضاف»، ويروح لعروض طلبه ويظهر في الاهتمامات.</span>
