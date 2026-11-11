@@ -21,7 +21,7 @@ import {
   localPhone, seesAllOf, waApi as api, waTime as timeOf, WA_LABEL_COLORS, WA_STATUS_AR,
   type WaChat as Chat, type WaLabel, type WaMsg as Msg, type WaSource as Source,
 } from "@/lib/crm/wa";
-import { ConfirmButton, Empty, PageHeader, Pill } from "@/components/crm/ui";
+import { ConfirmButton, Empty, PageHeader } from "@/components/crm/ui";
 import { WaImport } from "@/components/crm/WaImport";
 import { AttachButton, MediaBody, VoiceRecorder, captionOf } from "@/components/crm/WaMedia";
 import { WaQuickReplies } from "@/components/crm/WaQuickReplies";
@@ -226,8 +226,8 @@ function WhatsAppInbox() {
   // One QR on screen (client 2026-11-11): the viewer's own phone, or a company number for a manager. An employee's own
   // phone waiting to be linked is listed in one line instead — they scan it from their own account.
   const unlinked = (sources || []).filter((s) => s.canManage && s.status !== "open");
-  const pending = unlinked.filter((s) => s.kind === "company" ? data.isMgr : s.ownerUid === data.uid);
-  const othersWaiting = unlinked.filter((s) => !pending.includes(s));
+  // Only one code at a time, like WhatsApp Web.
+  const pending = unlinked.filter((s) => s.kind === "company" ? data.isMgr : s.ownerUid === data.uid).slice(0, 1);
   const hasMine = (sources || []).some((s) => s.kind === "personal" && s.ownerUid === data.uid);
 
   async function addSource(kind: "company" | "personal") {
@@ -397,7 +397,8 @@ function WhatsAppInbox() {
       {pending.map((s) => (
         <div key={s.id} className="crm-card mb-3 grid items-center gap-5 p-5 md:grid-cols-[1fr_260px]">
           <div className="grid gap-2">
-            <h2 className="text-base">ربط «{s.label}» <Pill tone={s.status === "loggedOut" ? "hot" : "warm"}>{WA_STATUS_AR[s.status] || s.status}</Pill></h2>
+            {/* Like WhatsApp Web (client 2026-11-11): one code, no number names. */}
+            <h2 className="text-base">اربط واتساب</h2>
             <ol className="grid list-decimal gap-1 ps-5 text-[14px] text-[var(--crm-ink-2)]">
               <li>افتح واتساب على الجوال صاحب الرقم.</li>
               <li>الإعدادات ← <b>الأجهزة المرتبطة</b> ← <b>ربط جهاز</b>.</li>
@@ -405,19 +406,16 @@ function WhatsAppInbox() {
             </ol>
             <p className="crm-hint m-0">يبقى واتساب يعمل على الجوال كالمعتاد، وتظهر المحادثات هنا خلال دقائق.</p>
             {s.warn && <p className="m-0 rounded-lg bg-[var(--crm-warn-soft,#fdecec)] p-2 text-[13.5px] font-semibold text-[var(--crm-warn,#b3261e)]">⚠ {s.warn}</p>}
+            {/* Why the last attempt did not link, as WhatsApp answered it (to find out why linking fails). */}
+            {s.lastClose && <p className="m-0 text-[12.5px] text-[var(--crm-ink-3)]">آخر محاولة ما تمت — رد واتساب: <span className="num" dir="ltr">{s.lastClose.code}{s.lastClose.msg ? " · " + s.lastClose.msg : ""}</span></p>}
           </div>
           {s.qr ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.qr} alt={"رمز ربط " + s.label} className="h-[260px] w-[260px] rounded-xl border border-[var(--crm-line)] bg-white p-2" />
+            <img src={s.qr} alt="رمز ربط واتساب" className="h-[260px] w-[260px] rounded-xl border border-[var(--crm-line)] bg-white p-2" />
           ) : <div className="grid h-[260px] place-items-center rounded-xl border border-dashed border-[var(--crm-line)] text-sm text-[var(--crm-ink-3)]">جارٍ تجهيز الرمز…</div>}
         </div>
       ))}
 
-      {othersWaiting.length > 0 && (
-        <p className="crm-hint mb-3">
-          غير مربوط: {othersWaiting.map((s) => "«" + s.label + "»" + (s.ownerUid ? " — يربطه " + nameOf(data, s.ownerUid) + " من حسابه" : "")).join("، ")}
-        </p>
-      )}
       {showSettings && <SourcesSettings sources={sources} onChange={poll} />}
       {showImport && data.isMgr && <WaImport sources={sources} onClose={() => setShowImport(false)} />}
       {/* pull every conversation back to its first message */}

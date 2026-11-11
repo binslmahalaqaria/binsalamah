@@ -304,6 +304,7 @@ function makeSession(src) {
           return;
         }
         s.state.warn = null;
+        s.state.lastClose = null;
         Object.assign(s.state, { status: "open", qr: null, since: Date.now(), me: { id: jidNormalizedUser(sock.user?.id), name: sock.user?.name || null } });
         if (!s.store.labelsSynced) s.syncLabels().catch((e) => console.warn("[" + s.id + "] label sync failed:", e?.message || e));
       }
@@ -311,6 +312,8 @@ function makeSession(src) {
         const code = u.lastDisconnect?.error?.output?.statusCode;
         const loggedOut = code === DisconnectReason.loggedOut;
         if (code && !loggedOut && code !== 408) console.warn("[" + s.id + "] connection closed:", code, u.lastDisconnect?.error?.message || "");
+        // Shown on the WhatsApp page when linking fails (client 2026-11-11: the QR kept coming back without linking).
+        if (code && code !== 408 && code !== 515) s.state.lastClose = { code, msg: String(u.lastDisconnect?.error?.message || "").slice(0, 160), at: Date.now() };
         Object.assign(s.state, { status: loggedOut ? "loggedOut" : "reconnecting", qr: null, since: Date.now(), me: loggedOut ? null : s.state.me });
         if (loggedOut) {
           fs.rmSync(path.join(dir, "auth"), { recursive: true, force: true });
@@ -485,7 +488,7 @@ const pub = (src, who) => {
   const s = sessions.get(src.id);
   const unread = s ? Object.values(s.store.chats).reduce((n, c) => n + (c.unread || 0), 0) : 0;
   return {
-    ...src, status: s?.state.status || "stopped", warn: s?.state.warn || null, me: s?.state.me || null, since: s?.state.since || null, unread, sync: s?.state.sync || null,
+    ...src, status: s?.state.status || "stopped", warn: s?.state.warn || null, lastClose: s?.state.lastClose || null, me: s?.state.me || null, since: s?.state.since || null, unread, sync: s?.state.sync || null,
     chats: s ? Object.keys(s.store.chats).length : 0, hidden: s ? Object.keys(s.store.chats).filter((j) => j.endsWith("@lid")).length : 0,
     qr: canManage(src, who) ? s?.state.qr || null : null, canManage: canManage(src, who), backfill: s?.backfill || null,
   };

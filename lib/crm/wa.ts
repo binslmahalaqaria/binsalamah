@@ -28,6 +28,8 @@ export interface WaSource {
   qr: string | null;
   /** Set by the server when a link was refused (e.g. the same phone is already linked as another number). */
   warn?: string | null;
+  /** WhatsApp's answer when the last connection attempt closed (code, message), shown while linking fails. */
+  lastClose?: { code: number; msg?: string; at?: number } | null;
   canManage: boolean;
   /** History sync from the phone: percent (when known) and whether it finished. */
   sync: { progress: number | null; done: boolean; at: number | null } | null;
