@@ -13,11 +13,12 @@ import { useCrm, type Modal } from "@/lib/crm/store";
 import { deleteRequest, setReqStage } from "@/lib/crm/actions";
 import { Chip, Pill, type KebabItem } from "./ui";
 
-export function DemandChips({ r }: { r: Demand }) {
+export function DemandChips({ r }: { r: Demand & { buyerType?: string | null } }) {
   const ts = typesOf(r);
   return (
     <>
       <Chip>{(r.purpose || "شراء") + (ts.length ? " · " + ts.join(" / ") : "")}</Chip>
+      <Chip>{r.buyerType || "مشتري"}</Chip>
       {!!r.budget && <Chip>{money(r.budget)}</Chip>}
       {r.districts && <Chip>{r.districts}</Chip>}
       {r.payment && <Chip>{r.payment + (r.bank ? " · " + r.bank : "")}</Chip>}

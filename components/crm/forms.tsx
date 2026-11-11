@@ -10,14 +10,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import {
-  CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
+  BUYER_TYPES, CSTATUS, DISTRICTS, FACING, FLOORS, OWNERK, PAY, PRIO, PSTATUS, REQ, SOLD_ST, TEMPS, TO_CONTACT, lbl } from "@/lib/crm/constants";
 import {
   allDistricts, clientById, members, nameOf, OPEN_REQ, propSummary, unitsOf, visibleClients, type CrmData, can } from "@/lib/crm/logic";
 import { toggleTask, assignClient, interestsToOffers, createClient, setPropRef, deleteClient, isPhoneTaken, nextAssignee, PHONE_TAKEN, releaseUnit, remove, updateClient, write, writeProperty } from "@/lib/crm/actions";
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
-  ConfirmButton, DistrictPicker, Field, ModalFrame, More, MultiCheck, Pill, Sec, Select,
+  ConfirmButton, DistrictPicker, Field, RadioChips, ModalFrame, More, MultiCheck, Pill, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
@@ -212,6 +212,8 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   const { f, set } = useForm({
     clientId: s(base.clientId), newName: s(preset?._newName), newPhone: s(preset?._newPhone),
     purpose: base.purpose || presetClient?.purpose || "شراء",
+    // Older requests have no type: they count as مشتري (client 2026-11-11).
+    buyerType: base.buyerType || "مشتري",
     budget: s(base.budget ?? presetClient?.budget),
     propTypes: (base.propTypes || presetClient?.propTypes || []) as string[],
     districts: splitList(base.districts ?? presetClient?.districts),
@@ -274,7 +276,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         floors: needsFloor(f.propTypes) ? f.floors : [], requirements: f.requirements.trim() || null,
       };
       const body: Partial<Request> = {
-        ...demand, clientId: f.clientId, priority: f.priority, source: f.source || null, notes: f.notes.trim() || null,
+        ...demand, clientId: f.clientId, buyerType: f.buyerType || "مشتري", priority: f.priority, source: f.source || null, notes: f.notes.trim() || null,
         status: f.status || "جديد", assignee: pick,
         propertyId: f.propertyId || null, unit: f.unit || null, price: num(f.price), commissionPct: num(f.commissionPct) ?? 2.5,
         updatedAt: nowStamp(),
@@ -386,6 +388,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         )}
         <Sec>متطلبات العميل</Sec>
         <Field label="نوع الطلب"><Select value={f.purpose} onChange={(v) => set("purpose", v)} options={["شراء", "إيجار"]} /></Field>
+        <Field label="العميل"><RadioChips options={BUYER_TYPES.map((x) => [x, x] as [string, string])} value={f.buyerType} onChange={(v) => set("buyerType", v)} /></Field>
         <Field label="الميزانية القصوى *" full>
           <BudgetPicker value={f.budget} onChange={(v) => set("budget", v)} rent={f.purpose === "إيجار"} chip={(on) => "crm-btn sm" + (on ? " primary" : "")} placeholder="مثال: 3 مليون أو 750 ألف" />
         </Field>

@@ -140,7 +140,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
     <ModalFrame title={"تحديث: " + c.name} onClose={closeModal} width={560}
       footer={<div className="flex gap-2"><button type="button" className="crm-btn primary" disabled={busy} onClick={save}>{busy ? "جارٍ الحفظ…" : "حفظ التحديث"}</button><button type="button" className="crm-btn" onClick={closeModal}>إلغاء</button></div>}>
       <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
-      <RadioChips options={UPD.filter((x) => !DEAL_UPD[x.k] || can(data, "recordDeals")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
+      {/* «أبدى اهتمامه» is not offered for a client with a request (client 2026-11-11): use «استفسر» or a send. */}
+      <RadioChips options={UPD.filter((x) => (!DEAL_UPD[x.k] || can(data, "recordDeals")) && !(hasReq && x.k === "سجّل اهتمام")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقارات (اختياري)" hint="تقدر تختار أكثر من عقار.">
           <Select value="" onChange={(v) => v && setProps((xs) => (xs.includes(v) ? xs : [...xs, v]))} blank="+ أضف عقار"

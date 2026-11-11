@@ -175,3 +175,6 @@ export const UPD_TONE: Record<string, Tone> = {
   "سجّل اهتمام": "gold", "دفع عربون": "ok", "صرف النظر": "muted", "تم الإغلاق": "ok", "زار العقار": "accent",
   "تفاوض": "gold", "تم إرسال الموقع": "cold", "تم إرسال التفاصيل": "cold", "ما رد": "warm",
 };
+
+/** Who the request is for (client 2026-11-11); a request without one is مشتري. */
+export const BUYER_TYPES = ["مشتري", "مستثمر"];

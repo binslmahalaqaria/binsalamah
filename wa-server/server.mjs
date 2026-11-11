@@ -284,7 +284,11 @@ function makeSession(src) {
       syncFullHistory: true, markOnlineOnConnect: false, printQRInTerminal: false,
     });
     s.sock = sock;
-    sock.ev.on("creds.update", saveCreds);
+    // Credential saves run one after another, and shutdown waits for the last one (client 2026-11-11: the number
+    // needed a new QR every day — a restart in the middle of a save could leave the link's keys half written).
+    let saving = Promise.resolve();
+    s.saving = () => saving;
+    sock.ev.on("creds.update", () => { saving = saving.then(saveCreds).catch((e) => console.warn("[" + s.id + "] creds save failed:", e?.message || e)); });
     sock.ev.on("connection.update", async (u) => {
       if (u.qr) { s.sawQr = true; Object.assign(s.state, { status: "qr", qr: await QRCode.toDataURL(u.qr, { margin: 1, width: 300 }) }); }
       if (u.connection === "open") {
@@ -720,8 +724,18 @@ http.createServer(async (req, res) => {
   }
 }).listen(PORT, () => console.log("WhatsApp server on http://localhost:" + PORT + " for project " + PROJECT + " — " + sources.length + " source(s)"));
 
+// On a restart (Railway sends SIGTERM): no reconnects, finish saving the link's keys, close the sockets without
+// logging out, then exit — at most 5 s.
+let closing = false;
 const shutdown = async () => {
-  for (const s of sessions.values()) s.flush();
+  if (closing) return;
+  closing = true;
+  setTimeout(() => process.exit(0), 5000).unref();
+  for (const s of sessions.values()) { s.stopped = true; s.flush(); }
+  await Promise.all([...sessions.values()].map((s) => s.saving?.()));
+  for (const s of sessions.values()) { try { s.sock?.end?.(undefined); } catch { /* already closed */ } }
+  await new Promise((r) => setTimeout(r, 500));
+  await Promise.all([...sessions.values()].map((s) => s.saving?.()));
   process.exit(0);
 };
 process.on("SIGINT", shutdown);

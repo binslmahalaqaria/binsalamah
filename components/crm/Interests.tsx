@@ -274,7 +274,7 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
         {openReq && (
           <div className="grid justify-items-start gap-1.5 rounded-lg bg-[var(--crm-warn-soft)] px-2.5 py-2 text-[13px] text-[var(--crm-warn)]">
             <span><b>هذا العميل له طلب.</b> الاهتمام يتسجل من «تحديث» في ملفه: اختر العقار، أو «+ عقار غير مضاف»، ويروح لعروض طلبه ويظهر في الاهتمامات.</span>
-            <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId, type: "سجّل اهتمام", reqId: openReq.id })}>افتح التحديث</button>
+            <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId, type: "استفسر", reqId: openReq.id })}>افتح التحديث</button>
           </div>
         )}
         {!clientId && (

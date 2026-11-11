@@ -161,6 +161,8 @@ export interface Request extends Demand {
   /** Sequential request number (ط-1, ط-2, …) given automatically, for quick look-up (client 2026-11-02). */
   ref?: number;
   clientId: string;
+  /** مشتري (for himself) or مستثمر (client 2026-11-11); requests saved before have none and count as مشتري. */
+  buyerType?: string | null;
   priority: string | null;
   source: string | null;
   notes: string | null;
