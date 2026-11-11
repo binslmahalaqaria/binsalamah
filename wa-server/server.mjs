@@ -207,7 +207,8 @@ function makeSession(src) {
   };
   const learnLid = (key) => {
     const alt = key?.senderPn || key?.remoteJidAlt || key?.participantPn;
-    if (key?.remoteJid?.endsWith("@lid") && alt) s.store.lid[jidNormalizedUser(key.remoteJid)] = jidNormalizedUser(alt);
+    // Through mapLid so a chat already filed under the hidden id moves to the number too (it used to only note it).
+    if (key?.remoteJid?.endsWith("@lid") && alt) mapLid(key.remoteJid, alt);
   };
   /** Move everything filed under a hidden @lid id to the real phone-number id once WhatsApp tells us. */
   const mapLid = (lid, pn) => {
@@ -306,6 +307,7 @@ function makeSession(src) {
         s.state.warn = null;
         s.state.lastClose = null;
         Object.assign(s.state, { status: "open", qr: null, since: Date.now(), me: { id: jidNormalizedUser(sock.user?.id), name: sock.user?.name || null } });
+        setTimeout(() => s.resolveLids().catch(() => {}), 15_000);
         if (!s.store.labelsSynced) s.syncLabels().catch((e) => console.warn("[" + s.id + "] label sync failed:", e?.message || e));
       }
       if (u.connection === "close") {
@@ -347,6 +349,18 @@ function makeSession(src) {
       s.store.chatLabels[jid] = [...cur];
       s.dirty = true;
     });
+    // Hidden numbers (client 2026-11-11: «رقم مخفي» should show the number): contacts that carry both ids, and a retry
+    // every 5 minutes for chats still under a hidden id while the phone is linked.
+    const fromContacts = (cs) => {
+      for (const c of cs || []) {
+        if (c?.id?.endsWith("@lid") && c.phoneNumber) mapLid(c.id, c.phoneNumber);
+        else if (c?.lid && c?.id?.endsWith("@s.whatsapp.net")) mapLid(c.lid, c.id);
+      }
+    };
+    sock.ev.on("contacts.upsert", fromContacts);
+    sock.ev.on("contacts.update", fromContacts);
+    clearInterval(s.lidTimer);
+    s.lidTimer = setInterval(() => { if (s.state.status === "open") s.resolveLids().catch(() => {}); }, 5 * 60_000);
     sock.ev.on("messaging-history.status", (st) => {
       if (st.status === "complete") Object.assign(s.state.sync, { done: true, at: Date.now() });
       s.resolveLids().catch(() => {});
