@@ -24,6 +24,7 @@ import {
 import { ConfirmButton, Empty, PageHeader, Pill } from "@/components/crm/ui";
 import { WaImport } from "@/components/crm/WaImport";
 import { AttachButton, MediaBody, VoiceRecorder, captionOf } from "@/components/crm/WaMedia";
+import { WaQuickReplies } from "@/components/crm/WaQuickReplies";
 import { WaSendProperty } from "@/components/crm/WaSendProperty";
 
 const dot = (st: string) => (st === "open" ? "bg-[var(--crm-ok)]" : st === "loggedOut" || st === "error" ? "bg-[var(--crm-danger)]" : "bg-[var(--crm-warn)]");
@@ -222,7 +223,11 @@ function WhatsAppInbox() {
   const curSrc = cur ? srcById.get(cur.source) : undefined;
   const curClient = cur ? clientOf(cur) : undefined;
   const curLabels = cur ? (cur.labels || []).map((id) => labelOf(cur.source, id)).filter((l): l is WaLabel => !!l) : [];
-  const pending = (sources || []).filter((s) => s.canManage && s.status !== "open");
+  // One QR on screen (client 2026-11-11): the viewer's own phone, or a company number for a manager. An employee's own
+  // phone waiting to be linked is listed in one line instead — they scan it from their own account.
+  const unlinked = (sources || []).filter((s) => s.canManage && s.status !== "open");
+  const pending = unlinked.filter((s) => s.kind === "company" ? data.isMgr : s.ownerUid === data.uid);
+  const othersWaiting = unlinked.filter((s) => !pending.includes(s));
   const hasMine = (sources || []).some((s) => s.kind === "personal" && s.ownerUid === data.uid);
 
   async function addSource(kind: "company" | "personal") {
@@ -408,6 +413,11 @@ function WhatsAppInbox() {
         </div>
       ))}
 
+      {othersWaiting.length > 0 && (
+        <p className="crm-hint mb-3">
+          غير مربوط: {othersWaiting.map((s) => "«" + s.label + "»" + (s.ownerUid ? " — يربطه " + nameOf(data, s.ownerUid) + " من حسابه" : "")).join("، ")}
+        </p>
+      )}
       {showSettings && <SourcesSettings sources={sources} onChange={poll} />}
       {showImport && data.isMgr && <WaImport sources={sources} onClose={() => setShowImport(false)} />}
       {/* pull every conversation back to its first message */}
@@ -661,6 +671,7 @@ function WhatsAppInbox() {
                     value={text} onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendNow(); } }} />
                 )}
+                {!recording && <WaQuickReplies canEdit={data.isMgr} clientName={curClient?.name} onPick={(t) => setText((x) => (x.trim() ? x.trimEnd() + "\n" + t : t))} />}
                 {SUGGEST_ON && !recording && (
                   <button type="button" className="crm-btn h-[42px] shrink-0 max-md:!px-2.5" disabled={suggesting || !msgs.length} onClick={suggest} title="يقرأ المحادثة ويكتب رداً تراجعه قبل الإرسال">
                     {suggesting ? "…" : <>✨<span className="max-md:hidden"> اقترح رد</span></>}
