@@ -3,7 +3,7 @@
 /** "الطلبات" — client requests by stage (one table), with matching, journey, and sale recording. */
 import { useEffect, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
-import { OPEN_STAGES, REQ, REQ_TONE, TEMPS, lbl } from "@/lib/crm/constants";
+import { BUYER_TYPES, OPEN_STAGES, REQ, REQ_TONE, TEMPS, lbl } from "@/lib/crm/constants";
 import {
   clientById, followState, match, members, nameOf, areaRange, needsSaleInfo, OPEN_REQ, typesOf, visibleRequests, can } from "@/lib/crm/logic";
 import { assignClient } from "@/lib/crm/actions";
@@ -23,6 +23,7 @@ export default function RequestsPage() {
   // Filters (client 2026-11-09): several choices per filter, combined; the export takes exactly what is shown.
   const [fTypes, setFTypes] = useState<string[]>([]);
   const [fPurposes, setFPurposes] = useState<string[]>([]);
+  const [fBuyers, setFBuyers] = useState<string[]>([]); // مشتري / مستثمر (client 2026-11-11)
   const [fFollows, setFFollows] = useState<string[]>([]);
   const [fZones, setFZones] = useState<string[]>([]);
   const [fDists, setFDists] = useState<string[]>([]);
@@ -59,6 +60,7 @@ export default function RequestsPage() {
   if (refQ === null) {
     if (fTypes.length) all = all.filter((r) => typesOf(r).some((t) => fTypes.includes(t)));
     if (fPurposes.length) all = all.filter((r) => fPurposes.includes(r.purpose || "شراء"));
+  if (fBuyers.length) all = all.filter((r) => fBuyers.includes(r.buyerType || "مشتري"));
     if (fFollows.length) all = all.filter((r) => fFollows.includes(followState(data, r)));
     if (fZones.length) all = all.filter((r) => zonesOf(r).some((z) => fZones.includes(z)));
     if (fDists.length) all = all.filter((r) => splitList(r.districts).some((d) => fDists.includes(d)));
@@ -71,8 +73,8 @@ export default function RequestsPage() {
       return lo != null && hi != null && (!amin || hi >= amin) && (!amax || lo <= amax);
     });
   }
-  const nF = [fTypes.length, fPurposes.length, fFollows.length, fZones.length, fDists.length, fOwners.length, fTemps.length, bmin || bmax, amin || amax].filter(Boolean).length;
-  const clearF = () => { setFTypes([]); setFPurposes([]); setFFollows([]); setFZones([]); setFDists([]); setFOwners([]); setFTemps([]); setFBmin(""); setFBmax(""); setFAmin(""); setFAmax(""); };
+  const nF = [fTypes.length, fPurposes.length, fBuyers.length, fFollows.length, fZones.length, fDists.length, fOwners.length, fTemps.length, bmin || bmax, amin || amax].filter(Boolean).length;
+  const clearF = () => { setFTypes([]); setFPurposes([]); setFBuyers([]); setFFollows([]); setFZones([]); setFDists([]); setFOwners([]); setFTemps([]); setFBmin(""); setFBmax(""); setFAmin(""); setFAmax(""); };
   const typeOpts = Array.from(new Set([...data.propTypes, ...data.requests.flatMap((r) => typesOf(r))])).filter(Boolean);
   const distOpts = Array.from(new Set(data.requests.flatMap((r) => splitList(r.districts)))).sort((a, b) => a.localeCompare(b, "ar"));
   const cnt = (st: string) => all.filter((r) => (r.status || "جديد") === st).length;
@@ -84,7 +86,7 @@ export default function RequestsPage() {
       const c = clientById(data, r.clientId);
       const last = (c?.log || [])[0];
       return {
-        "رقم الطلب": r.ref ? "ط-" + r.ref : "", "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "",
+        "رقم الطلب": r.ref ? "ط-" + r.ref : "", "العميل": c?.name || "", "الجوال": c?.phone || "", "المرحلة": r.status || "جديد", "الأولوية": r.priority || "", "الطلب": r.purpose || "", "العميل مشتري/مستثمر": r.buyerType || "مشتري",
         "درجة الاهتمام": c?.temp || "", "نوع العقار": typesOf(r).join("، "), "المنطقة": zonesOf(r).join("، "), "الأحياء": r.districts || "",
         "آخر تحديث": last ? lbl(last.type) + (last.text ? " — " + last.text : "") : "", "تاريخ آخر تحديث": last ? fmtStamp(last.at) : "", "الميزانية": r.budget ?? "", "الدفع": r.payment || "", "البنك": r.bank || "",
         "أقل مساحة": r.areaMin ?? "", "أعلى مساحة": r.areaMax ?? "", "أقل غرف": r.bedroomsMin ?? "", "الدور": (r.floors || []).join("، "), "التفاصيل": r.requirements || "",
@@ -177,6 +179,7 @@ export default function RequestsPage() {
           <Field label="المساحة من (م²)"><input inputMode="decimal" value={fAmin} onChange={(e) => setFAmin(e.target.value)} /></Field>
           <Field label="المساحة إلى (م²)"><input inputMode="decimal" value={fAmax} onChange={(e) => setFAmax(e.target.value)} /></Field>
           <Field label="الطلب"><MultiCheck options={["شراء", "إيجار"]} value={fPurposes} onChange={setFPurposes} /></Field>
+            <Field label="العميل"><MultiCheck options={BUYER_TYPES} value={fBuyers} onChange={setFBuyers} /></Field>
           <Field label="درجة الاهتمام"><MultiCheck options={[...TEMPS, "none"]} labels={{ none: "لم تُحدد" }} value={fTemps} onChange={setFTemps} /></Field>
           <Field label="المتابعة" full><MultiCheck options={["none", "sent", "visit"]} labels={{ none: "لم يُرسل له عرض", sent: "أُرسل له ولم تُحدد زيارة", visit: "له زيارة أو زار" }} value={fFollows} onChange={setFFollows} /></Field>
           {data.isMgr && <Field label="المسؤول" full><MultiCheck options={[...members(data), "none"]} labels={Object.fromEntries([...members(data).map((id) => [id, nameOf(data, id)]), ["none", "غير مسند"]])} value={fOwners} onChange={setFOwners} /></Field>}
