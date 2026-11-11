@@ -377,13 +377,32 @@ function makeSession(src) {
         const jid = canon(c.id);
         if (skip(jid)) continue;
         const x = (s.store.chats[jid] ||= { jid, unread: 0, ts: 0, tags: [] });
-        x.unread = c.unreadCount || x.unread || 0;
+        // The phone's own count (0 when it was read there), not the higher of the two.
+        x.unread = typeof c.unreadCount === "number" ? Math.max(0, c.unreadCount) : x.unread || 0;
         if (c.name) s.store.names[jid] = c.name;
       }
       for (const m of messages || []) s.ingest(m, false);
       s.dirty = true;
     });
     sock.ev.on("messages.upsert", ({ messages, type }) => messages.forEach((m) => s.ingest(m, type === "notify")));
+    // A chat read on the phone is read here too, and one marked unread there shows unread — like WhatsApp Web
+    // (client 2026-11-11). WhatsApp sends the chat's unread count (-1 = marked unread) and «read» receipts of our own.
+    sock.ev.on("chats.update", (us) => {
+      for (const u of us || []) {
+        if (typeof u?.unreadCount !== "number") continue;
+        const c = s.store.chats[canon(u.id)];
+        if (!c) continue;
+        c.unread = u.unreadCount < 0 ? Math.max(1, c.unread || 0) : u.unreadCount;
+        s.dirty = true;
+      }
+    });
+    sock.ev.on("messages.update", (us) => {
+      for (const { key, update } of us || []) {
+        if (!key?.remoteJid || key.fromMe || !(Number(update?.status) >= 4)) continue; // 4 = read, 5 = played
+        const c = s.store.chats[canon(key.remoteJid)];
+        if (c?.unread) { c.unread = 0; s.dirty = true; }
+      }
+    });
     const names = (cs) => cs.forEach((c) => c.id && (c.name || c.notify) && (s.store.names[canon(c.id)] = c.name || c.notify));
     sock.ev.on("contacts.upsert", names);
     sock.ev.on("contacts.update", names);
