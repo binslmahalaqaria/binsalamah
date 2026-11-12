@@ -68,6 +68,24 @@ async function api<T>(token: string, path: string, init?: RequestInit): Promise<
 }
 
 /**
+ * Webhook integrations from any Snap reply, camelCase (as in the docs) or snake_case, wrapped or not:
+ * finds every object carrying an integration id and returns its id, URL and HMAC secret.
+ */
+function integrations(v: unknown): { id: string; url?: string; hmac?: string }[] {
+  const out: { id: string; url?: string; hmac?: string }[] = [];
+  const walk = (x: unknown) => {
+    if (Array.isArray(x)) return x.forEach(walk);
+    if (!x || typeof x !== "object") return;
+    const o = x as Record<string, unknown>;
+    const id = o.integrationId ?? o.integration_id ?? (o.partnerType || o.partner_type || o.webhookUrl || o.webhook_url ? o.id : undefined);
+    if (typeof id === "string" && id) out.push({ id, url: String(o.webhookUrl ?? o.webhook_url ?? ""), hmac: (o.hmacSecret ?? o.hmac_secret) as string | undefined });
+    Object.values(o).forEach(walk);
+  };
+  walk(v);
+  return out;
+}
+
+/**
  * Every lead form in every ad account the connected user can see gets a webhook to /api/snap-leads (one per form;
  * forms already linked are skipped). Saves the HMAC secret Snap returns and the list of forms.
  */
@@ -87,18 +105,28 @@ export async function linkForms(token: string) {
       if (old?.integrationId) { forms.push({ ...old, name: f.name || old.name }); continue; }
       try {
         // An existing webhook on this form (made earlier) is reused instead of failing on «one per form».
-        const ex = await api<{ webhookIntegrations?: { webhookIntegration?: { integrationId?: string; webhookUrl?: string } }[] }>(token, "/lead_gen/forms/" + f.id + "/integrations?partner_type=PUBLIC_WEBHOOK").catch(() => ({ webhookIntegrations: [] }));
-        const mine = (ex.webhookIntegrations || []).map((x) => x.webhookIntegration).find((x) => x?.webhookUrl === WEBHOOK);
-        let integrationId = mine?.integrationId || null;
+        const ex = await api<unknown>(token, "/lead_gen/forms/" + f.id + "/integrations?partner_type=PUBLIC_WEBHOOK").catch(() => null);
+        const mine = integrations(ex).find((x) => x.url === WEBHOOK);
+        let integrationId = mine?.id || null;
+        if (mine?.hmac) hmac = mine.hmac;
+        // Snap returns the signing secret only when a webhook is created: one made earlier without us keeping
+        // the secret is removed and made again, otherwise no lead could be verified.
+        if (integrationId && !hmac) {
+          await api<unknown>(token, "/lead_gen/integrations/" + integrationId, { method: "DELETE" }).catch(() => null);
+          integrationId = null;
+        }
+        let raw = "";
         if (!integrationId) {
-          const r = await api<{ webhookIntegrations?: { webhookIntegration?: { integrationId?: string; hmacSecret?: string } }[] }>(token, "/lead_gen/integrations/public_webhook", {
+          const r = await api<unknown>(token, "/lead_gen/integrations/public_webhook", {
             method: "POST", body: JSON.stringify({ webhook_integrations: [{ form_id: f.id, webhook_url: WEBHOOK }] }),
           });
-          const w2 = r.webhookIntegrations?.[0]?.webhookIntegration;
-          integrationId = w2?.integrationId || null;
-          if (w2?.hmacSecret) hmac = w2.hmacSecret;
+          const w2 = integrations(r)[0];
+          integrationId = w2?.id || null;
+          if (w2?.hmac) hmac = w2.hmac;
+          // Kept (secrets masked) when Snap's reply has no integration id, to see its real shape.
+          if (!integrationId) raw = JSON.stringify(r).replace(/("hmac_?secret"\s*:\s*")[^"]+/gi, "$1***").slice(0, 300);
         }
-        forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId, error: integrationId ? null : "لم يُنشأ الربط" });
+        forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId, error: integrationId ? null : "لم يُنشأ الربط" + (raw ? ": " + raw : "") });
       } catch (e) {
         forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId: null, error: String((e as Error).message || e).slice(0, 200) });
       }
