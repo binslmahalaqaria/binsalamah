@@ -35,7 +35,9 @@ const str = (v: unknown) => (v == null ? "" : String(v).trim());
 
 export async function POST(req: NextRequest) {
   // The secret Snap returned when the forms were linked (secrets/snap), or a Vercel env override.
-  const secret = process.env.SNAP_HMAC_SECRET || (await readSecrets()).hmacSecret;
+  let secret: string | undefined;
+  try { secret = process.env.SNAP_HMAC_SECRET || (await readSecrets()).hmacSecret; }
+  catch (e) { return NextResponse.json({ error: "secrets_unavailable", detail: String((e as Error).message || e).slice(0, 200) }, { status: 503 }); }
   if (!secret) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const raw = await req.text();
   if (!signatureOk(req, raw, secret)) return NextResponse.json({ error: "bad_signature" }, { status: 401 });
