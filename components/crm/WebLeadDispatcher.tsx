@@ -63,7 +63,8 @@ export function WebLeadDispatcher() {
 
   useEffect(() => {
     if (!data.uid || !me?.active || isPreview()) return;
-    const q = query(collection(db, "leads"), where("source", "==", "website_interest"));
+    // Website forms and Snapchat lead ads (client 2026-11-12, app/api/snap-leads) go out the same way.
+    const q = query(collection(db, "leads"), where("source", "in", ["website_interest", "snapchat"]));
     return onSnapshot(q, async (s) => {
       const todo = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Lead, "id">) })).filter((l) => !l.dispatched && !l.assigned_to); // already handled by hand → leave it
       if (!todo.length || busy.current) return;
@@ -89,7 +90,10 @@ export function WebLeadDispatcher() {
     const phone = intl(l.phone);
     const existing = phone ? d.clients.find((c) => intl(c.phone) === phone) : undefined;
     const keep = existing?.assignee && active.some((s) => s.id === existing.assignee) ? existing.assignee : null;
-    const p = parse(l.message);
+    const snap = l.source === "snapchat";
+    const p = snap ? { ...parse(""), isRequest: false } : parse(l.message);
+    const SRC = snap ? "سناب" : "الموقع الإلكتروني";
+    const LOGT = snap ? "عميل من سناب" : "طلب من الموقع";
 
     await runTransaction(db, async (tx) => {
       const leadRef = doc(db, "leads", l.id);
@@ -103,7 +107,7 @@ export function WebLeadDispatcher() {
         tx.set(ptr, { last: to, at: nowStamp() }, { merge: true });
       }
       const now = nowStamp();
-      const note = p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
+      const note = snap ? (l.message || "عميل من إعلان سناب") : p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
       const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
       let clientId = existing?.id;
       if (!clientId) {
@@ -111,16 +115,16 @@ export function WebLeadDispatcher() {
         clientId = cref.id;
         claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
-          name: (l.customer_name || "").trim() || phone || "عميل الموقع", phone: l.phone || null, temp: null, status: "نشط",
-          nextCall: null, source: "الموقع الإلكتروني", assignee: to, assignedAt: now, unseen: !!to,
-          log: [{ at: now, byId: null, type: "طلب من الموقع", text: note }],
+          name: (l.customer_name || "").trim() || phone || (snap ? "عميل سناب" : "عميل الموقع"), phone: l.phone || null, temp: null, status: "نشط",
+          nextCall: null, source: SRC, assignee: to, assignedAt: now, unseen: !!to,
+          log: [{ at: now, byId: null, type: LOGT, text: note }],
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
         });
       } else {
         // The log is newest-first; an existing client without an (active) owner gets the request's employee too.
         tx.update(doc(db, "clients", clientId), {
           updatedAt: now, status: "نشط",
-          log: [{ at: now, byId: null, type: "طلب من الموقع", text: note + (p.isRequest && l.message ? " — " + l.message.replace("طلب عقاري من الموقع | ", "") : "") }, ...(existing!.log || [])].slice(0, 80),
+          log: [{ at: now, byId: null, type: LOGT, text: note + (p.isRequest && l.message ? " — " + l.message.replace("طلب عقاري من الموقع | ", "") : "") }, ...(existing!.log || [])].slice(0, 80),
           ...(!keep && to ? { assignee: to, assignedAt: now, unseen: true } : {}),
         });
       }
@@ -134,10 +138,10 @@ export function WebLeadDispatcher() {
       }
       const rref = doc(collection(db, "requests"));
       tx.set(rref, {
-        clientId, status: "جديد", priority: "عادية", source: "الموقع الإلكتروني", assignee: to, awaitingUpdate: true,
+        clientId, status: "جديد", priority: "عادية", source: SRC, assignee: to, awaitingUpdate: true,
         ...(p.isRequest ? demand : { purpose: "شراء", propTypes: [], districts: null, budget: null }),
-        requirements: p.isRequest ? p.requirements : l.message || null,
-        notes: "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
+        requirements: p.isRequest ? p.requirements : (snap ? (l.message || "").replace(/^عميل من إعلان سناب \| ?/, "") : l.message) || null,
+        notes: snap ? "أُسند تلقائياً من إعلانات سناب" : "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
       });
       tx.update(leadRef, { dispatched: { at: now, clientId, requestId: rref.id, to }, assigned_to: to });
     });

@@ -15,6 +15,7 @@ import { ImportOld } from "@/components/crm/ImportOld";
 import { ResetData } from "@/components/crm/ResetData";
 import { RenameNarjis } from "@/components/crm/RenameNarjis";
 import { CompanyDocs } from "@/components/crm/CompanyDocs";
+import { SnapLink } from "@/components/crm/SnapLink";
 import { ZatcaLink } from "@/components/crm/ZatcaLink";
 import { SiteSwitch } from "@/components/crm/SiteSwitch";
 
@@ -55,6 +56,7 @@ export default function SetupPage() {
           <SiteSwitch />
           <CompanyDocs />
           <ZatcaLink />
+          <SnapLink />
           <DemoData />
           <RenameNarjis />
           <ImportOld />
