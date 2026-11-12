@@ -128,7 +128,13 @@ export async function linkForms(token: string) {
         }
         forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId, error: integrationId ? null : "لم يُنشأ الربط" + (raw ? ": " + raw : "") });
       } catch (e) {
-        forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId: null, error: String((e as Error).message || e).slice(0, 200) });
+        // «existing integration» but none recognised in the listing: keep the listing (secrets masked) to read its shape.
+        let list = "";
+        if (/existing integration/i.test(String((e as Error).message))) {
+          const ex = await api<unknown>(token, "/lead_gen/forms/" + f.id + "/integrations?partner_type=PUBLIC_WEBHOOK").catch((x) => String((x as Error).message));
+          list = " | list: " + (typeof ex === "string" ? ex : JSON.stringify(ex)).replace(/("hmac_?secret"\s*:\s*")[^"]+/gi, "$1***").slice(0, 400);
+        }
+        forms.push({ id: f.id, name: f.name || f.id, adAccountId: a.id, integrationId: null, error: (String((e as Error).message || e).slice(0, 200) + list).slice(0, 600) });
       }
     }
   }
