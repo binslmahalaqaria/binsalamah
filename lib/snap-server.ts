@@ -73,15 +73,22 @@ async function api<T>(token: string, path: string, init?: RequestInit): Promise<
  */
 function integrations(v: unknown): { id: string; url?: string; hmac?: string }[] {
   const out: { id: string; url?: string; hmac?: string }[] = [];
+  let anyHmac: string | undefined;
   const walk = (x: unknown) => {
     if (Array.isArray(x)) return x.forEach(walk);
     if (!x || typeof x !== "object") return;
     const o = x as Record<string, unknown>;
+    const h = (o.hmacSecret ?? o.hmac_secret) as string | undefined;
+    if (typeof h === "string" && h) anyHmac = h;
+    // Snap's real reply (2026-11-12): partner_integrations[] { integration_id, partner_type, generic_webhook_handler_info: { webhook_url } }.
+    const info = (o.generic_webhook_handler_info ?? o.genericWebhookHandlerInfo) as Record<string, unknown> | undefined;
     const id = o.integrationId ?? o.integration_id ?? (o.partnerType || o.partner_type || o.webhookUrl || o.webhook_url ? o.id : undefined);
-    if (typeof id === "string" && id) out.push({ id, url: String(o.webhookUrl ?? o.webhook_url ?? ""), hmac: (o.hmacSecret ?? o.hmac_secret) as string | undefined });
+    if (typeof id === "string" && id) out.push({ id, url: String(o.webhookUrl ?? o.webhook_url ?? info?.webhook_url ?? info?.webhookUrl ?? ""), hmac: h });
     Object.values(o).forEach(walk);
   };
   walk(v);
+  // The secret may sit beside the integration rather than inside it.
+  if (anyHmac) for (const x of out) x.hmac ||= anyHmac;
   return out;
 }
 
