@@ -64,7 +64,7 @@ export function WebLeadDispatcher() {
   useEffect(() => {
     if (!data.uid || !me?.active || isPreview()) return;
     // Website forms and Snapchat lead ads (client 2026-11-12, app/api/snap-leads) go out the same way.
-    const q = query(collection(db, "leads"), where("source", "in", ["website_interest", "snapchat"]));
+    const q = query(collection(db, "leads"), where("source", "in", ["website_interest", "snapchat", "tiktok"]));
     return onSnapshot(q, async (s) => {
       const todo = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Lead, "id">) })).filter((l) => !l.dispatched && !l.assigned_to); // already handled by hand → leave it
       if (!todo.length || busy.current) return;
@@ -90,10 +90,12 @@ export function WebLeadDispatcher() {
     const phone = intl(l.phone);
     const existing = phone ? d.clients.find((c) => intl(c.phone) === phone) : undefined;
     const keep = existing?.assignee && active.some((s) => s.id === existing.assignee) ? existing.assignee : null;
-    const snap = l.source === "snapchat";
+    // Ad leads (Snap, TikTok; client 2026-11-12) share the same path: name, phone and answers, no website form fields.
+    const ad = l.source === "snapchat" ? "سناب" : l.source === "tiktok" ? "تيك توك" : null;
+    const snap = !!ad;
     const p = snap ? { ...parse(""), isRequest: false } : parse(l.message);
-    const SRC = snap ? "سناب" : "الموقع الإلكتروني";
-    const LOGT = snap ? "عميل من سناب" : "طلب من الموقع";
+    const SRC = ad || "الموقع الإلكتروني";
+    const LOGT = ad ? "عميل من " + ad : "طلب من الموقع";
 
     await runTransaction(db, async (tx) => {
       const leadRef = doc(db, "leads", l.id);
@@ -107,7 +109,7 @@ export function WebLeadDispatcher() {
         tx.set(ptr, { last: to, at: nowStamp() }, { merge: true });
       }
       const now = nowStamp();
-      const note = snap ? (l.message || "عميل من إعلان سناب") : p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
+      const note = snap ? (l.message || "عميل من إعلان " + ad) : p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
       const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
       let clientId = existing?.id;
       if (!clientId) {
@@ -115,7 +117,7 @@ export function WebLeadDispatcher() {
         clientId = cref.id;
         claimPhone(tx, l.phone, cref.id);
         tx.set(cref, {
-          name: (l.customer_name || "").trim() || phone || (snap ? "عميل سناب" : "عميل الموقع"), phone: l.phone || null, temp: null, status: "نشط",
+          name: (l.customer_name || "").trim() || phone || (snap ? "عميل " + ad : "عميل الموقع"), phone: l.phone || null, temp: null, status: "نشط",
           nextCall: null, source: SRC, assignee: to, assignedAt: now, unseen: !!to,
           log: [{ at: now, byId: null, type: LOGT, text: note }],
           createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
@@ -140,8 +142,8 @@ export function WebLeadDispatcher() {
       tx.set(rref, {
         clientId, status: "جديد", priority: "عادية", source: SRC, assignee: to, awaitingUpdate: true,
         ...(p.isRequest ? demand : { purpose: "شراء", propTypes: [], districts: null, budget: null }),
-        requirements: p.isRequest ? p.requirements : (snap ? (l.message || "").replace(/^عميل من إعلان سناب \| ?/, "") : l.message) || null,
-        notes: snap ? "أُسند تلقائياً من إعلانات سناب" : "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
+        requirements: p.isRequest ? p.requirements : (snap ? (l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") : l.message) || null,
+        notes: snap ? "أُسند تلقائياً من إعلانات " + ad : "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
       });
       tx.update(leadRef, { dispatched: { at: now, clientId, requestId: rref.id, to }, assigned_to: to });
     });

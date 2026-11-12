@@ -16,6 +16,7 @@ import { ResetData } from "@/components/crm/ResetData";
 import { RenameNarjis } from "@/components/crm/RenameNarjis";
 import { CompanyDocs } from "@/components/crm/CompanyDocs";
 import { SnapLink } from "@/components/crm/SnapLink";
+import { TikTokLink } from "@/components/crm/TikTokLink";
 import { ZatcaLink } from "@/components/crm/ZatcaLink";
 import { SiteSwitch } from "@/components/crm/SiteSwitch";
 
@@ -57,6 +58,7 @@ export default function SetupPage() {
           <CompanyDocs />
           <ZatcaLink />
           <SnapLink />
+          <TikTokLink />
           <DemoData />
           <RenameNarjis />
           <ImportOld />
