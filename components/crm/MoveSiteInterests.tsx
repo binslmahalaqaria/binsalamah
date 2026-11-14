@@ -14,7 +14,8 @@ import { remove, write } from "@/lib/crm/actions";
 import { nowStamp, today } from "@/lib/crm/util";
 import type { Interest } from "@/lib/crm/types";
 
-type L = { id: string; message?: string | null; related_offer_id?: string | null; dispatched?: { requestId?: string; moved?: boolean } | null };
+type L = { id: string; source?: string; message?: string | null; related_offer_id?: string | null; dispatched?: { requestId?: string; moved?: boolean } | null; snap?: { campaign_name?: string }; tiktok?: { campaign_name?: string } };
+const ORIGIN: Record<string, string> = { website_interest: "الموقع", snapchat: "سناب", tiktok: "تيك توك" };
 
 export function MoveSiteInterests() {
   const { data, toast } = useCrm();
@@ -23,7 +24,7 @@ export function MoveSiteInterests() {
 
   useEffect(() => {
     if (!data.isMgr) return;
-    getDocs(query(collection(db, "leads"), where("source", "==", "website_interest")))
+    getDocs(query(collection(db, "leads"), where("source", "in", ["website_interest", "snapchat", "tiktok"])))
       .then((s) => setLeads(s.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<L, "id">) }))))
       .catch(() => setLeads([]));
   }, [data.isMgr]);
@@ -57,14 +58,17 @@ export function MoveSiteInterests() {
         if (!c) continue;
         const add: Interest[] = [];
         for (const { l } of xs) {
-          const parts = String(l.message || "").split(" | ");
+          const ad = l.source === "snapchat" || l.source === "tiktok";
+          const parts = String(l.message || "").split(" | ").filter((p) => !/^عميل من إعلان/.test(p));
+          const camp = l.snap?.campaign_name || l.tiktok?.campaign_name || "";
           const title = (parts.find((p) => p.startsWith("تسجيل اهتمام:")) || "").replace("تسجيل اهتمام:", "").trim();
           let pid: string | null = null;
           if (l.related_offer_id) { try { const o = await getDoc(doc(db, "offers", l.related_offer_id)); pid = (o.exists() && (o.data().property_id as string)) || null; } catch { /* title only */ } }
           add.push({
-            id: Math.random().toString(36).slice(2, 10), propertyId: pid, propertyTitle: title || data.props.find((p) => p.id === pid)?.title || "عقار من الموقع",
+            id: Math.random().toString(36).slice(2, 10), propertyId: pid,
+            propertyTitle: ad ? "إعلان " + ORIGIN[l.source!] + (camp ? ": " + camp : "") : title || data.props.find((p) => p.id === pid)?.title || "عقار من الموقع",
             unit: null, note: parts.filter((p) => !p.startsWith("تسجيل اهتمام:") && !/^https?:\/\//.test(p)).join(" — ") || null,
-            followUp: today(), status: "متابعة", by: null, at: nowStamp(), origin: "الموقع",
+            followUp: today(), status: "متابعة", by: null, at: nowStamp(), origin: ORIGIN[l.source || "website_interest"] || "الموقع",
           });
         }
         await write("clients", c.id, { interests: [...add, ...(c.interests || [])], updatedAt: nowStamp() }, "update");
@@ -86,7 +90,7 @@ export function MoveSiteInterests() {
   return (
     <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-3 text-[13.5px]">
       <span className="flex-1">
-        {ready.length ? <>فيه <b className="num">{ready.length}</b> اهتمام من الموقع مسجّل كطلب في «الطلبات».</> : null}
+        {ready.length ? <>فيه <b className="num">{ready.length}</b> اهتمام (من سناب أو تيك توك أو الموقع) مسجّل كطلب في «الطلبات».</> : null}
         {busyOnes ? <span className="muted"> {busyOnes} منها اشتغل عليها موظف، تبقى في الطلبات.</span> : null}
       </span>
       {ready.length > 0 && <button type="button" className="crm-btn primary sm" disabled={busy} onClick={move}>{busy ? "جارٍ النقل…" : "انقلها هنا"}</button>}

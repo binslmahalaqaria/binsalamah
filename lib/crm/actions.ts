@@ -192,7 +192,8 @@ export async function runNoResponse(d: CrmData, done: Set<string>) {
 }
 
 /* ---------- interests: a client asked about a specific property (client 2026-11-07) ---------- */
-export type InterestResult = "ممتاز" | "يفكر" | "لم يرد" | "غير مهتم";
+/** «مهتم» (client 2026-11-14): the only positive answer for ad interests; keeps the interest open with its next date. */
+export type InterestResult = "ممتاز" | "يفكر" | "مهتم" | "لم يرد" | "غير مهتم";
 const newId = () => Math.random().toString(36).slice(2, 10);
 const historyOf = (x: Interest, d: CrmData, result: string, note: string) =>
   [...(x.history || []), { at: nowStamp(), by: d.uid || null, result, note: note || null }].slice(-10);

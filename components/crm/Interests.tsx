@@ -321,6 +321,8 @@ export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: stri
 }
 
 const RESULTS: [InterestResult | "طلب", string][] = [["ممتاز", "⭐ ممتاز"], ["يفكر", "يفكر"], ["لم يرد", "لم يرد"], ["طلب", "حوّله طلب"], ["غير مهتم", "غير مهتم"]];
+/** Ad interests (اهتمامات الإعلان, client 2026-11-14): just «مهتم» (with the next call date) or «غير مهتم». */
+const RESULTS_AD: [InterestResult, string][] = [["مهتم", "مهتم"], ["غير مهتم", "غير مهتم"]];
 
 /** What came of the follow-up. */
 export function InterestFollow({ clientId, id }: { clientId: string; id: string }) {
@@ -337,9 +339,9 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
   const open = isOpenInterest(x);
   const p = propById(data, x.propertyId);
   const title = p?.title || x.propertyTitle;
-  const needsDate = ["ممتاز", "يفكر", "لم يرد"].includes(result);
+  const needsDate = ["ممتاز", "يفكر", "مهتم", "لم يرد"].includes(result);
   // A visit appointment taken in the same call (client 2026-11-10: in «سجّل المتابعة», not a separate button); optional.
-  const canVisit = ["ممتاز", "يفكر"].includes(result);
+  const canVisit = ["ممتاز", "يفكر", "مهتم"].includes(result);
   const booked = data.viewings.find((v) => v.clientId === c.id && v.interestId === x.id && ["مجدولة", "مؤجلة"].includes(v.status));
   const withVisit = canVisit && !booked && !!visitAt;
 
@@ -400,7 +402,7 @@ export function InterestFollow({ clientId, id }: { clientId: string; id: string 
           <>
             <div>
               <div className="crm-sec !mt-0 mb-2">نتيجة التواصل</div>
-              <RadioChips options={RESULTS} value={result} onChange={(v) => { setResult(v); setDays(v === "لم يرد" ? "1" : "3"); }} />
+              <RadioChips options={x.origin ? RESULTS_AD : RESULTS} value={result} onChange={(v) => { setResult(v); setDays(v === "لم يرد" ? "1" : "3"); }} />
             </div>
             <Field label="ملاحظة (اختياري)"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
             {canVisit && (booked

@@ -14,7 +14,8 @@ import { InterestList, interestItems, isOpenInterest } from "@/components/crm/In
 import { RequestTabs } from "@/components/crm/PageTabs";
 import { MoveSiteInterests } from "@/components/crm/MoveSiteInterests";
 
-const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["good", "ممتاز"], ["closed", "المنتهية"]];
+// Only «مهتم» or «غير مهتم» here (client 2026-11-14), so no «ممتاز» tab.
+const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["closed", "غير مهتم / المنتهية"]];
 
 export default function AdInterestsPage() {
   const { data, loaded } = useCrm();
