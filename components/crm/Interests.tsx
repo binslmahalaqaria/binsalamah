@@ -37,8 +37,12 @@ export const isOpenInterest = (x: Interest) => INT_OPEN.includes(x.status);
 export type InterestItem = { c: Client; x: Interest };
 
 /** Every interest of the clients this person may see; `work` keeps to their own queue, like the home page. */
-export const interestItems = (d: CrmData, work = false): InterestItem[] =>
-  (work ? workClients(d) : visibleClients(d)).flatMap((c) => (c.interests || []).map((x) => ({ c, x })));
+/** `kind`: «site» = الاهتمامات (recorded by staff), «ad» = اهتمامات الإعلان (social ad leads, client 2026-11-14), «all». */
+export type InterestKind = "site" | "ad" | "all";
+export const interestItems = (d: CrmData, work = false, kind: InterestKind = "site"): InterestItem[] =>
+  (work ? workClients(d) : visibleClients(d)).flatMap((c) => (c.interests || [])
+    .filter((x) => kind === "all" || (kind === "ad") === !!x.origin)
+    .map((x) => ({ c, x })));
 /** Clients with an open request keep what they are interested in as offers with status «مهتم» (العروض). Shown in
  *  الاهتمامات and the client file too, so every interest can be seen (client 2026-11-09). Newest first. */
 export const reqInterestOffers = (d: CrmData, clientId?: string) =>
@@ -54,7 +58,7 @@ export const dueReqInterests = (d: CrmData) => {
   return reqInterestOffers(d).filter((p) => mine.has(p.clientId) && !!p.followUp && p.followUp <= t);
 };
 /** How many clients to check back with today (interests and interests on a request), for the red badges. */
-export const dueInterestClients = (d: CrmData) => new Set([...dueInterests(d, true).map(({ c }) => c.id), ...dueReqInterests(d).map((p) => p.clientId)]).size;
+export const dueInterestClients = (d: CrmData) => new Set([...dueInterests(d, true, "all").map(({ c }) => c.id), ...dueReqInterests(d).map((p) => p.clientId)]).size;
 
 /** Clients with a request and what they are interested in: one row per client, each property with its own date. */
 export function ReqInterestList({ items }: { items: Proposal[] }) {
@@ -103,9 +107,9 @@ export function ReqInterestList({ items }: { items: Proposal[] }) {
 }
 
 /** Open interests whose follow-up is due today or overdue, oldest date first. */
-export const dueInterests = (d: CrmData, work = false) => {
+export const dueInterests = (d: CrmData, work = false, kind: InterestKind = "site") => {
   const t = today();
-  return interestItems(d, work).filter(({ x }) => isOpenInterest(x) && !!x.followUp && x.followUp <= t)
+  return interestItems(d, work, kind).filter(({ x }) => isOpenInterest(x) && !!x.followUp && x.followUp <= t)
     .sort((a, b) => String(a.x.followUp).localeCompare(String(b.x.followUp)));
 };
 

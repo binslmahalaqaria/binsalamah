@@ -38,7 +38,7 @@ interface NavItem {
 }
 
 /** Screens whose content follows the manager's "عرض بيانات" choice. */
-const VIEW_PAGES = ["/admin", "/admin/requests", "/admin/interests", "/admin/clients", "/admin/sales"];
+const VIEW_PAGES = ["/admin", "/admin/requests", "/admin/interests", "/admin/ad-interests", "/admin/clients", "/admin/sales"];
 
 const ROLE_AR: Record<string, string> = { admin: "المالك", manager: "مدير مبيعات", sales: "موظف مبيعات" };
 
@@ -90,7 +90,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const groups: [string, NavItem[]][] = [
     ["", [{ href: "/admin", k: "today", label: "الرئيسية", badge: homeBadge }]],
     ["المبيعات", [
-      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq + dueInterestClients(data), also: ["/admin/leads", "/admin/proposals", "/admin/viewings", "/admin/interests"] },
+      { href: "/admin/requests", k: "requests", label: "الطلبات", badge: newReq + dueInterestClients(data), also: ["/admin/leads", "/admin/proposals", "/admin/viewings", "/admin/interests", "/admin/ad-interests"] },
       { href: "/admin/clients", k: "clients", label: "العملاء" },
       ...(data.isMgr ? [{ href: "/admin/contact", k: "phone", label: "الأرقام", badge: toContact }] : []),
       ...(can(data, "viewSales") ? [{ href: "/admin/sales", k: "sales", label: "المبيعات" }] : []),

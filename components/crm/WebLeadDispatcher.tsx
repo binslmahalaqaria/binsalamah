@@ -19,11 +19,11 @@ import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
 import { isPreview } from "@/lib/crm/preview";
-import { intl, nowStamp } from "@/lib/crm/util";
+import { intl, nowStamp, today } from "@/lib/crm/util";
 import { PTYPES } from "@/lib/crm/constants";
 import { parseBudget } from "@/lib/budget";
 
-interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; assigned_to?: string | null; dispatched?: unknown }
+interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; assigned_to?: string | null; dispatched?: unknown; snap?: { campaign_name?: string }; tiktok?: { campaign_name?: string } }
 
 /** "طلب عقاري من الموقع | النوع: فيلا | الغرض: شراء للسكن | …" → request fields. */
 function parse(message: string | null | undefined) {
@@ -111,6 +111,14 @@ export function WebLeadDispatcher() {
       const now = nowStamp();
       const note = snap ? (l.message || "عميل من إعلان " + ad) : p.isRequest ? "طلب من نموذج «سجّل طلبك العقاري» في الموقع" : "تسجيل اهتمام من الموقع" + (l.message ? ": " + l.message : "");
       const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
+      // The same customer again (same number, a request still open): no second request (see below).
+      const openReq = existing ? d.requests.find((r) => r.clientId === existing.id && !["تم البيع", "ملغي"].includes(r.status || "جديد")) : undefined;
+      // Social ad leads (client 2026-11-14): no request — an interest in «اهتمامات الإعلان», to call back today.
+      const campaign = l.snap?.campaign_name || l.tiktok?.campaign_name || "";
+      const adInterest = ad && !openReq ? {
+        id: Math.random().toString(36).slice(2, 10), propertyId: null, propertyTitle: "إعلان " + ad + (campaign ? ": " + campaign : ""), unit: null,
+        note: (l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") || null, followUp: today(), status: "متابعة", by: null, at: now, origin: ad,
+      } : null;
       let clientId = existing?.id;
       if (!clientId) {
         const cref = doc(collection(db, "clients"));
@@ -120,7 +128,7 @@ export function WebLeadDispatcher() {
           name: (l.customer_name || "").trim() || phone || (snap ? "عميل " + ad : "عميل الموقع"), phone: l.phone || null, temp: null, status: "نشط",
           nextCall: null, source: SRC, assignee: to, assignedAt: now, unseen: !!to,
           log: [{ at: now, byId: null, type: LOGT, text: note }],
-          createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}),
+          createdAt: now, updatedAt: now, ...(p.isRequest ? demand : {}), ...(adInterest ? { interests: [adInterest] } : {}),
         });
       } else {
         // The log is newest-first; an existing client without an (active) owner gets the request's employee too.
@@ -128,14 +136,18 @@ export function WebLeadDispatcher() {
           updatedAt: now, status: "نشط",
           log: [{ at: now, byId: null, type: LOGT, text: note + (p.isRequest && l.message ? " — " + l.message.replace("طلب عقاري من الموقع | ", "") : "") }, ...(existing!.log || [])].slice(0, 80),
           ...(!keep && to ? { assignee: to, assignedAt: now, unseen: true } : {}),
+          ...(adInterest ? { interests: [adInterest, ...(existing!.interests || [])] } : {}),
         });
       }
-      // The same customer sending the form again (same number, a request still open): no second request —
-      // the open one is flagged «بانتظار تحديث الموظف» again and the new message is kept in the client's log.
-      const openReq = existing ? d.requests.find((r) => r.clientId === existing.id && !["تم البيع", "ملغي"].includes(r.status || "جديد")) : undefined;
+      // The same customer sending the form again (a request still open): the open one is flagged
+      // «بانتظار تحديث الموظف» again and the new message is kept in the client's log.
       if (openReq) {
         tx.update(doc(db, "requests", openReq.id), { awaitingUpdate: true, updatedAt: now, ...(!openReq.assignee && to ? { assignee: to } : {}) });
         tx.update(leadRef, { dispatched: { at: now, clientId, requestId: openReq.id, to: openReq.assignee || to, repeat: true }, assigned_to: openReq.assignee || to });
+        return;
+      }
+      if (adInterest) {
+        tx.update(leadRef, { dispatched: { at: now, clientId, interestId: adInterest.id, to }, assigned_to: to });
         return;
       }
       const rref = doc(collection(db, "requests"));

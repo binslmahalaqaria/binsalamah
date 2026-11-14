@@ -31,6 +31,8 @@ export interface Interest {
   by: string | null;
   at: string;
   history?: { at: string; by: string | null; result: string; note?: string | null }[];
+  /** Came from a social ad lead form («سناب»/«تيك توك»; client 2026-11-14): listed in «اهتمامات الإعلان», not الاهتمامات. */
+  origin?: string | null;
 }
 
 export interface Client {
