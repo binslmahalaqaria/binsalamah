@@ -67,6 +67,87 @@ async function api<T>(token: string, path: string, init?: RequestInit): Promise<
   return j as T;
 }
 
+/** Minimal CSV parser (quoted fields, doubled quotes, CRLF). */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') q = false;
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim()));
+}
+
+/**
+ * Leads submitted before the webhook existed (client 2026-11-14: «اسحب اللي سجلتهم قبل»): Snap keeps them 30 days
+ * and gives them as a CSV leads report per ad account (POST/GET /adaccounts/{id}/leads_report). Each row becomes a
+ * `leads` doc (source snapchat, id from a hash of date + phone so importing twice adds nothing); the CRM's
+ * dispatcher then files them in «اهتمامات الإعلان» like new ones. Returns how many rows and how many were new.
+ */
+export async function importSnapLeads(token: string, deadline: number) {
+  const { createHash } = await import("node:crypto");
+  const { FieldValue } = await import("firebase-admin/firestore");
+  const orgs = await api<{ organizations?: { organization: { ad_accounts?: { id: string }[] } }[] }>(token, "/me/organizations?with_ad_accounts=true");
+  const accounts = (orgs.organizations || []).flatMap((o) => o.organization?.ad_accounts || []).map((a) => a.id);
+  const end = new Date(), start = new Date(end.getTime() - 29 * 86400_000);
+  const iso = (x: Date) => x.toISOString().slice(0, 19) + "Z";
+  let rows = 0, added = 0;
+  const pending: string[] = [];
+  for (const acc of accounts) {
+    const qs = new URLSearchParams({ async_format: "csv", start_time: iso(start), end_time: iso(end) });
+    const r = await api<Record<string, unknown>>(token, "/adaccounts/" + acc + "/leads_report?" + qs, { method: "POST" });
+    const runId = String(JSON.stringify(r).match(/"report_run_id"\s*:\s*"([^"]+)"/)?.[1] || "");
+    if (!runId) continue;
+    // Campaign names for the rows (the report has ids only).
+    const camps = await api<{ campaigns?: { campaign: { id: string; name: string } }[] }>(token, "/adaccounts/" + acc + "/campaigns").catch(() => ({ campaigns: [] }));
+    const campName = new Map((camps.campaigns || []).map((c) => [c.campaign?.id, c.campaign?.name]));
+    let url = "";
+    while (Date.now() < deadline) {
+      await new Promise((ok) => setTimeout(ok, 3000));
+      const g = JSON.stringify(await api<unknown>(token, "/adaccounts/" + acc + "/leads_report?report_run_id=" + encodeURIComponent(runId)));
+      const done = /"async_status"\s*:\s*"COMPLETED"/.test(g);
+      url = g.match(/"result"\s*:\s*"([^"]+)"/)?.[1] || "";
+      if (done || url) break;
+    }
+    if (!url) { pending.push(acc); continue; }
+    const csv = await (await fetch(url)).text();
+    const [head, ...body] = parseCsv(csv);
+    const col = (name: string) => head.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
+    const I = { date: col("Date"), camp: col("Campaign Id"), first: col("First Name"), last: col("Last Name"), phone: col("Phone Number"), email: col("Email Address"), city: col("Address Level 2") };
+    const customIdx = head.map((h, i) => (/^custom field/i.test(h.trim()) ? i : -1)).filter((i) => i >= 0);
+    for (const r0 of body) {
+      const v = (i: number) => (i >= 0 ? (r0[i] || "").trim() : "");
+      const phone = v(I.phone), name = [v(I.first), v(I.last)].filter(Boolean).join(" ");
+      if (!phone && !name) continue;
+      rows++;
+      const camp = campName.get(v(I.camp)) || "";
+      const message = ["عميل من إعلان سناب", camp && "الحملة: " + camp, v(I.date) && "سجّل: " + v(I.date), v(I.email) && "الإيميل: " + v(I.email), v(I.city) && "المدينة: " + v(I.city),
+        ...customIdx.map((i) => (r0[i] || "").trim()).filter(Boolean).map((c) => "إجابة: " + c)].filter(Boolean).join(" | ");
+      const id = "snap_imp_" + createHash("sha256").update(acc + "|" + v(I.date) + "|" + phone + "|" + name).digest("hex").slice(0, 28);
+      try {
+        await db().collection("leads").doc(id).create({
+          customer_name: (name || "عميل سناب").slice(0, 150), phone, email: v(I.email) || null, source: "snapchat", related_offer_id: null,
+          message: message.slice(0, 2000), status: "new", assigned_to: null, notes: [],
+          snap: { ad_account_id: acc, campaign_id: v(I.camp), campaign_name: camp, imported: true, date: v(I.date) },
+          created_at: FieldValue.serverTimestamp(), updated_at: FieldValue.serverTimestamp(),
+        });
+        added++;
+      } catch (e) {
+        if ((e as { code?: number }).code !== 6) throw e; // already imported
+      }
+    }
+  }
+  return { accounts: accounts.length, rows, added, pending: pending.length };
+}
+
 /**
  * Webhook integrations from any Snap reply, camelCase (as in the docs) or snake_case, wrapped or not:
  * finds every object carrying an integration id and returns its id, URL and HMAC secret.

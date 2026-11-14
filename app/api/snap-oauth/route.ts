@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { REDIRECT, SNAP_API, SNAP_AUTH, WEBHOOK, accessToken, linkForms, readSecrets, requireOwner, secretsRef } from "@/lib/snap-server";
+import { REDIRECT, SNAP_API, SNAP_AUTH, WEBHOOK, accessToken, importSnapLeads, linkForms, readSecrets, requireOwner, secretsRef } from "@/lib/snap-server";
 
 /**
  * Owner-only control of the Snapchat lead-ads link (client 2026-11-12), used by components/crm/SnapLink.tsx.
@@ -9,6 +9,7 @@ import { REDIRECT, SNAP_API, SNAP_AUTH, WEBHOOK, accessToken, linkForms, readSec
  * sample lead to the webhook.
  */
 export const runtime = "nodejs";
+export const maxDuration = 60; // the leads import waits for Snap's report
 
 const authUrl = async (clientId: string) => {
   const state = randomBytes(16).toString("hex");
@@ -46,6 +47,11 @@ export async function POST(req: NextRequest) {
     if (body.action === "sync") {
       const r = await linkForms(token);
       return NextResponse.json({ accounts: r.accounts, forms: r.forms.map((f) => ({ name: f.name, linked: !!f.integrationId, error: f.error || null })) });
+    }
+    if (body.action === "import") {
+      // Leads from before the link (last 30 days), stopping before the function's time limit.
+      const r = await importSnapLeads(token, Date.now() + 45_000);
+      return NextResponse.json(r);
     }
     if (body.action === "test") {
       const f = (s.forms || []).find((x) => x.integrationId);

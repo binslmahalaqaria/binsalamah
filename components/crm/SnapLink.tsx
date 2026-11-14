@@ -90,6 +90,11 @@ export function SnapLink() {
               ) : <p className="crm-hint m-0">ما فيه نماذج عملاء في حساب سناب الإعلاني. أنشئ نموذج (Lead Form) ثم اضغط «تحديث النماذج».</p>}
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="crm-btn" disabled={busy} onClick={() => run(async () => { const r = await call<{ forms: Status["forms"] }>("POST", { action: "sync" }); toast("نماذج مربوطة: " + r.forms.filter((f) => f.linked).length); })}>تحديث النماذج</button>
+                {/* Leads from before the link: Snap keeps 30 days (client 2026-11-14). */}
+                <button type="button" className="crm-btn" disabled={busy} onClick={() => run(async () => {
+                  const r = await call<{ rows: number; added: number; pending: number }>("POST", { action: "import" });
+                  toast(r.pending ? "سناب ما جهّز التقرير بعد — اضغط مرة ثانية بعد دقيقة" : r.added ? "انسحب " + r.added + " عميل — يطلعون في «اهتمامات الإعلان» خلال ثواني" : r.rows ? "كلهم مسحوبين من قبل" : "ما فيه عملاء في آخر 30 يوم");
+                })}>{busy ? "جارٍ السحب…" : "سحب عملاء آخر 30 يوم"}</button>
                 <button type="button" className="crm-btn" disabled={busy || !linked} onClick={() => run(async () => { const r = await call<{ ok: boolean; form: string }>("POST", { action: "test" }); toast(r.ok ? "سناب أرسل عميل تجريبي من «" + r.form + "» — يظهر في الطلبات خلال ثواني" : "تعذّر الإرسال التجريبي"); })}>إرسال عميل تجريبي</button>
                 <button type="button" className="crm-btn ghost" disabled={busy} onClick={() => run(async () => { go((await call<{ url: string }>("POST", { action: "connect" })).url); })}>إعادة تسجيل الدخول</button>
               </div>
