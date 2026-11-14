@@ -122,12 +122,12 @@ export function WebLeadDispatcher() {
       const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
       // The same customer again (same number, a request still open): no second request (see below).
       const openReq = existing ? d.requests.find((r) => r.clientId === existing.id && !["تم البيع", "ملغي"].includes(r.status || "جديد")) : undefined;
-      // Social ad leads (client 2026-11-14): no request — an interest in «اهتمامات الإعلان», to call back today.
+      // Social ad and website-interest leads (client 2026-11-14): never a request — an interest in «اهتمامات الإعلان», to call back today.
       const campaign = l.snap?.campaign_name || l.tiktok?.campaign_name || "";
-      const adInterest = ad && !openReq ? {
+      const adInterest = ad ? {
         id: Math.random().toString(36).slice(2, 10), propertyId: null, propertyTitle: "إعلان " + ad + (campaign ? ": " + campaign : ""), unit: null,
         note: (l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") || null, followUp: today(), status: "متابعة", by: null, at: now, origin: ad,
-      } : siteInterest && !openReq ? {
+      } : siteInterest ? {
         id: Math.random().toString(36).slice(2, 10), propertyId: offerProp, propertyTitle: offerTitle || d.props.find((x) => x.id === offerProp)?.title || "عقار من الموقع", unit: null,
         note: msg.split(" | ").filter((x) => !x.startsWith("تسجيل اهتمام:") && !/^https?:\/\//.test(x)).join(" — ") || null,
         followUp: today(), status: "متابعة", by: null, at: now, origin: "الموقع",
@@ -152,15 +152,17 @@ export function WebLeadDispatcher() {
           ...(adInterest ? { interests: [adInterest, ...(existing!.interests || [])] } : {}),
         });
       }
-      // The same customer sending the form again (a request still open): the open one is flagged
+      // Ad and website-interest leads always land in «اهتمامات الإعلان», never a request (client 2026-11-14),
+      // even for a client who already has one.
+      if (adInterest) {
+        tx.update(leadRef, { dispatched: { at: now, clientId, interestId: adInterest.id, to }, assigned_to: to });
+        return;
+      }
+      // The same customer sending the full request form again (a request still open): the open one is flagged
       // «بانتظار تحديث الموظف» again and the new message is kept in the client's log.
       if (openReq) {
         tx.update(doc(db, "requests", openReq.id), { awaitingUpdate: true, updatedAt: now, ...(!openReq.assignee && to ? { assignee: to } : {}) });
         tx.update(leadRef, { dispatched: { at: now, clientId, requestId: openReq.id, to: openReq.assignee || to, repeat: true }, assigned_to: openReq.assignee || to });
-        return;
-      }
-      if (adInterest) {
-        tx.update(leadRef, { dispatched: { at: now, clientId, interestId: adInterest.id, to }, assigned_to: to });
         return;
       }
       const rref = doc(collection(db, "requests"));
