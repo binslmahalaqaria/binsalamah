@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * One-time move (client 2026-11-14: «حنا سجلنا الاهتمامات في الطلبات… انقلها للقسم الجديد»): website «سجّل اهتمامك»
- * enquiries that the dispatcher had turned into requests become interests in «اهتمامات الإعلان» (origin «الموقع»).
+ * One-time move (client 2026-11-14): Snapchat/TikTok ad leads that the dispatcher had turned into requests (before
+ * ad leads went to «اهتمامات الإعلان») become interests there. Website enquiries stay requests (client 2026-11-14).
  * Only requests nobody has worked on are moved: still «جديد», no offers, no visits. Ones already in progress stay
  * in الطلبات and are counted. Managers only; asks before moving.
  */
@@ -24,7 +24,7 @@ export function MoveSiteInterests() {
 
   useEffect(() => {
     if (!data.isMgr) return;
-    getDocs(query(collection(db, "leads"), where("source", "in", ["website_interest", "snapchat", "tiktok"])))
+    getDocs(query(collection(db, "leads"), where("source", "in", ["snapchat", "tiktok"])))
       .then((s) => setLeads(s.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<L, "id">) }))))
       .catch(() => setLeads([]));
   }, [data.isMgr]);
@@ -46,7 +46,7 @@ export function MoveSiteInterests() {
   if (!data.isMgr || !leads || (!ready.length && !busyOnes)) return null;
 
   async function move() {
-    if (!window.confirm("نقل " + ready.length + " اهتمام من الطلبات إلى «اهتمامات الإعلان»؟\nتنحذف طلباتهم (ما اشتغل عليها أحد) وتصير اهتمامات بموعد اتصال اليوم.")) return;
+    if (!window.confirm("نقل " + ready.length + " عميل إعلان من الطلبات إلى «اهتمامات الإعلان»؟\nتنحذف طلباتهم (ما اشتغل عليها أحد) وتصير اهتمامات بموعد اتصال اليوم.")) return;
     setBusy(true);
     let moved = 0;
     try {
@@ -90,7 +90,7 @@ export function MoveSiteInterests() {
   return (
     <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-3 text-[13.5px]">
       <span className="flex-1">
-        {ready.length ? <>فيه <b className="num">{ready.length}</b> اهتمام (من سناب أو تيك توك أو الموقع) مسجّل كطلب في «الطلبات».</> : null}
+        {ready.length ? <>فيه <b className="num">{ready.length}</b> عميل من إعلانات سناب أو تيك توك مسجّل كطلب في «الطلبات».</> : null}
         {busyOnes ? <span className="muted"> {busyOnes} منها اشتغل عليها موظف، تبقى في الطلبات.</span> : null}
       </span>
       {ready.length > 0 && <button type="button" className="crm-btn primary sm" disabled={busy} onClick={move}>{busy ? "جارٍ النقل…" : "انقلها هنا"}</button>}

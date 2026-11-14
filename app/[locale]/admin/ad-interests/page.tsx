@@ -40,17 +40,17 @@ export default function AdInterestsPage() {
   return (
     <>
       <RequestTabs />
-      <PageHeader title="اهتمامات الإعلان" sub="عملاء سجّلوا اهتمامهم من إعلان: سناب، تيك توك، أو «سجّل اهتمامك» في الموقع — اتصل عليهم، وسجّل المتابعة أو حوّلهم طلب" />
+      <PageHeader title="اهتمامات الإعلان" sub="عملاء الحملات الإعلانية: سناب وتيك توك — اتصل عليهم وسجّل مهتم أو غير مهتم، وحوّل الجاد طلب" />
       <MoveSiteInterests />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RadioChips options={TABS.map(([k, l]) => [k, l + " (" + count(k) + ")"] as [string, string])} value={tab} onChange={setTab} />
       </div>
       <div className="mb-3 grid gap-2 sm:grid-cols-2">
         <input value={q} placeholder="بحث بالاسم أو الجوال أو الحملة" onChange={(e) => setQ(e.target.value)} />
-        <Select value={src} onChange={setSrc} blank="كل الإعلانات" options={(sources.length ? sources : ["سناب", "تيك توك", "الموقع"]).map((s) => [s, s] as [string, string])} ariaLabel="المصدر" />
+        <Select value={src} onChange={setSrc} blank="كل الإعلانات" options={(sources.length ? sources : ["سناب", "تيك توك"]).filter((s) => s !== "الموقع").map((s) => [s, s] as [string, string])} ariaLabel="المصدر" />
       </div>
       <div className="crm-card overflow-hidden">
-        {list.length ? <InterestList items={list} /> : <Empty>{all.length ? "لا يوجد شيء هنا الآن." : "ما وصل أحد بعد. أول ما أحد يسجّل اهتمامه من إعلان أو من الموقع يطلع هنا."}</Empty>}
+        {list.length ? <InterestList items={list} /> : <Empty>{all.length ? "لا يوجد شيء هنا الآن." : "ما وصل عملاء من الحملات بعد. أول ما أحد يعبّي نموذج إعلان في سناب أو تيك توك يطلع هنا."}</Empty>}
       </div>
     </>
   );

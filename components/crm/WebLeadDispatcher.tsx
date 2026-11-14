@@ -14,7 +14,7 @@
  * nobody has the CRM open are dispatched as soon as someone opens it.
  */
 import { useEffect, useRef } from "react";
-import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
@@ -78,6 +78,38 @@ export function WebLeadDispatcher() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.uid, me?.active]);
 
+  // Website interests that briefly went to «اهتمامات الإعلان» (2026-11-14, origin «الموقع») go back to الطلبات as a
+  // request with source «الموقع الإلكتروني» (client: that section is for ad campaigns only). One transaction per
+  // client, so two open sessions never make two requests; a client with an open request has it flagged instead.
+  const fixedSite = useRef(false);
+  useEffect(() => {
+    if (fixedSite.current || !data.uid || !me?.active || isPreview()) return;
+    const todo = data.clients.filter((c) => (c.interests || []).some((x) => x.origin === "الموقع"));
+    if (!data.clients.length) return;
+    fixedSite.current = true;
+    (async () => {
+      for (const c0 of todo) {
+        await runTransaction(db, async (tx) => {
+          const cref = doc(db, "clients", c0.id);
+          const cs = await tx.get(cref);
+          if (!cs.exists()) return;
+          const ints = ((cs.data().interests || []) as { origin?: string; propertyTitle?: string; note?: string | null }[]);
+          const site = ints.filter((x) => x.origin === "الموقع");
+          if (!site.length) return;
+          const now = nowStamp();
+          const text = site.map((x) => "تسجيل اهتمام: " + (x.propertyTitle || "عقار") + (x.note ? " — " + x.note : "")).join(" | ");
+          const openReq = latest.current.requests.find((r) => r.clientId === c0.id && !["تم البيع", "ملغي"].includes(r.status || "جديد"));
+          if (openReq) tx.update(doc(db, "requests", openReq.id), { awaitingUpdate: true, updatedAt: now });
+          else tx.set(doc(collection(db, "requests")), {
+            clientId: c0.id, status: "جديد", priority: "عادية", source: "الموقع الإلكتروني", assignee: cs.data().assignee || null, awaitingUpdate: true,
+            purpose: "شراء", propTypes: [], districts: null, budget: null, requirements: text, notes: "أُسند تلقائياً من طلبات الموقع", createdAt: now, updatedAt: now,
+          });
+          tx.update(cref, { interests: ints.filter((x) => x.origin !== "الموقع"), updatedAt: now });
+        }).catch((e) => console.warn("site interest back to request", c0.id, e));
+      }
+    })();
+  }, [data.clients, data.uid, me?.active]);
+
   async function dispatch(l: Lead) {
     const d = latest.current;
     const active = d.staff.filter((s) => s.active);
@@ -96,15 +128,6 @@ export function WebLeadDispatcher() {
     const p = snap ? { ...parse(""), isRequest: false } : parse(l.message);
     const SRC = ad || "الموقع الإلكتروني";
     const LOGT = ad ? "عميل من " + ad : "طلب من الموقع";
-    // «سجّل اهتمامك» on a property page (client 2026-11-14): an interest in «اهتمامات الإعلان» too, not a request;
-    // the full «سجّل طلبك العقاري» form still makes a request. The offer points to its inventory property.
-    const siteInterest = !ad && !p.isRequest;
-    const msg = String(l.message || "");
-    const offerTitle = (msg.split(" | ").find((x) => x.startsWith("تسجيل اهتمام:")) || "").replace("تسجيل اهتمام:", "").trim();
-    let offerProp: string | null = null;
-    if (siteInterest && l.related_offer_id) {
-      try { const o = await getDoc(doc(db, "offers", l.related_offer_id)); offerProp = (o.exists() && (o.data().property_id as string)) || null; } catch { /* the title is enough */ }
-    }
 
     await runTransaction(db, async (tx) => {
       const leadRef = doc(db, "leads", l.id);
@@ -122,15 +145,12 @@ export function WebLeadDispatcher() {
       const demand = { purpose: p.purpose, propTypes: p.propTypes, districts: p.districts, budget: p.budget, areaMin: p.areaMin, areaMax: p.areaMax, payment: p.payment };
       // The same customer again (same number, a request still open): no second request (see below).
       const openReq = existing ? d.requests.find((r) => r.clientId === existing.id && !["تم البيع", "ملغي"].includes(r.status || "جديد")) : undefined;
-      // Social ad and website-interest leads (client 2026-11-14): never a request — an interest in «اهتمامات الإعلان», to call back today.
+      // Social ad leads (client 2026-11-14): never a request — an interest in «اهتمامات الإعلان», to call back today.
+      // Everything from the website stays a request with source «الموقع الإلكتروني» (client 2026-11-14).
       const campaign = l.snap?.campaign_name || l.tiktok?.campaign_name || "";
       const adInterest = ad ? {
         id: Math.random().toString(36).slice(2, 10), propertyId: null, propertyTitle: "إعلان " + ad + (campaign ? ": " + campaign : ""), unit: null,
         note: (l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") || null, followUp: today(), status: "متابعة", by: null, at: now, origin: ad,
-      } : siteInterest ? {
-        id: Math.random().toString(36).slice(2, 10), propertyId: offerProp, propertyTitle: offerTitle || d.props.find((x) => x.id === offerProp)?.title || "عقار من الموقع", unit: null,
-        note: msg.split(" | ").filter((x) => !x.startsWith("تسجيل اهتمام:") && !/^https?:\/\//.test(x)).join(" — ") || null,
-        followUp: today(), status: "متابعة", by: null, at: now, origin: "الموقع",
       } : null;
       let clientId = existing?.id;
       if (!clientId) {
@@ -152,8 +172,7 @@ export function WebLeadDispatcher() {
           ...(adInterest ? { interests: [adInterest, ...(existing!.interests || [])] } : {}),
         });
       }
-      // Ad and website-interest leads always land in «اهتمامات الإعلان», never a request (client 2026-11-14),
-      // even for a client who already has one.
+      // Ad leads always land in «اهتمامات الإعلان», never a request (client 2026-11-14), even for a client who has one.
       if (adInterest) {
         tx.update(leadRef, { dispatched: { at: now, clientId, interestId: adInterest.id, to }, assigned_to: to });
         return;
