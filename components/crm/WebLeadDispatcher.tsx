@@ -14,7 +14,7 @@
  * nobody has the CRM open are dispatched as soon as someone opens it.
  */
 import { useEffect, useRef } from "react";
-import { collection, doc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
@@ -23,7 +23,7 @@ import { intl, nowStamp, today } from "@/lib/crm/util";
 import { PTYPES } from "@/lib/crm/constants";
 import { parseBudget } from "@/lib/budget";
 
-interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; assigned_to?: string | null; dispatched?: unknown; snap?: { campaign_name?: string }; tiktok?: { campaign_name?: string } }
+interface Lead { id: string; customer_name?: string; phone?: string; message?: string | null; source?: string; related_offer_id?: string | null; assigned_to?: string | null; dispatched?: unknown; snap?: { campaign_name?: string }; tiktok?: { campaign_name?: string } }
 
 /** "طلب عقاري من الموقع | النوع: فيلا | الغرض: شراء للسكن | …" → request fields. */
 function parse(message: string | null | undefined) {
@@ -96,6 +96,15 @@ export function WebLeadDispatcher() {
     const p = snap ? { ...parse(""), isRequest: false } : parse(l.message);
     const SRC = ad || "الموقع الإلكتروني";
     const LOGT = ad ? "عميل من " + ad : "طلب من الموقع";
+    // «سجّل اهتمامك» on a property page (client 2026-11-14): an interest in «اهتمامات الإعلان» too, not a request;
+    // the full «سجّل طلبك العقاري» form still makes a request. The offer points to its inventory property.
+    const siteInterest = !ad && !p.isRequest;
+    const msg = String(l.message || "");
+    const offerTitle = (msg.split(" | ").find((x) => x.startsWith("تسجيل اهتمام:")) || "").replace("تسجيل اهتمام:", "").trim();
+    let offerProp: string | null = null;
+    if (siteInterest && l.related_offer_id) {
+      try { const o = await getDoc(doc(db, "offers", l.related_offer_id)); offerProp = (o.exists() && (o.data().property_id as string)) || null; } catch { /* the title is enough */ }
+    }
 
     await runTransaction(db, async (tx) => {
       const leadRef = doc(db, "leads", l.id);
@@ -118,6 +127,10 @@ export function WebLeadDispatcher() {
       const adInterest = ad && !openReq ? {
         id: Math.random().toString(36).slice(2, 10), propertyId: null, propertyTitle: "إعلان " + ad + (campaign ? ": " + campaign : ""), unit: null,
         note: (l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") || null, followUp: today(), status: "متابعة", by: null, at: now, origin: ad,
+      } : siteInterest && !openReq ? {
+        id: Math.random().toString(36).slice(2, 10), propertyId: offerProp, propertyTitle: offerTitle || d.props.find((x) => x.id === offerProp)?.title || "عقار من الموقع", unit: null,
+        note: msg.split(" | ").filter((x) => !x.startsWith("تسجيل اهتمام:") && !/^https?:\/\//.test(x)).join(" — ") || null,
+        followUp: today(), status: "متابعة", by: null, at: now, origin: "الموقع",
       } : null;
       let clientId = existing?.id;
       if (!clientId) {
