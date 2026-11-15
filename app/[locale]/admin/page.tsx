@@ -106,12 +106,11 @@ export default function HomeDashboard() {
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
   const mineIds = new Set(mine.map((c) => c.id));
   const clientById = new Map(mine.map((c) => [c.id, c]));
-  const props = data.proposals.filter((p) => {
-    const c = clientById.get(p.clientId);
-    // Offers still waiting for the answer, when the client's call date has come (or, with no date, sent before today).
-    // Such a client also shows under «متابعات اليوم»: both sections, on purpose (client 2026-11-09).
-    return !!c && ["أُرسل", "بانتظار الرد"].includes(p.status) && !c.noCall && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t);
-  }).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+  // Every offer sent and still waiting for the customer's answer, from the moment it is sent until the answer is
+  // recorded (client 2026-11-15: «دايم» — it used to show only once the call date came). Ones whose call is due first.
+  const offerDue = (p: { clientId: string; sentAt: string }) => { const c = clientById.get(p.clientId); return !!c && (c.nextCall ? c.nextCall <= t : p.sentAt.slice(0, 10) < t); };
+  const props = data.proposals.filter((p) => clientById.has(p.clientId) && ["أُرسل", "بانتظار الرد"].includes(p.status))
+    .sort((a, b) => Number(offerDue(b)) - Number(offerDue(a)) || a.sentAt.localeCompare(b.sentAt));
   // Older sends without an offer record are due follow-ups now, so they show under «متابعات اليوم».
   const offers: { c: Client; r: Request }[] = [];
   // 2b) Follow-ups due today: everyone with a request whose call date has come and who isn't already listed under
@@ -350,7 +349,7 @@ export default function HomeDashboard() {
         <ReqInterestList items={reqInterests} />
       </Section>
 
-      <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="حان موعد متابعتهم — سجّل رأيهم: مهتم، غير مناسب، أو حدد زيارة">
+      <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="كل عقار أرسلته وما سجّلت رأي العميل فيه — اللي حان موعد متابعتهم أولاً. سجّل: مهتم، غير مناسب، أو حدد زيارة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>

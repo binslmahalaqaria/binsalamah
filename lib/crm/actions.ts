@@ -513,9 +513,6 @@ export async function markSent(d: CrmData, clientId: string, p: Property, kinds:
     sentProps: { ...(c.sentProps || {}), [p.id]: next },
     // When the send was also recorded on a request (reqSent), that already wrote the log entry — writing it again here would overwrite it.
     ...(withLog ? { log: pushLog(c, { at, byId: d.uid, type: "تم إرسال التفاصيل", text: "أُرسل «" + (p.ref ? "#" + p.ref + " " : "") + p.title + "»: " + kinds.map((k) => names[k]).join(" + "), call: false }) } : {}),
-    // A client without a request gets a call in 3 days by itself too (client 2026-11-15: «بدون تدخل مني»), unless
-    // «بدون موعد» was chosen or an earlier call is already set. (With a request, reqSent sets it.)
-    ...(withLog && !c.noCall && c.status !== "غير مهتم" && !(c.nextCall && c.nextCall >= today() && c.nextCall <= addDays(3)) ? { nextCall: addDays(3), lastUpdate: "تم إرسال التفاصيل", lastUpdateAt: at } : {}),
     updatedAt: at,
   }, "update");
 }
