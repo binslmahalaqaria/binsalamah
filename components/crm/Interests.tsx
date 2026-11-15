@@ -324,8 +324,8 @@ export function InterestForm({ clientId: c0, propertyId: p0, newName, newPhone }
 }
 
 const RESULTS: [InterestResult | "طلب", string][] = [["ممتاز", "⭐ ممتاز"], ["يفكر", "يفكر"], ["لم يرد", "لم يرد"], ["طلب", "حوّله طلب"], ["غير مهتم", "غير مهتم"]];
-/** Ad interests (اهتمامات الإعلان, client 2026-11-14): just «مهتم» (with the next call date) or «غير مهتم». */
-const RESULTS_AD: [InterestResult, string][] = [["مهتم", "مهتم"], ["غير مهتم", "غير مهتم"]];
+/** Ad interests (اهتمامات الإعلان, client 2026-11-14): «مهتم» (next call date), «ما رد» (try again — tomorrow by default; 2026-11-15) or «غير مهتم». */
+const RESULTS_AD: [InterestResult, string][] = [["مهتم", "مهتم"], ["لم يرد", "ما رد"], ["غير مهتم", "غير مهتم"]];
 
 /** What came of the follow-up. */
 export function InterestFollow({ clientId, id }: { clientId: string; id: string }) {
