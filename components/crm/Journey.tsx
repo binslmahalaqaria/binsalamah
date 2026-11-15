@@ -8,12 +8,14 @@ import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { PROP_TONE, VIEW_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
-import { confirmVisit, remove, setProposalStatus } from "@/lib/crm/actions";
+import { confirmVisit, postpone, remove, setProposalStatus } from "@/lib/crm/actions";
 import type { Proposal, Viewing } from "@/lib/crm/types";
 import { ageDays, fmtVisit, money, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Kebab, Pill } from "./ui";
+import { PostponeButton } from "./Postpone";
 
-export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?: boolean }) {
+/** `postpone` (home «عروض بانتظار رد العميل», client 2026-11-15): shows the client's follow-up date and «⏰ تأجيل». */
+export function ProposalRow({ p, showClient = true, postpone: withPostpone = false }: { p: Proposal; showClient?: boolean; postpone?: boolean }) {
   const { data, openClient, openModal, toast } = useCrm();
   const [busy, setBusy] = useState(false);
   const c = clientById(data, p.clientId), pr = propById(data, p.propertyId);
@@ -40,6 +42,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
         <div className="text-xs text-[var(--crm-ink-3)]">
           أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.note ? " · " + p.note : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
           {p.status === "مهتم" && p.followUp ? <> · المتابعة: <span className={p.followUp < today() ? "font-semibold text-[var(--crm-danger)]" : ""}>{relDay(p.followUp)}</span></> : null}
+          {withPostpone && waiting && c?.nextCall ? <> · المتابعة: <span className={c.nextCall < today() ? "font-semibold text-[var(--crm-danger)]" : c.nextCall === today() ? "font-semibold" : ""}>{relDay(c.nextCall)}</span></> : null}
           {data.isMgr && p.assignee ? " · العميل عند " + nameOf(data, p.assignee) : ""}
           {/* Who sent it, when that is someone other than the client's employee (client 2026-11-15). */}
           {data.isMgr && p.by && p.by !== p.assignee ? " · أرسله " + nameOf(data, p.by) : ""}
@@ -56,6 +59,7 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
           <button type="button" className="crm-btn sm primary" disabled={busy} onClick={() => set("مهتم")}>مهتم</button>
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>
         </>}
+        {withPostpone && c && waiting && <PostponeButton onPick={(day) => postpone(data, c.id, day)} />}
         {["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) && (
           <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId || undefined, propertyTitle: p.propertyId ? undefined : p.propertyTitle || undefined })}>حدد زيارة</button>
         )}

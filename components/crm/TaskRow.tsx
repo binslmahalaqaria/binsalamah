@@ -3,9 +3,9 @@
 import { useCrm } from "@/lib/crm/store";
 import { PRIO_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
-import { markWaSent, toggleTask } from "@/lib/crm/actions";
+import { markWaSent, toggleTask, write } from "@/lib/crm/actions";
 import type { Task } from "@/lib/crm/types";
-import { lateTxt, today, waLink } from "@/lib/crm/util";
+import { lateTxt, nowStamp, today, waLink } from "@/lib/crm/util";
 
 /** Ready-made fourth-attempt message (after three unanswered calls). */
 export const waFourthMsg = (name: string, staff: string) =>
@@ -14,6 +14,7 @@ export const waFourthMsg = (name: string, staff: string) =>
     "نرجو إفادتنا بالوقت المناسب للاتصال، أو الرد هنا بما تحتاجه وسنخدمك مباشرة."].join("\n");
 import { Chip, ContactIcons, Pill } from "./ui";
 import { WaChatButton } from "./WaButtons";
+import { PostponeButton } from "./Postpone";
 
 export function TaskRow({ t }: { t: Task }) {
   const { data, openModal, toast } = useCrm();
@@ -42,6 +43,10 @@ export function TaskRow({ t }: { t: Task }) {
           {t.createdBy && t.createdBy !== t.assignee && <Chip>من {nameOf(data, t.createdBy)}</Chip>}
         </div>
       </div>
+      {/* Postpone the task's day (client 2026-11-15); the rules let a manager or the task's creator change it. */}
+      {!t.done && (data.isMgr || t.createdBy === data.uid) && (
+        <PostponeButton title="تأجيل موعد المهمة" onPick={(day) => write("tasks", t.id, { due: day, updatedAt: nowStamp() }, "update")} />
+      )}
       {/* Contact the client straight from the task: the CRM's WhatsApp chat, or call / the phone's WhatsApp. */}
       {c?.phone && t.kind !== "wa4" && (
         <div className="flex shrink-0 items-center gap-1.5">

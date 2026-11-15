@@ -8,12 +8,13 @@
 import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workClients, type CrmData } from "@/lib/crm/logic";
-import { addInterests, quickInterestVisit, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
+import { addInterests, postponeInterest, quickInterestVisit, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest, Proposal } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, fmtVisit, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
 import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, Pill, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, dupMsg, findDup, takenMsg } from "./forms";
+import { PostponeButton } from "./Postpone";
 
 export const INT_OPEN = ["متابعة", "ممتاز"];
 
@@ -148,6 +149,7 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
         <button type="button" className={"crm-btn sm " + (open ? "primary" : "")} onClick={() => openModal({ kind: "interestFollow", clientId: c.id, id: x.id })}>{open ? "سجّل المتابعة" : "التفاصيل"}</button>
         {/* The visit date is taken in «سجّل المتابعة» (client 2026-11-10); once booked, its result is one tap away. */}
         {open && visit && <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "viewResult", viewingId: visit.id })}>تمت الزيارة</button>}
+        {open && <PostponeButton onPick={(day) => postponeInterest(data, c, x, day)} />}
         <Kebab items={[
           { label: open ? "سجّل المتابعة" : "التفاصيل", onClick: () => openModal({ kind: "interestFollow", clientId: c.id, id: x.id }) },
           open && visit ? { label: "تأجيل / إلغاء الزيارة", onClick: () => openModal({ kind: "interestVisit", clientId: c.id, interestId: x.id, viewingId: visit.id }) } : null,

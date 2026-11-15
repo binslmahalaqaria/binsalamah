@@ -16,7 +16,8 @@ import {
   activityFor, attToday, calledToday, fmtDur, goalOf, hoursOf, isActive, lateMin, members, missedStreak, nameOf, propById, reqsOf,
   visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
-import { applyUpdate, checkIO, markTasksSeen } from "@/lib/crm/actions";
+import { applyUpdate, checkIO, markTasksSeen, postpone } from "@/lib/crm/actions";
+import { PostponeButton } from "@/components/crm/Postpone";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
 import type { Client, Request, Task } from "@/lib/crm/types";
 import { addDays, ageDays, fmtVisit, hm, num, relDay, today, weekdayLong, ym } from "@/lib/crm/util";
@@ -226,7 +227,8 @@ export default function HomeDashboard() {
     return { why, lastTxt };
   };
 
-  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false) => (
+  // `noPostpone`: new / searching requests are a work queue, not a dated follow-up, so no «⏰ تأجيل» there.
+  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false, noPostpone = false) => (
     <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
         <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
@@ -243,7 +245,7 @@ export default function HomeDashboard() {
           {team && r.assignee ? " · " + nameOf(data, r.assignee) : ""}
         </div>
       </div>
-      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}</div>
+      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}{!noPostpone && <PostponeButton onPick={(day) => postpone(data, c.id, day)} />}</div>
     </div>
   );
 
@@ -339,6 +341,7 @@ export default function HomeDashboard() {
                 ))}
                 <button type="button" className="crm-btn sm danger" disabled={busy === c.id} onClick={() => quick(c, "رقم خاطئ")}>رقم خاطئ</button>
                 <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "request", preset: { clientId: c.id } })}>+ طلب</button>
+                <PostponeButton onPick={(day) => postpone(data, c.id, day)} />
               </div>
             </div>
           );
@@ -367,14 +370,14 @@ export default function HomeDashboard() {
       <Section n={3} title="طلبات جديدة" count={newReqs.length} hint="ابحث لها عن عقار مناسب وأرسل الخيارات للعميل — الأقدم أولاً">
         {newReqs.map((c) => {
           const r = open(c)[0];
-          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>);
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>, false, true);
         })}
       </Section>
 
       <Section n={4} title="جاري البحث" count={searchReqs.length} hint="عروضهم السابقة ما ناسبت — دوّر لهم عقار أدق حسب رأيهم">
         {searchReqs.map((c) => {
           const r = open(c)[0];
-          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>);
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>, false, true);
         })}
       </Section>
 
@@ -391,7 +394,7 @@ export default function HomeDashboard() {
       </Section>
 
       <Section n={7} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="كل عقار أرسلته وما سجّلت رأي العميل فيه — اللي حان موعد متابعتهم أولاً. سجّل: مهتم، غير مناسب، أو حدد زيارة">
-        {props.map((p) => <ProposalRow key={p.id} p={p} />)}
+        {props.map((p) => <ProposalRow key={p.id} p={p} postpone />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
