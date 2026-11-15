@@ -138,7 +138,8 @@ export default function HomeDashboard() {
   const privDue = mineOnly ? priv.filter((x) => !x.done && x.due && x.due <= t).sort((a, b) => ((a.due || "") + (a.time || "")).localeCompare((b.due || "") + (b.time || ""))) : [];
   const overdueTasks = tasks.filter((x) => x.due && x.due < t).length + privDue.filter((x) => x.due && x.due < t).length;
 
-  const interests = dueInterests(data, true, "all"); // staff-recorded and social-ad interests alike
+  // Ad interests are followed up only in «اهتمامات الإعلان» (client 2026-11-15), not on the home call list.
+  const interests = dueInterests(data, true);
   const reqInterests = dueReqInterests(data); // interests on a request whose check-back date has come
   const interestCount = new Set([...interests.map(({ c }) => c.id), ...reqInterests.map((p) => p.clientId)]).size;
 

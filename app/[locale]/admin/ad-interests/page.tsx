@@ -12,7 +12,6 @@ import { today } from "@/lib/crm/util";
 import { Empty, PageHeader, RadioChips, Select } from "@/components/crm/ui";
 import { InterestList, interestItems, isOpenInterest } from "@/components/crm/Interests";
 import { RequestTabs } from "@/components/crm/PageTabs";
-import { MoveSiteInterests } from "@/components/crm/MoveSiteInterests";
 
 // Only «مهتم» or «غير مهتم» here (client 2026-11-14), so no «ممتاز» tab.
 const TABS: [string, string][] = [["due", "حان موعدها"], ["next", "القادمة"], ["closed", "غير مهتم / المنتهية"]];
@@ -41,7 +40,6 @@ export default function AdInterestsPage() {
     <>
       <RequestTabs />
       <PageHeader title="اهتمامات الإعلان" sub="عملاء الحملات الإعلانية: سناب وتيك توك — اتصل عليهم وسجّل مهتم أو غير مهتم، وحوّل الجاد طلب" />
-      <MoveSiteInterests />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RadioChips options={TABS.map(([k, l]) => [k, l + " (" + count(k) + ")"] as [string, string])} value={tab} onChange={setTab} />
       </div>

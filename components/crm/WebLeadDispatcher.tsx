@@ -14,7 +14,7 @@
  * nobody has the CRM open are dispatched as soon as someone opens it.
  */
 import { useEffect, useRef } from "react";
-import { collection, doc, onSnapshot, query, runTransaction, where } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot, query, runTransaction, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { claimPhone } from "@/lib/crm/actions";
 import { useCrm } from "@/lib/crm/store";
@@ -109,6 +109,41 @@ export function WebLeadDispatcher() {
       }
     })();
   }, [data.clients, data.uid, me?.active]);
+
+  // Snap/TikTok leads that became requests before ad leads went to «اهتمامات الإعلان» move there by themselves
+  // (client 2026-11-15: «خلها على طول منقولة», no button). Only requests nobody worked on: still «جديد», no offers,
+  // no visits. One transaction per lead (lead, request and client re-read), so two sessions never move one twice.
+  const movedAds = useRef(false);
+  useEffect(() => {
+    if (movedAds.current || !data.uid || !me?.active || isPreview() || !data.clients.length) return;
+    movedAds.current = true;
+    (async () => {
+      const s = await getDocs(query(collection(db, "leads"), where("source", "in", ["snapchat", "tiktok"]))).catch(() => null);
+      for (const ld of s?.docs || []) {
+        const l = ld.data() as Lead & { dispatched?: { requestId?: string; moved?: boolean } };
+        const reqId = l.dispatched?.requestId;
+        if (!reqId || l.dispatched?.moved) continue;
+        const dd = latest.current;
+        const r = dd.requests.find((x) => x.id === reqId);
+        if (!r || (r.status || "جديد") !== "جديد" || dd.proposals.some((p) => p.requestId === r.id) || dd.viewings.some((v) => v.requestId === r.id)) continue;
+        await runTransaction(db, async (tx) => {
+          const cref = doc(db, "clients", r.clientId), rref = doc(db, "requests", r.id);
+          const [ls, rs, cs] = await Promise.all([tx.get(ld.ref), tx.get(rref), tx.get(cref)]);
+          if (!ls.exists() || ls.data().dispatched?.moved || !rs.exists() || (rs.data().status || "جديد") !== "جديد" || !cs.exists()) return;
+          const ad = l.source === "tiktok" ? "تيك توك" : "سناب";
+          const camp = l.snap?.campaign_name || l.tiktok?.campaign_name || "";
+          const now = nowStamp();
+          const interest = {
+            id: Math.random().toString(36).slice(2, 10), propertyId: null, propertyTitle: "إعلان " + ad + (camp ? ": " + camp : ""), unit: null,
+            note: String(l.message || "").replace(/^عميل من إعلان (سناب|تيك توك) \| ?/, "") || null, followUp: today(), status: "متابعة", by: null, at: now, origin: ad,
+          };
+          tx.update(cref, { interests: [interest, ...((cs.data().interests || []) as unknown[])], updatedAt: now });
+          tx.delete(rref);
+          tx.update(ld.ref, { dispatched: { ...(ls.data().dispatched || {}), moved: true, movedAt: now, interestId: interest.id } });
+        }).catch((e) => console.warn("ad lead to ad interests", ld.id, e));
+      }
+    })();
+  }, [data.clients.length, data.uid, me?.active]);
 
   async function dispatch(l: Lead) {
     const d = latest.current;
