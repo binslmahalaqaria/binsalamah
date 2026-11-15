@@ -10,6 +10,7 @@ import { SendZipToClient } from "@/components/crm/SendZipToClient";
 import type { Offer } from "@/lib/types";
 import { Link } from "@/i18n/navigation";
 import { useCrm } from "@/lib/crm/store";
+import { parseBudget } from "@/lib/budget";
 import { OWNERK, OWNERK_TONE, PSTATUS, PSTATUS_TONE } from "@/lib/crm/constants";
 import {
   activeClients, availUnits, clientMatchesProp, nameOf, propAreas, propPrice, unitsOf, unitView, can } from "@/lib/crm/logic";
@@ -52,12 +53,13 @@ export default function PropertiesPage() {
   if (F.by) list = list.filter((p) => (F.by === "none" ? !p.createdBy : p.createdBy === F.by));
   if (F.purpose) list = list.filter((p) => (p.purpose || "بيع") === F.purpose);
   if (F.district) list = list.filter((p) => String(p.district || "").includes(F.district));
-  const pmin = num(F.pmin), pmax = num(F.pmax), amin = num(F.amin), rmin = num(F.rmin);
+  // Prices typed like the request budget: «4 مليون», «850 ألف», «4» (= millions) (client 2026-11-15: «4 مليون» found nothing).
+  const pmin = parseBudget(F.pmin), pmax = parseBudget(F.pmax), amin = num(F.amin), rmin = num(F.rmin);
   const variants = (p: Property) => (unitsOf(p).length ? unitsOf(p).map((u) => unitView(p, u)) : [p]);
   if (pmin != null || pmax != null || amin != null || rmin != null)
     list = list.filter((p) =>
       variants(p).some((v) =>
-        (pmin == null || (num(v.price) ?? -1) >= pmin) && (pmax == null || (v.price != null && v.price <= pmax)) &&
+        (pmin == null || (num(v.price) ?? -1) >= pmin) && (pmax == null || (num(v.price) != null && num(v.price)! <= pmax)) &&
         (amin == null || (num(v.area) ?? -1) >= amin) && (rmin == null || (num(v.bedrooms) ?? -1) >= rmin)));
   list.sort((a, b) => PSTATUS.indexOf((a.status || "متاح") as never) - PSTATUS.indexOf((b.status || "متاح") as never) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   const nF = Object.values(F).filter(Boolean).length;
@@ -96,8 +98,8 @@ export default function PropertiesPage() {
           <Select value={F.by} onChange={(v) => set("by", v)} options={[...data.staff.filter((s) => data.props.some((p) => p.createdBy === s.id)).map((s) => [s.id, "أضافه: " + s.name] as [string, string]), ["none", "أضافه: غير مسجّل"]]} blank="أضافه: الكل" />
           <Select value={F.purpose} onChange={(v) => set("purpose", v)} options={["بيع", "إيجار"]} blank="بيع وإيجار" />
           <input className="w-[150px]" placeholder="الحي" value={F.district || ""} onChange={(e) => set("district", e.target.value)} />
-          <input className="w-[120px]" inputMode="decimal" placeholder="سعر من" value={F.pmin || ""} onChange={(e) => set("pmin", e.target.value)} />
-          <input className="w-[120px]" inputMode="decimal" placeholder="إلى" value={F.pmax || ""} onChange={(e) => set("pmax", e.target.value)} />
+          <input className="w-[160px]" placeholder="سعر من (مثال: 2 مليون)" value={F.pmin || ""} onChange={(e) => set("pmin", e.target.value)} />
+          <input className="w-[160px]" placeholder="إلى (مثال: 4 مليون)" value={F.pmax || ""} onChange={(e) => set("pmax", e.target.value)} />
           <input className="w-[110px]" inputMode="decimal" placeholder="مساحة من" value={F.amin || ""} onChange={(e) => set("amin", e.target.value)} />
           <input className="w-[90px]" inputMode="decimal" placeholder="غرف من" value={F.rmin || ""} onChange={(e) => set("rmin", e.target.value)} />
           {nF > 0 && <button type="button" className="crm-btn ghost sm" onClick={() => setF({})}>مسح الفلاتر</button>}
