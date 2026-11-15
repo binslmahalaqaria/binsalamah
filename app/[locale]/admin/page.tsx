@@ -41,8 +41,16 @@ function Section({ n, title, count, hint, children }: { n: number; title: string
     setOpen(!open);
     try { localStorage.setItem(key, open ? "0" : "1"); } catch { /* private mode */ }
   };
+  // Opened from the count bar at the top (client 2026-11-15).
+  useEffect(() => {
+    const on = (e: Event) => { if ((e as CustomEvent<number>).detail === n) setOpen(true); };
+    window.addEventListener("crm-open-sec", on);
+    return () => window.removeEventListener("crm-open-sec", on);
+  }, [n]);
+  // Nothing in it today: not shown at all (the count bar says what is empty).
+  if (!count) return null;
   return (
-    <section className={"crm-card mb-3 overflow-hidden " + (count ? "" : "opacity-60")}>
+    <section id={"home-sec-" + n} className="crm-card mb-3 scroll-mt-20 overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
         <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--crm-ink)] text-[13px] font-bold text-white">{n}</span>
         <b className="font-heading text-[15.5px]">{title}</b>
@@ -278,6 +286,28 @@ export default function HomeDashboard() {
         })}
         <span className="text-[12px] text-[var(--crm-ink-3)]">تُحسب المكالمات المسجّلة فقط (رد، لم يرد، مشغول…)، ولا تُحسب رسائل الواتساب.</span>
       </div>
+
+      {/* Today at a glance (client 2026-11-15): one chip per section with work in it; a tap opens that section. */}
+      {(() => {
+        const secs: [number, string, number][] = [
+          [1, "مكالمات جديدة", newCalls.length], [2, "بعد الزيارة", afterViews.length + afterLegacy.length], [3, "طلبات جديدة", newReqs.length],
+          [4, "متابعات اليوم", follow.length], [5, "اهتمامات", interestCount], [6, "عروض بانتظار الرد", props.length + offers.length],
+          [7, "زيارات", views.length + viewings.length], [8, "تفاوض", neg.length], [9, "مهام", tasks.length + privDue.length],
+        ];
+        const busy = secs.filter(([, , c]) => c > 0);
+        return (
+          <div className="crm-card mb-3 flex flex-wrap items-center gap-2 px-4 py-3">
+            {busy.length ? busy.map(([n, label, c]) => (
+              <button key={n} type="button" className="crm-btn sm" onClick={() => {
+                window.dispatchEvent(new CustomEvent("crm-open-sec", { detail: n }));
+                setTimeout(() => document.getElementById("home-sec-" + n)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              }}>
+                <b className="num">{c}</b> {label}
+              </button>
+            )) : <span className="text-sm text-[var(--crm-ink-2)]">✅ ما عندك شي متأخر اليوم.</span>}
+          </div>
+        );
+      })()}
 
       <Section n={1} title="مكالمات العملاء الجدد" count={newCalls.length} hint="عملاء بدون طلب بعد، وأرقام جديدة وزّعها المدير — سجّل نتيجة كل مكالمة">
         {newCalls.map((c) => {

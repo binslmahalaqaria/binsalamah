@@ -39,7 +39,7 @@ export default function AdInterestsPage() {
   return (
     <>
       <RequestTabs />
-      <PageHeader title="اهتمامات الإعلان" sub="عملاء الحملات الإعلانية: سناب وتيك توك — اتصل عليهم وسجّل مهتم أو غير مهتم، وحوّل الجاد طلب" />
+      <PageHeader title="عملاء الإعلانات" sub="عملاء الحملات الإعلانية: سناب وتيك توك — اتصل عليهم وسجّل مهتم أو غير مهتم، وحوّل الجاد طلب" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RadioChips options={TABS.map(([k, l]) => [k, l + " (" + count(k) + ")"] as [string, string])} value={tab} onChange={setTab} />
       </div>

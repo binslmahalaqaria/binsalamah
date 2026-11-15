@@ -15,9 +15,21 @@ export default function ProposalsPage() {
   const { data, loaded } = useCrm();
   const [st, setSt] = useState("open");
   const [who, setWho] = useState("");
+  const [q, setQ] = useState("");
   if (!loaded) return <Empty>جارٍ تحميل البيانات…</Empty>;
-  let list = data.proposals.filter((p) => (data.isMgr ? !data.viewAs || p.assignee === data.viewAs : p.assignee === data.uid));
+  // An employee's offers: the ones they sent, and the ones on their clients (client 2026-11-15: the owner sent
+  // properties to a client of another employee and found nothing under his own name).
+  const of = (p: { assignee?: string | null; by?: string | null }, id: string) => p.assignee === id || p.by === id;
+  let list = data.proposals.filter((p) => (data.isMgr ? !data.viewAs || of(p, data.viewAs) : of(p, data.uid)));
+  // The employee filter: that employee's clients (client 2026-11-15: «بيان لفيصل»). Who sent each offer is shown on
+  // the row when it is someone else.
   if (who) list = list.filter((p) => p.assignee === who);
+  // Search by client name or number, or the property.
+  const needle = q.trim();
+  if (needle) list = list.filter((p) => {
+    const c = data.clients.find((x) => x.id === p.clientId), pr = data.props.find((x) => x.id === p.propertyId);
+    return [c?.name, c?.phone, pr?.title, p.propertyTitle, pr?.ref ? "#" + pr.ref : ""].some((v) => String(v || "").includes(needle));
+  });
   const t = today();
   // An offer «مهتم» whose check-back date has come (client 2026-11-10: these left الاهتمامات for here).
   const isDue = (p: (typeof list)[number]) => p.status === "مهتم" && !!p.followUp && p.followUp <= t;
@@ -25,14 +37,15 @@ export default function ProposalsPage() {
   else if (st === "due") list = list.filter(isDue);
   else if (st) list = list.filter((p) => p.status === st);
   list = [...list.filter(isDue).sort((a, b) => String(a.followUp).localeCompare(String(b.followUp))), ...list.filter((p) => !isDue(p))];
-  const dueN = data.proposals.filter((p) => (data.isMgr ? !data.viewAs || p.assignee === data.viewAs : p.assignee === data.uid) && isDue(p)).length;
+  const dueN = data.proposals.filter((p) => (data.isMgr ? !data.viewAs || of(p, data.viewAs) : of(p, data.uid)) && isDue(p)).length;
   return (
     <>
       <RequestTabs />
-      <PageHeader title="العروض" sub="العقارات المرسلة لعملاء عندهم طلب، وحالتها ورأيهم. إذا صارت كل عروض الطلب غير مناسبة يرجع إلى «جاري البحث»" />
+      <PageHeader title="عقارات أرسلناها" sub="العقارات المرسلة لعملاء عندهم طلب، وحالتها ورأيهم. إذا صارت كل عروض الطلب غير مناسبة يرجع إلى «جاري البحث»" />
       <div className="crm-card mb-3 flex flex-wrap items-center gap-2 p-2.5">
         <Select value={st} onChange={setSt} options={[["open", "القائمة"], ["due", "حان موعد متابعتها (" + dueN + ")"], ...PROP_ST.map((x) => [x, x] as [string, string])]} blank="كل الحالات" />
-        {data.isMgr && <Select value={who} onChange={setWho} options={members(data).map((id) => [id, nameOf(data, id)] as [string, string])} blank="كل الموظفين" />}
+        {data.isMgr && <Select value={who} onChange={setWho} options={members(data).map((id) => [id, "عملاء " + nameOf(data, id)] as [string, string])} blank="كل الموظفين" />}
+        <input className="min-w-[180px] flex-1" value={q} placeholder="بحث باسم العميل أو الجوال أو العقار" onChange={(e) => setQ(e.target.value)} />
         <span className="muted ms-auto text-[13px]">{list.length} عرض</span>
       </div>
       {!list.length ? <Empty><span className="grid justify-items-center gap-2.5">لا توجد عروض بهذا الفلتر. تُسجَّل العروض تلقائياً عند إرسال عقار لعميل من صفحة الطلبات.<Link href="/admin/requests" className="crm-btn primary">اذهب إلى الطلبات</Link></span></Empty>

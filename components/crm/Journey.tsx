@@ -40,7 +40,9 @@ export function ProposalRow({ p, showClient = true }: { p: Proposal; showClient?
         <div className="text-xs text-[var(--crm-ink-3)]">
           أُرسل {ageDays(p.sentAt)}{p.price ? " · " + money(p.price) : ""}{p.note ? " · " + p.note : ""}{p.feedback ? " · رأيه: " + p.feedback : ""}
           {p.status === "مهتم" && p.followUp ? <> · المتابعة: <span className={p.followUp < today() ? "font-semibold text-[var(--crm-danger)]" : ""}>{relDay(p.followUp)}</span></> : null}
-          {data.isMgr && p.assignee ? " · " + nameOf(data, p.assignee) : ""}
+          {data.isMgr && p.assignee ? " · العميل عند " + nameOf(data, p.assignee) : ""}
+          {/* Who sent it, when that is someone other than the client's employee (client 2026-11-15). */}
+          {data.isMgr && p.by && p.by !== p.assignee ? " · أرسله " + nameOf(data, p.by) : ""}
         </div>
       </div>
       {orphan ? (

@@ -38,11 +38,11 @@ export function RequestTabs() {
   return <SubTabs tabs={[
     { href: "/admin/requests", label: "الطلبات" },
     // The customer journey after the request.
-    { href: "/admin/proposals", label: "العروض", badge: dueOffers || undefined, alert: true },
+    { href: "/admin/proposals", label: "عقارات أرسلناها", badge: dueOffers || undefined, alert: true },
     // Clients without a request who asked about a property (with a request it is an offer instead).
-    { href: "/admin/interests", label: "الاهتمامات", badge: due || undefined, alert: true },
+    { href: "/admin/interests", label: "اهتمامات بدون طلب", badge: due || undefined, alert: true },
     // Leads from Snapchat / TikTok ad forms (client 2026-11-14), their own list.
-    { href: "/admin/ad-interests", label: "اهتمامات الإعلان", badge: dueAd || undefined, alert: true },
+    { href: "/admin/ad-interests", label: "عملاء الإعلانات", badge: dueAd || undefined, alert: true },
     { href: "/admin/viewings", label: "الزيارات" },
     { href: "/admin/leads", label: "نماذج الموقع", show: !previewAs },
   ]} />;

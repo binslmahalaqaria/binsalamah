@@ -38,7 +38,7 @@ export default function InterestsPage() {
   return (
     <>
       <RequestTabs />
-      <PageHeader title="الاهتمامات" sub="عملاء ما لهم طلب استفسروا عن عقار معيّن — نرجع لهم في موعدهم. إذا انسجل له طلب تنتقل عقاراته للعروض"
+      <PageHeader title="اهتمامات بدون طلب" sub="عملاء ما لهم طلب استفسروا عن عقار معيّن — نرجع لهم في موعدهم. إذا انسجل له طلب تنتقل عقاراته للعروض"
         action={<button type="button" className="crm-btn primary" onClick={() => openModal({ kind: "interest" })}>+ تسجيل اهتمام</button>} />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RadioChips options={TABS.map(([k, l]) => [k, l + " (" + count(k) + ")"] as [string, string])} value={tab} onChange={setTab} />
