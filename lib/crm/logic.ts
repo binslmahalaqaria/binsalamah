@@ -238,12 +238,18 @@ function match1(c: Demand, p: Property): Match | null {
   const budget = num(c.budget),
     price = num(p.price);
   if (budget && price) {
+    // Near the budget counts too (client 2026-11-15): up to 20% over, scored lower the further over, with the
+    // percentage shown («أعلى من الميزانية بـ 15%»).
+    const over = Math.round((price / budget - 1) * 100);
     if (price <= budget) {
       score += 40;
       why.push("ضمن الميزانية");
-    } else if (price <= budget * 1.1) {
-      score += 20;
-      why.push("أعلى بـ " + Math.round((price / budget - 1) * 100) + "%");
+    } else if (over <= 10) {
+      score += 25;
+      why.push("أعلى من الميزانية بـ " + over + "%");
+    } else if (over <= 20) {
+      score += 12;
+      why.push("أعلى من الميزانية بـ " + over + "%");
     } else return null;
   } else score += 10;
   const ds = splitList(c.districts);
