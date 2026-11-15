@@ -108,7 +108,11 @@ export default function HomeDashboard() {
   // A visit today or tomorrow has its own section; a visit further away doesn't hide a call that is due (client 2026-11-09).
   const visitSoon = (c: Client) => !!c.visitAt && c.visitAt.slice(0, 10) <= addDays(1);
   const base = mine.filter((c) => isActive(c) && open(c).length && !visitSoon(c) && !negSt.includes(open(c)[0].status || ""));
-  const newReqs = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
+  // «طلبات جديدة» (nothing sent yet) and «جاري البحث» (back to the search after its offers were unsuitable) are two
+  // sections (client 2026-11-15): the new ones need speed, the others a closer search.
+  const needAll = base.filter((c) => needsOptions(c)).sort((a, b) => String(open(a)[0].createdAt).localeCompare(String(open(b)[0].createdAt)));
+  const newReqs = needAll.filter((c) => (open(c)[0].status || "جديد") === "جديد");
+  const searchReqs = needAll.filter((c) => open(c)[0].status === "جاري البحث");
   // 3) Offers waiting for the customer's answer whose follow-up is due today (or, with no date set, sent before today).
   const reqsMine = (st: string[]) => mine.flatMap((c) => open(c).filter((r) => st.includes(r.status || "جديد")).map((r) => ({ c, r })));
   // Offers record (proposals) still waiting on the customer; plus older requests sent before the record existed.
@@ -291,8 +295,8 @@ export default function HomeDashboard() {
       {(() => {
         const secs: [number, string, number][] = [
           [1, "مكالمات جديدة", newCalls.length], [2, "بعد الزيارة", afterViews.length + afterLegacy.length], [3, "طلبات جديدة", newReqs.length],
-          [4, "متابعات اليوم", follow.length], [5, "اهتمامات", interestCount], [6, "عروض بانتظار الرد", props.length + offers.length],
-          [7, "زيارات", views.length + viewings.length], [8, "تفاوض", neg.length], [9, "مهام", tasks.length + privDue.length],
+          [4, "جاري البحث", searchReqs.length], [5, "متابعات اليوم", follow.length], [6, "اهتمامات", interestCount], [7, "عروض بانتظار الرد", props.length + offers.length],
+          [8, "زيارات", views.length + viewings.length], [9, "تفاوض", neg.length], [10, "مهام", tasks.length + privDue.length],
         ];
         const busy = secs.filter(([, , c]) => c > 0);
         return (
@@ -367,24 +371,31 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={4} title="متابعات اليوم" count={follow.length} hint="عملاء حان موعد الاتصال بهم — سجّل نتيجة الاتصال">
+      <Section n={4} title="جاري البحث" count={searchReqs.length} hint="عروضهم السابقة ما ناسبت — دوّر لهم عقار أدق حسب رأيهم">
+        {searchReqs.map((c) => {
+          const r = open(c)[0];
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "reqMatches", reqId: r.id })}>العقارات المناسبة</button>);
+        })}
+      </Section>
+
+      <Section n={5} title="متابعات اليوم" count={follow.length} hint="عملاء حان موعد الاتصال بهم — سجّل نتيجة الاتصال">
         {follow.map((c) => {
           const r = open(c)[0];
           return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>, true);
         })}
       </Section>
 
-      <Section n={5} title="متابعة الاهتمامات" count={interestCount} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
+      <Section n={6} title="متابعة الاهتمامات" count={interestCount} hint="عملاء استفسروا عن عقار معيّن وحان موعد الرجوع لهم">
         <InterestList items={interests} />
         <ReqInterestList items={reqInterests} />
       </Section>
 
-      <Section n={6} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="كل عقار أرسلته وما سجّلت رأي العميل فيه — اللي حان موعد متابعتهم أولاً. سجّل: مهتم، غير مناسب، أو حدد زيارة">
+      <Section n={7} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="كل عقار أرسلته وما سجّلت رأي العميل فيه — اللي حان موعد متابعتهم أولاً. سجّل: مهتم، غير مناسب، أو حدد زيارة">
         {props.map((p) => <ProposalRow key={p.id} p={p} />)}
         {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
       </Section>
 
-      <Section n={7} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
+      <Section n={8} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
         {views.map((v) => <ViewingRow key={v.id} v={v} />)}
         {viewings.map((c) => {
           const past = c.visitAt!.slice(0, 10) < t, p = propById(data, c.visitProperty);
@@ -404,11 +415,11 @@ export default function HomeDashboard() {
         })}
       </Section>
 
-      <Section n={8} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
+      <Section n={9} title="عملاء في التفاوض" count={neg.length} hint="جادون حان موعد متابعتهم">
         {neg.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تحديث</button>))}
       </Section>
 
-      <Section n={9} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
+      <Section n={10} title={"المهام" + (overdueTasks ? " — " + overdueTasks + " متأخرة" : "")} count={tasks.length + privDue.length} hint="المتأخرة أولاً ثم مهام اليوم">
         {tasks.map((x) => <TaskRow key={x.id} t={x} />)}
         {privDue.map((x) => (
           <div key={x.id} className="flex items-start gap-2.5 border-b border-[var(--crm-line)] px-3.5 py-2.5 last:border-0">
