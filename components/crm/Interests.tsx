@@ -127,6 +127,8 @@ export function InterestRow({ c, x, showClient = true }: InterestItem & { showCl
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient ? <b className="font-heading">{c.name}</b> : <b className="font-heading">{title}</b>}
+          {/* Ad interests show the number in the list too (client 2026-11-15). */}
+          {showClient && x.origin && c.phone && c.phone !== c.name && <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>}
           {showClient && <TempPill t={c.temp} />}
           {!x.propertyId && <Pill tone="muted">غير مضاف</Pill>}
           <Pill tone={x.status === "ممتاز" ? "ok" : x.status === "غير مهتم" ? "muted" : x.status === "حُوّل لطلب" ? "ok" : "warm"}>{x.status}</Pill>
@@ -173,7 +175,7 @@ export function InterestList({ items }: { items: InterestItem[] }) {
         return (
           <div key={c.id} className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (next && next < t ? "late" : "")}>
             <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
-              <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone="warm">{g.length} عقارات</Pill></div>
+              <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b>{g.some((y) => y.x.origin) && c.phone && c.phone !== c.name && <span className="num text-[12.5px] text-[var(--crm-ink-3)]" dir="ltr">{c.phone}</span>}<TempPill t={c.temp} /><Pill tone="warm">{g.length} عقارات</Pill></div>
               <div className="text-xs text-[var(--crm-ink-3)]">
                 {next && <>المتابعة: <span className={next < t ? "font-semibold text-[var(--crm-danger)]" : next === t ? "font-semibold" : ""}>{relDay(next)}</span></>}
                 {team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}
