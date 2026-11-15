@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { PROP_TONE, VIEW_TONE } from "@/lib/crm/constants";
 import { clientById, nameOf, propById } from "@/lib/crm/logic";
-import { confirmVisit, postpone, remove, setProposalStatus } from "@/lib/crm/actions";
+import { clearNextCall, confirmVisit, postpone, remove, setProposalStatus } from "@/lib/crm/actions";
 import type { Proposal, Viewing } from "@/lib/crm/types";
 import { ageDays, fmtVisit, money, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Kebab, Pill } from "./ui";
@@ -59,7 +59,7 @@ export function ProposalRow({ p, showClient = true, postpone: withPostpone = fal
           <button type="button" className="crm-btn sm primary" disabled={busy} onClick={() => set("مهتم")}>مهتم</button>
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>
         </>}
-        {withPostpone && c && waiting && <PostponeButton onPick={(day) => postpone(data, c.id, day)} />}
+        {withPostpone && c && waiting && <PostponeButton onPick={(day) => (day ? postpone(data, c.id, day) : clearNextCall(data, c))} />}
         {["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) && (
           <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "visit", reqId: p.requestId, propertyId: p.propertyId || undefined, propertyTitle: p.propertyId ? undefined : p.propertyTitle || undefined })}>حدد زيارة</button>
         )}

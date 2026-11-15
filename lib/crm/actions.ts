@@ -245,8 +245,8 @@ export async function closeInterest(d: CrmData, c: Client, x: Interest, requestI
 }
 
 /** Moves an interest's check-back to `day` («⏰ تأجيل», client 2026-11-15). */
-export async function postponeInterest(d: CrmData, c: Client, x: Interest, day: string) {
-  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, followUp: day, history: historyOf(i, d, "تأجيل", "إلى " + day) } : i));
+export async function postponeInterest(d: CrmData, c: Client, x: Interest, day: string | null) {
+  const interests = (c.interests || []).map((i) => (i.id === x.id ? { ...i, followUp: day, history: historyOf(i, d, "تأجيل", day ? "إلى " + day : "بدون موعد") } : i));
   await write("clients", c.id, { interests, updatedAt: nowStamp() }, "update");
 }
 

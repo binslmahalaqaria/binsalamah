@@ -16,7 +16,7 @@ import {
   activityFor, attToday, calledToday, fmtDur, goalOf, hoursOf, isActive, lateMin, members, missedStreak, nameOf, propById, reqsOf,
   visibleTasks, wantLine, workClients,
 } from "@/lib/crm/logic";
-import { applyUpdate, checkIO, markTasksSeen, postpone } from "@/lib/crm/actions";
+import { applyUpdate, checkIO, clearNextCall, markTasksSeen, postpone } from "@/lib/crm/actions";
 import { PostponeButton } from "@/components/crm/Postpone";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
 import type { Client, Request, Task } from "@/lib/crm/types";
@@ -245,7 +245,7 @@ export default function HomeDashboard() {
           {team && r.assignee ? " · " + nameOf(data, r.assignee) : ""}
         </div>
       </div>
-      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}{!noPostpone && <PostponeButton onPick={(day) => postpone(data, c.id, day)} />}</div>
+      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}{!noPostpone && <PostponeButton onPick={(day) => (day ? postpone(data, c.id, day) : clearNextCall(data, c))} />}</div>
     </div>
   );
 
@@ -341,7 +341,7 @@ export default function HomeDashboard() {
                 ))}
                 <button type="button" className="crm-btn sm danger" disabled={busy === c.id} onClick={() => quick(c, "رقم خاطئ")}>رقم خاطئ</button>
                 <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "request", preset: { clientId: c.id } })}>+ طلب</button>
-                <PostponeButton onPick={(day) => postpone(data, c.id, day)} />
+                <PostponeButton onPick={(day) => (day ? postpone(data, c.id, day) : clearNextCall(data, c))} />
               </div>
             </div>
           );

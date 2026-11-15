@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import { useCrm } from "@/lib/crm/store";
 import { addDays, relDay, today } from "@/lib/crm/util";
 
-export function PostponeButton({ onPick, title = "تأجيل موعد المتابعة" }: { onPick: (day: string) => Promise<unknown>; title?: string }) {
+/** `onPick(null)` = «بدون موعد» (client 2026-11-15): no follow-up date at all. */
+export function PostponeButton({ onPick, title = "تأجيل موعد المتابعة" }: { onPick: (day: string | null) => Promise<unknown>; title?: string }) {
   const { toast } = useCrm();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -20,10 +21,10 @@ export function PostponeButton({ onPick, title = "تأجيل موعد المتا
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
-  const pick = async (day: string) => {
-    if (!day || busy) return;
+  const pick = async (day: string | null) => {
+    if (day === "" || busy) return;
     setBusy(true);
-    try { await onPick(day); toast("تأجّل إلى " + relDay(day) + " (" + day + ")"); setOpen(false); }
+    try { await onPick(day); toast(day ? "تأجّل إلى " + relDay(day) + " (" + day + ")" : "صار بدون موعد"); setOpen(false); }
     catch { toast("تعذّر التأجيل"); }
     finally { setBusy(false); }
   };
@@ -39,6 +40,7 @@ export function PostponeButton({ onPick, title = "تأجيل موعد المتا
             تاريخ محدد
             <input type="date" min={today()} onChange={(e) => pick(e.target.value)} />
           </label>
+          <button type="button" className="crm-btn sm justify-start" disabled={busy} onClick={() => pick(null)}>بدون موعد</button>
         </div>
       )}
     </div>
