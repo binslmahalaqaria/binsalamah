@@ -39,7 +39,7 @@ export type Modal =
   | { kind: "propReqs"; propId: string }
   | { kind: "transfer"; reqId: string }
   | { kind: "offersSent"; reqId: string }
-  | { kind: "interest"; clientId?: string; propertyId?: string }
+  | { kind: "interest"; clientId?: string; propertyId?: string; newName?: string; newPhone?: string }
   | { kind: "interestFollow"; clientId: string; id: string }
   | { kind: "interestClient"; clientId: string }
   | { kind: "viewResult"; viewingId: string }

@@ -207,11 +207,12 @@ export function ClientInterests({ clientId }: { clientId: string }) {
 }
 
 /** Record that a client asked about a property: an existing client, or a new name and number. */
-export function InterestForm({ clientId: c0, propertyId: p0 }: { clientId?: string; propertyId?: string }) {
+/** `newName`/`newPhone`: prefilled for a new client, e.g. from a WhatsApp chat (client 2026-11-15). */
+export function InterestForm({ clientId: c0, propertyId: p0, newName, newPhone }: { clientId?: string; propertyId?: string; newName?: string; newPhone?: string }) {
   const { data, closeModal, openModal, toast } = useCrm();
   const clientId = c0 || "";
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(newName || "");
+  const [phone, setPhone] = useState(newPhone || "");
   const [picked, setPicked] = useState<string[]>(p0 ? [p0] : []);
   const [unit, setUnit] = useState("");
   // Properties not in the system: a name and a short description, so they can be recognised later.

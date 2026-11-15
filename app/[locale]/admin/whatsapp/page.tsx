@@ -11,7 +11,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCrm } from "@/lib/crm/store";
-import { can, matchesForReq, members, nameOf, propPrice, reqsOf, visibleClients, wantLine } from "@/lib/crm/logic";
+import { can, matchesForReq, members, nameOf, OPEN_REQ, propPrice, reqsOf, visibleClients, wantLine } from "@/lib/crm/logic";
 import { auth } from "@/lib/firebase";
 import type { Client } from "@/lib/crm/types";
 import { normPhone, nowStamp, waLink } from "@/lib/crm/util";
@@ -569,6 +569,8 @@ function WhatsAppInbox() {
                   {curClient ? (
                     <>
                       <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "request", preset: { clientId: curClient.id } })}>إضافة طلب</button>
+                      {/* Client 2026-11-15. With an open request the property goes in as an offer, from «تحديث». */}
+                      <button type="button" className="crm-btn sm" onClick={() => { const r = data.requests.find((x) => x.clientId === curClient.id && OPEN_REQ(x)); openModal(r ? { kind: "update", clientId: curClient.id, type: "استفسر", reqId: r.id } : { kind: "interest", clientId: curClient.id }); }}>إضافة اهتمام</button>
                       <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "update", clientId: curClient.id })}>تسجيل الإجراء التالي</button>
                       <button type="button" className="crm-btn sm" onClick={() => openClient(curClient.id)}>ملف العميل{data.isMgr ? " · " + nameOf(data, curClient.assignee) : ""}</button>
                     </>
@@ -599,6 +601,7 @@ function WhatsAppInbox() {
                       } })}>
                       إضافة طلب
                     </button>
+                    <button type="button" className="crm-btn sm" onClick={() => openModal({ kind: "interest", newName: cur.name || "", newPhone: localPhone(cur.phone) })}>إضافة اهتمام</button>
                     </>
                   )}
                   </div>
