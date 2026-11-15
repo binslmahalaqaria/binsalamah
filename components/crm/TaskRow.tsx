@@ -12,7 +12,8 @@ export const waFourthMsg = (name: string, staff: string) =>
   ["السلام عليكم " + (name || "") + "،",
     "معك " + staff + " من بن سلمه العقارية. حاولنا التواصل معك بخصوص طلبك العقاري ولم نتمكن من الوصول إليك.",
     "نرجو إفادتنا بالوقت المناسب للاتصال، أو الرد هنا بما تحتاجه وسنخدمك مباشرة."].join("\n");
-import { Chip, Pill } from "./ui";
+import { Chip, ContactIcons, Pill } from "./ui";
+import { WaChatButton } from "./WaButtons";
 
 export function TaskRow({ t }: { t: Task }) {
   const { data, openModal, toast } = useCrm();
@@ -34,11 +35,20 @@ export function TaskRow({ t }: { t: Task }) {
           {t.priority && t.priority !== "عادية" && <Pill tone={PRIO_TONE[t.priority]}>{t.priority}</Pill>}
           {t.due && <Chip cls={late ? "warn" : ""}>{t.done ? t.due : lateTxt(t.due)}</Chip>}
           {c && <Chip>العميل: {c.name}</Chip>}
+          {/* The client's number in the task (client 2026-11-15). */}
+          {c?.phone && c.phone !== c.name && <Chip><span className="num" dir="ltr">{c.phone}</span></Chip>}
           {p && <Chip>{p.title}</Chip>}
           {(data.isMgr || t.assignee !== data.uid) && <Chip>{t.assignee === data.uid ? "لي" : "لـ " + nameOf(data, t.assignee)}</Chip>}
           {t.createdBy && t.createdBy !== t.assignee && <Chip>من {nameOf(data, t.createdBy)}</Chip>}
         </div>
       </div>
+      {/* Contact the client straight from the task: the CRM's WhatsApp chat, or call / the phone's WhatsApp. */}
+      {c?.phone && t.kind !== "wa4" && (
+        <div className="flex shrink-0 items-center gap-1.5">
+          <WaChatButton phone={c.phone} />
+          <ContactIcons phone={c.phone} />
+        </div>
+      )}
       {t.kind === "wa4" && !t.done && c?.phone && (
         // Opens WhatsApp with the ready message and records the fourth attempt (48 h to reply, else «لا يوجد رد»).
         <a className="crm-btn sm wa shrink-0" href={waLink(c.phone, waFourthMsg(c.name, nameOf(data, data.uid))) || "#"} target="_blank" rel="noopener"
