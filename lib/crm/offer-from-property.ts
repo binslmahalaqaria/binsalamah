@@ -13,7 +13,33 @@ import { canPublishOffer, deriveFromUnits, offerFormSchema, unitNeedsPrice } fro
 const TYPE: Record<string, OfferType> = { "فيلا": "villa", "فلل": "villa", "شقة": "apartment", "شقق": "apartment", "دور": "floor", "تاون هاوس": "townhouse", "بنتهاوس": "penthouse", "أرض": "land", "قصر": "palace", "مزرعة": "farm", "استراحة": "resthouse", "عمارة": "building" };
 const UNIT_STATUS: Record<string, UnitStatus> = { "محجوز": "reserved", "مباع": "sold" };
 
+/**
+ * Warranties written in the property's notes (client 2026-11-15): a line starting «الضمانات» — with the items on
+ * the same line and/or one «البند: N سنة» per following line — becomes the listing's `warranties_text`
+ * (one tile per item on the site) and is left out of the description.
+ */
+export function splitWarranties(notes: string | null | undefined): { rest: string; warranties: string } {
+  const lines = String(notes || "").split("\n");
+  const years = /[0-9٠-٩]+\s*(?:سنة|سنه|سنوات|سنين)/;
+  const out: string[] = [], keep: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*الضمانات\s*[:：]?\s*(.*)$/);
+    if (!m) { keep.push(lines[i]); continue; }
+    // «الضمانات: الهيكل 10 سنوات، العزل 10 سنوات. الموقع: …» — the items end at the first full stop.
+    const head = m[1].trim();
+    if (head) {
+      const cut = head.search(/\.\s/);
+      const items = cut >= 0 ? head.slice(0, cut) : head.replace(/\.$/, "");
+      out.push(...items.split(/[،,؛;]\s*/).map((x) => x.trim()).filter(Boolean));
+      if (cut >= 0) keep.push(head.slice(cut + 1).trim());
+    }
+    while (i + 1 < lines.length && years.test(lines[i + 1])) out.push(lines[++i].trim().replace(/[.،]$/, ""));
+  }
+  return { rest: keep.join("\n").trim(), warranties: out.join("\n") };
+}
+
 export function toOffer(p: Property): Offer {
+  const w = splitWarranties(p.notes);
   const units = unitsOf(p).map((u) => ({
     name: u.name, area: u.area || 0, price: u.price || 0, rooms: u.bedrooms ?? null, living_rooms: null, bathrooms: null,
     status: UNIT_STATUS[u.status || ""] || ("available" as UnitStatus),
@@ -27,7 +53,8 @@ export function toOffer(p: Property): Offer {
     price_from: prices.length ? Math.min(...prices) : p.price || 0, price_to: prices.length > 1 ? Math.max(...prices) : null,
     area_from: areas.length ? Math.min(...areas) : p.area || 0, area_to: areas.length > 1 ? Math.max(...areas) : null,
     rooms: p.bedrooms ?? null, bathrooms: p.bathrooms ?? null, living_rooms: p.livingRooms ?? null,
-    description_ar: [p.features, p.notes].filter(Boolean).join("\n"), description_en: "",
+    description_ar: [p.features, w.rest].filter(Boolean).join("\n"), description_en: "",
+    warranties_text: w.warranties || null,
     images: (p.images || []).map((url, order) => ({ url, order })), cover_image: p.images?.[0] || "",
     sold_percentage: null, featured: false, units,
     features: String(p.features || "").split(/[،,\n]/).map((x) => x.trim()).filter(Boolean),
