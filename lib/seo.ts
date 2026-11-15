@@ -91,7 +91,7 @@ export function enquiryMessage(o: EnquiryOffer, unit?: EnquiryUnit, ar = true) {
     a ? (b && b !== a ? (ar ? "من " + n(a) + " إلى " + n(b) : n(a) + " to " + n(b)) : n(a)) : "";
   const place = [o.district && (ar && !/^حيs/.test(o.district) ? "حي " + o.district : o.district), o.city].filter(Boolean).join(ar ? "، " : ", ");
   const area = unit ? (unit.area ? n(unit.area) + " " + m2 : "") : range(o.areaFrom, o.areaTo) ? range(o.areaFrom, o.areaTo) + " " + m2 : "";
-  const price = unit ? n(unit.price) + " " + cur : range(o.priceFrom, o.priceTo) ? (o.priceTo && o.priceTo !== o.priceFrom ? "" : ar ? "يبدأ من " : "From ") + range(o.priceFrom, o.priceTo) + " " + cur : "";
+  const price = unit ? (unit.price ? n(unit.price) + " " + cur : "") : range(o.priceFrom, o.priceTo) ? (o.priceTo && o.priceTo !== o.priceFrom ? "" : ar ? "يبدأ من " : "From ") + range(o.priceFrom, o.priceTo) + " " + cur : "";
   const facts = [place, area, price].filter(Boolean).join(ar ? "  ·  " : "  ·  ");
   const name = unit ? o.title + (ar ? " — الوحدة " : " — Unit ") + unit.name : o.title;
   const lines = ar

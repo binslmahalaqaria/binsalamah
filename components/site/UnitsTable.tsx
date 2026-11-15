@@ -29,6 +29,8 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
   const msg = (u: OfferUnit) => enquiryMessage(enquiry, ar ? u : { ...u, name: u.name_en || u.name }, ar);
   const chip = (on: boolean) => "rounded-full px-4 py-1.5 text-sm transition-colors " + (on ? "bg-navy text-cream" : "bg-navy/5 text-navy hover:bg-navy/10");
   const badge = (u: OfferUnit) => <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 " + STATUS[u.status].cls}>{ar ? STATUS[u.status].ar : STATUS[u.status].en}</span>;
+  // Reserved/sold units may have no price (client 2026-11-15): show a dash instead of «0 ريال».
+  const price = (u: OfferUnit) => u.price > 0 ? <><bdi>{num(u.price)}</bdi> <span className="text-xs font-normal text-navy/50">{L.sar}</span></> : <span className="font-normal text-navy/40">—</span>;
   const ask = (u: OfferUnit) => u.status === "sold" ? null : (
     <WhatsAppLink whatsappNumber={whatsappNumber} message={msg(u)} className="rounded-full border border-navy/20 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:border-navy hover:text-[#1da851]">{L.ask}</WhatsAppLink>
   );
@@ -58,7 +60,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
                 <td className="px-4 py-3">{u.rooms ?? "—"}</td>
                 <td className="px-4 py-3">{u.living_rooms ?? "—"}</td>
                 <td className="px-4 py-3">{u.bathrooms ?? "—"}</td>
-                <td className="px-4 py-3 font-heading font-bold"><bdi>{num(u.price)}</bdi> <span className="text-xs font-normal text-navy/50">{L.sar}</span></td>
+                <td className="px-4 py-3 font-heading font-bold">{price(u)}</td>
                 <td className="px-4 py-3">{badge(u)}</td>
                 <td className="px-4 py-3 text-end">{ask(u)}</td>
               </tr>
@@ -79,7 +81,7 @@ export function UnitsTable({ units, enquiry, whatsappNumber }: { units: OfferUni
               {u.bathrooms ? <span>{u.bathrooms} {L.baths}</span> : null}
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-heading text-lg font-bold text-navy"><bdi>{num(u.price)}</bdi> <span className="text-xs font-normal text-navy/50">{L.sar}</span></span>
+              <span className="font-heading text-lg font-bold text-navy">{price(u)}</span>
               {ask(u)}
             </div>
           </div>

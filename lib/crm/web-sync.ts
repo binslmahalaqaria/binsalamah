@@ -12,7 +12,7 @@
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { saveOfferLinks } from "@/lib/offers";
-import { deriveFromUnits } from "@/lib/validators";
+import { deriveFromUnits, unitNeedsPrice } from "@/lib/validators";
 import type { Offer, OfferType, OfferUnit, UnitStatus } from "@/lib/types";
 import { assertWritable } from "./preview";
 import { unitsOf } from "./logic";
@@ -65,7 +65,7 @@ export function offerPatch(p: Property, o: Offer): Record<string, unknown> {
   if (pu.length) {
     const ou: OfferUnit[] = o.units || [];
     const names = pu.map((u) => u.name);
-    const complete = pu.every((u) => (u.area || 0) > 0 && (u.price || 0) > 0 && u.name);
+    const complete = pu.every((u) => (u.area || 0) > 0 && !unitNeedsPrice({ price: u.price, status: webStatus(u.status) }) && u.name);
     let units: OfferUnit[];
     if (complete) {
       units = pu.map((u, i) => {

@@ -8,7 +8,7 @@ import type { Property } from "./types";
 import type { Offer, OfferType, UnitStatus } from "@/lib/types";
 import { createOffer } from "@/lib/offers";
 import { fillEnglish } from "@/lib/translate-offer";
-import { canPublishOffer, deriveFromUnits, offerFormSchema } from "@/lib/validators";
+import { canPublishOffer, deriveFromUnits, offerFormSchema, unitNeedsPrice } from "@/lib/validators";
 
 const TYPE: Record<string, OfferType> = { "فيلا": "villa", "فلل": "villa", "شقة": "apartment", "شقق": "apartment", "دور": "floor", "تاون هاوس": "townhouse", "بنتهاوس": "penthouse", "أرض": "land", "قصر": "palace", "مزرعة": "farm", "استراحة": "resthouse", "عمارة": "building" };
 const UNIT_STATUS: Record<string, UnitStatus> = { "محجوز": "reserved", "مباع": "sold" };
@@ -43,9 +43,9 @@ export async function activateOnSite(p: Property, uid: string, idToken: string):
   if (!images.length) return "أضف صورة واحدة على الأقل للعقار قبل التفعيل في الموقع";
   // Units: blank rows are dropped; a half-filled one is named so it can be fixed in the property.
   o.units = (o.units || []).filter((u) => u.name?.trim() || u.area || u.price);
-  const badUnit = o.units.map((u, i) => ({ u, i })).filter(({ u }) => !u.name?.trim() || !(u.area > 0) || !(u.price > 0));
+  const badUnit = o.units.map((u, i) => ({ u, i })).filter(({ u }) => !u.name?.trim() || !(u.area > 0) || unitNeedsPrice(u));
   if (badUnit.length) {
-    return "أكمل بيانات الوحدات في العقار: " + badUnit.slice(0, 6).map(({ u, i }) => "«" + (u.name?.trim() || "وحدة " + (i + 1)) + "» ينقصها " + [!(u.area > 0) && "المساحة", !(u.price > 0) && "السعر", !u.name?.trim() && "الاسم"].filter(Boolean).join(" و")).join("، ") + (badUnit.length > 6 ? " …" : "");
+    return "أكمل بيانات الوحدات في العقار: " + badUnit.slice(0, 6).map(({ u, i }) => "«" + (u.name?.trim() || "وحدة " + (i + 1)) + "» ينقصها " + [!(u.area > 0) && "المساحة", unitNeedsPrice(u) && "السعر", !u.name?.trim() && "الاسم"].filter(Boolean).join(" و")).join("، ") + (badUnit.length > 6 ? " …" : "");
   }
   const parsed = offerFormSchema.safeParse(deriveFromUnits({ ...o, description_ar: o.description_ar || p.title } as never));
   if (!parsed.success) {

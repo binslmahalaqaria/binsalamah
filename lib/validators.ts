@@ -35,12 +35,16 @@ export const offerUnitSchema = z.object({
   name: z.string().trim().min(1, "اسم الوحدة مطلوب"),
   name_en: z.string().trim().nullable().optional(),
   area: z.number().positive("مساحة الوحدة مطلوبة"),
-  price: z.number().positive("سعر الوحدة مطلوب"),
+  // 0 = no price: allowed for a reserved or sold unit (client 2026-11-15), required for an available one.
+  price: z.number().nonnegative(),
   rooms: z.number().int().positive().nullable().optional(),
   living_rooms: z.number().int().positive().nullable().optional(),
   bathrooms: z.number().int().positive().nullable().optional(),
   status: z.enum(["available", "reserved", "sold"]).default("available"),
-});
+}).refine((u) => u.status !== "available" || u.price > 0, { message: "سعر الوحدة مطلوب", path: ["price"] });
+
+/** A unit needs a price only while it is available (reserved/sold units may have none). */
+export const unitNeedsPrice = (u: { price?: number | null; status?: string }) => (u.status || "available") === "available" && !((u.price || 0) > 0);
 
 export const offerFormSchema = z.object({
   title_ar: z.string().trim().min(1, "Arabic title is required"),
@@ -86,12 +90,13 @@ export const offerFormSchema = z.object({
 export function deriveFromUnits<T extends OfferFormInput>(o: T): T {
   const u = o.units ?? [];
   if (!u.length) return o;
-  const prices = u.map((x) => x.price), areas = u.map((x) => x.area);
+  // Units without a price (reserved/sold) don't count in the price range.
+  const prices = u.map((x) => x.price).filter((x) => x > 0), areas = u.map((x) => x.area);
   const max = (xs: (number | null | undefined)[]) => { const v = xs.filter((x): x is number => !!x); return v.length ? Math.max(...v) : null; };
   const lo = (xs: number[]) => Math.min(...xs), hi = (xs: number[]) => Math.max(...xs);
   return {
     ...o,
-    price_from: lo(prices), price_to: hi(prices) !== lo(prices) ? hi(prices) : null,
+    ...(prices.length ? { price_from: lo(prices), price_to: hi(prices) !== lo(prices) ? hi(prices) : null } : {}),
     area_from: lo(areas), area_to: hi(areas) !== lo(areas) ? hi(areas) : null,
     rooms: max(u.map((x) => x.rooms)) ?? o.rooms, bathrooms: max(u.map((x) => x.bathrooms)) ?? o.bathrooms,
     living_rooms: max(u.map((x) => x.living_rooms)) ?? o.living_rooms,
