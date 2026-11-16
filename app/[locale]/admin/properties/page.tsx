@@ -61,7 +61,7 @@ export default function PropertiesPage() {
       variants(p).some((v) =>
         (pmin == null || (num(v.price) ?? -1) >= pmin) && (pmax == null || (num(v.price) != null && num(v.price)! <= pmax)) &&
         (amin == null || (num(v.area) ?? -1) >= amin) && (rmin == null || (num(v.bedrooms) ?? -1) >= rmin)));
-  list.sort((a, b) => PSTATUS.indexOf((a.status || "متاح") as never) - PSTATUS.indexOf((b.status || "متاح") as never) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  list.sort((a, b) => PSTATUS.indexOf((a.status || "متاح") as never) - PSTATUS.indexOf((b.status || "متاح") as never) || (b.ref || 0) - (a.ref || 0) || String(b.createdAt || "").localeCompare(String(a.createdAt || ""))); // by property number, newest number first (client 2026-11-16)
   const nF = Object.values(F).filter(Boolean).length;
 
   const exportRows = () =>
