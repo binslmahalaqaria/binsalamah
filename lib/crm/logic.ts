@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { addDays, dayDiff, iso, localDay, moneyFull, num, splitList, today, ym } from "./util";
 import type { Staff } from "@/lib/types";
+import { zoneOf } from "@/lib/districts";
 
 export interface CrmData {
   /** Offers sent (trial) and viewings (trial). */
@@ -238,8 +239,8 @@ function match1(c: Demand, p: Property): Match | null {
   const budget = num(c.budget),
     price = num(p.price);
   if (budget && price) {
-    // Near the budget counts too (client 2026-11-15): up to 20% over, scored lower the further over, with the
-    // percentage shown («أعلى من الميزانية بـ 15%»).
+    // Near the budget counts too (client 2026-11-15, widened 2026-11-16: a 6M client and a 7.5M villa of the same
+    // size and area must show): up to 30% over, scored lower the further over, with the percentage shown.
     const over = Math.round((price / budget - 1) * 100);
     if (price <= budget) {
       score += 40;
@@ -250,14 +251,27 @@ function match1(c: Demand, p: Property): Match | null {
     } else if (over <= 20) {
       score += 12;
       why.push("أعلى من الميزانية بـ " + over + "%");
+    } else if (over <= 30) {
+      score += 5;
+      why.push("أعلى من الميزانية بـ " + over + "%");
     } else return null;
   } else score += 10;
   const ds = splitList(c.districts);
+  const pz = zoneOf(String(p.district || "").split(" - ")[0]);
+  const wantZones = new Set([...(c.zones || []), ...ds.map((x) => zoneOf(x)?.ar).filter(Boolean)] as string[]);
+  const sameZone = !!pz && (wantZones.has(pz.ar) || wantZones.has(pz.id));
   if (ds.length) {
     if (ds.some((x) => String(p.district || "").includes(x) || String(p.title || "").includes(x))) {
       score += 30;
       why.push("الحي مطابق");
+    } else if (sameZone) {
+      // Not one of the client's districts but in the same part of Riyadh (client 2026-11-16).
+      score += 15;
+      why.push("نفس الجهة (" + pz!.ar + ")");
     }
+  } else if (sameZone) {
+    score += 25;
+    why.push("نفس الجهة (" + pz!.ar + ")");
   } else score += 10;
   const ts = typesOf(c);
   if (ts.length) {
