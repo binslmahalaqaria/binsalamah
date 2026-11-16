@@ -14,7 +14,7 @@ import {
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
-import { ConfirmButton, Field, ModalFrame, Pill, RadioChips, Select } from "./ui";
+import { ConfirmButton, Field, ModalFrame, PhoneTag, Pill, RadioChips, Select } from "./ui";
 import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
 import { SendZipToClient } from "./SendZipToClient";
@@ -566,7 +566,7 @@ function PropReqsModal({ propId }: { propId: string }) {
               <div key={r.id} className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-[var(--crm-surface-2)] px-2.5 py-2">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="num min-w-[42px] font-heading text-[var(--crm-gold-ink)]">{m!.score}%</span>
-                  <span><b className="link" onClick={() => openModal({ kind: "request", id: r.id })}>{c?.name || ""}</b> <Pill tone={REQ_TONE[r.status || "جديد"]}>{r.status || "جديد"}</Pill></span>
+                  <span><b className="link" onClick={() => openModal({ kind: "request", id: r.id })}>{c?.name || ""}</b> <PhoneTag phone={c?.phone} name={c?.name} /> <Pill tone={REQ_TONE[r.status || "جديد"]}>{r.status || "جديد"}</Pill></span>
                   <span className="muted text-[12.5px]">{m!.why.join(" · ")}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">

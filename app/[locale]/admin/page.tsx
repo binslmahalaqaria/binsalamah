@@ -21,7 +21,7 @@ import { PostponeButton } from "@/components/crm/Postpone";
 import { fmtDist, locateForAttendance } from "@/lib/crm/geo";
 import type { Client, Request, Task } from "@/lib/crm/types";
 import { addDays, ageDays, fmtVisit, hm, num, relDay, today, weekdayLong, ym } from "@/lib/crm/util";
-import { ContactIcons, Empty, PageHeader, Pill } from "@/components/crm/ui";
+import { ContactIcons, Empty, PageHeader, PhoneTag, Pill } from "@/components/crm/ui";
 import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
@@ -231,7 +231,7 @@ export default function HomeDashboard() {
   const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false, noPostpone = false) => (
     <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
-        <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
+        <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><PhoneTag phone={c.phone} name={c.name} /><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
         <div className="truncate text-[13px] text-[var(--crm-ink-2)]">{wantLine(data, c)}</div>
         {withWhy && (() => { const x = callReason(c, r); return (
           <>
@@ -355,7 +355,7 @@ export default function HomeDashboard() {
           return (
             <div key={c.id} className="crm-row late grid-cols-[minmax(0,1fr)_auto]">
               <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
-                <b className="font-heading">{c.name}</b>
+                <b className="font-heading">{c.name}</b> <PhoneTag phone={c.phone} name={c.name} />
                 <div className="text-xs text-[var(--crm-ink-3)]">زار {fmtVisit(c.visitAt)}{p ? " · " + p.title : ""}{team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}</div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -405,7 +405,7 @@ export default function HomeDashboard() {
           return (
             <div key={c.id} className={"crm-row grid-cols-[minmax(0,1fr)_auto] " + (past ? "late" : "")}>
               <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id)}>
-                <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b>
+                <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><PhoneTag phone={c.phone} name={c.name} />
                   {past ? <Pill tone="hot">فات موعدها — سجّل النتيجة</Pill> : c.visitConfirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>}</div>
                 <div className="text-xs text-[var(--crm-ink-3)]">{fmtVisit(c.visitAt)}{p ? " · " + p.title : ""}{team && c.assignee ? " · " + nameOf(data, c.assignee) : ""}</div>
               </div>

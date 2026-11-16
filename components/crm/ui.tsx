@@ -39,6 +39,12 @@ export function Icon({ k, size = 20, className }: { k: string; size?: number; cl
   );
 }
 
+/** The client's number beside their name, everywhere a client is listed (client 2026-11-16: names repeat). */
+export function PhoneTag({ phone, name }: { phone?: string | null; name?: string | null }) {
+  if (!phone || phone === name) return null;
+  return <span className="num text-[12.5px] font-normal text-[var(--crm-ink-3)]" dir="ltr">{phone}</span>;
+}
+
 export function Pill({ tone, children }: { tone?: Tone; children?: ReactNode }) {
   if (children == null || children === "") return null;
   return <span className={"crm-pill tone-" + (tone || "muted")}>{children}</span>;

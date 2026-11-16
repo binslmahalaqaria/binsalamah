@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-16** — **Client's number beside their name in the lists.** Client: names repeat, show the number everywhere (e.g. «عملاء يناسبهم» on a property). New `PhoneTag` (`components/crm/ui.tsx`, hidden when the client is saved under the number itself) after the name in: the property's matching clients, offer and viewing rows (`Journey.tsx`: العروض، المعاينات، client file, home), interest rows and grouped interests (all, not only ad ones), the home request/follow-up/visit rows, and العملاء. Tasks, «للتواصل», «لا يوجد رد», the call log and الطلبات already showed it. Affects §9.
+
 - **2026-11-16** — **Properties listed by number.** Client: a property renumbered to #14 should sit between #15 and #13, not on top. The inventory list (`app/[locale]/admin/properties/page.tsx`) sorts by status (متاح, محجوز, مباع) then property number, highest first (was: date added). Affects §9.
 
 - **2026-11-16** — **Matching: same part of Riyadh and up to 30% over budget.** Client: منصور الزامل (villa, 400م+, 6 مليون, north Riyadh: الورود، المحمدية…) didn't get فلل الصحافة #16 (400م, 7.5 مليون), though size and area fit. `match1` in `lib/crm/logic.ts`: a property up to 30% over budget now counts (+5, «أعلى من الميزانية بـ N%»); a property not in the client's districts but in the same zone (`zoneOf` on the property's district vs the request's `zones` and its districts' zones) gets +15 «نفس الجهة (شمال الرياض)» (+25 when the request names a zone but no districts). Threshold unchanged (40). Affects §9.

@@ -9,7 +9,7 @@ import {
 import { assignClient } from "@/lib/crm/actions";
 import type { Client } from "@/lib/crm/types";
 import { exportCsv, fmtStamp, fmtVisit, num, relDay, today } from "@/lib/crm/util";
-import { ContactIcons, Empty, Kebab, PageHeader, Pill, Select } from "@/components/crm/ui";
+import { ContactIcons, Empty, Kebab, PageHeader, PhoneTag, Pill, Select } from "@/components/crm/ui";
 import { SentBadge } from "@/components/crm/SentBadge";
 import { TempPill } from "@/components/crm/bits";
 import { ClientTabs } from "@/components/crm/PageTabs";
@@ -74,6 +74,7 @@ export default function ClientsPage() {
         <div className="col-span-full min-w-0 cursor-pointer xl:col-span-1" onClick={() => openClient(c.id)}>
           <div className="flex flex-wrap items-center gap-2">
             <b className="font-heading text-[15.5px]">{c.name}</b>
+            <PhoneTag phone={c.phone} name={c.name} />
             <TempPill t={c.temp} />
             <SentBadge c={c} />
             {c.status && c.status !== "نشط" && <Pill tone="muted">{c.status}</Pill>}

@@ -11,7 +11,7 @@ import { clientById, nameOf, propById } from "@/lib/crm/logic";
 import { clearNextCall, confirmVisit, postpone, remove, setProposalStatus } from "@/lib/crm/actions";
 import type { Proposal, Viewing } from "@/lib/crm/types";
 import { ageDays, fmtVisit, money, relDay, today } from "@/lib/crm/util";
-import { ContactIcons, Kebab, Pill } from "./ui";
+import { ContactIcons, Kebab, PhoneTag, Pill } from "./ui";
 import { PostponeButton } from "./Postpone";
 
 /** `postpone` (home «عروض بانتظار رد العميل», client 2026-11-15): shows the client's follow-up date and «⏰ تأجيل». */
@@ -34,6 +34,7 @@ export function ProposalRow({ p, showClient = true, postpone: withPostpone = fal
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, p.requestId)}>
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
+          {showClient && <PhoneTag phone={c?.phone} name={c?.name} />}
           <span className="text-[13.5px]">{pr?.ref ? "#" + pr.ref + " " : ""}{pr?.title || p.propertyTitle || "عقار محذوف"}{p.unit ? " — " + p.unit : ""}</span>
           {!p.propertyId && <Pill tone="muted">غير مضاف</Pill>}
           <Pill tone={PROP_TONE[p.status]}>{p.status}</Pill>
@@ -88,6 +89,7 @@ export function ViewingRow({ v, showClient = true }: { v: Viewing; showClient?: 
       <div className="min-w-0 cursor-pointer" onClick={() => c && openClient(c.id, v.requestId || undefined)}>
         <div className="flex flex-wrap items-center gap-1.5">
           {showClient && <b className="font-heading">{c?.name || "عميل محذوف"}</b>}
+          {showClient && <PhoneTag phone={c?.phone} name={c?.name} />}
           <Pill tone={VIEW_TONE[v.status]}>{v.status}</Pill>
           {orphan && <Pill tone="hot">العميل محذوف</Pill>}
           {past ? <Pill tone="hot">تمت الزيارة — اتصل وسجّل انطباعه</Pill> : open && (confirmed ? <Pill tone="ok">مؤكدة</Pill> : <Pill tone="warm">بحاجة إلى تأكيد</Pill>)}
