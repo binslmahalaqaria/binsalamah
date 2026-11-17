@@ -260,6 +260,9 @@ function match1(c: Demand, p: Property): Match | null {
   const pz = zoneOf(String(p.district || "").split(" - ")[0]);
   const wantZones = new Set([...(c.zones || []), ...ds.map((x) => zoneOf(x)?.ar).filter(Boolean)] as string[]);
   const sameZone = !!pz && (wantZones.has(pz.ar) || wantZones.has(pz.id));
+  // Wrong part of Riyadh = not suitable at all (client 2026-11-17: a client after the north never gets east/west
+  // villas). Only when both sides are known: the request names a zone/district and the property's district is mapped.
+  if (wantZones.size && pz && !sameZone) return null;
   if (ds.length) {
     if (ds.some((x) => String(p.district || "").includes(x) || String(p.title || "").includes(x))) {
       score += 30;
