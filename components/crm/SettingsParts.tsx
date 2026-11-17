@@ -275,7 +275,7 @@ export function Escalation() {
   const [off, setOff] = useState(!!settings.escalateOff);
   return (
     <Card title="إعادة العميل إلى مدير المبيعات"
-      hint="إذا لم يتواصل الموظف مع العميل وتجاوز موعد الاتصال بعدد الأيام المحدد، يُعاد العميل وطلبه تلقائياً إلى مدير المبيعات، ويُسجَّل ذلك في سجل العميل.">
+      hint="الأرقام الجديدة فقط (بدون طلب ولا اهتمام): إذا لم يتواصل الموظف معها وتجاوز موعد الاتصال بعدد الأيام المحدد، تُعاد تلقائياً إلى مدير المبيعات ويُسجَّل ذلك في سجل العميل. العميل اللي له طلب أو اهتمام يبقى عند موظفه مهما تأخر.">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="crm-field"><label htmlFor="set-sm">مدير المبيعات</label>
           <select id="set-sm" value={sm} onChange={(e) => setSm(e.target.value)}>{ids.map((id) => <option key={id} value={id}>{nameOf(data, id)}</option>)}</select></div>

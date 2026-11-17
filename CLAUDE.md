@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-17** — **Only new numbers go back to the sales manager.** Client: the system returns to the manager only new numbers without a request; a client with a request or an interest stays with the employee even when the call is late. `runEscalation` (`lib/crm/actions.ts`) now skips any client with a request (any stage, closed too) or any interest; the settings card «إعادة العميل إلى مدير المبيعات» says so. Clients already returned before stay where they are. Affects §9.
+
 - **2026-11-16** — **Client's number beside their name in the lists.** Client: names repeat, show the number everywhere (e.g. «عملاء يناسبهم» on a property). New `PhoneTag` (`components/crm/ui.tsx`, hidden when the client is saved under the number itself) after the name in: the property's matching clients, offer and viewing rows (`Journey.tsx`: العروض، المعاينات، client file, home), interest rows and grouped interests (all, not only ad ones), the home request/follow-up/visit rows, and العملاء. Tasks, «للتواصل», «لا يوجد رد», the call log and الطلبات already showed it. Affects §9.
 
 - **2026-11-16** — **Properties listed by number.** Client: a property renumbered to #14 should sit between #15 and #13, not on top. The inventory list (`app/[locale]/admin/properties/page.tsx`) sorts by status (متاح, محجوز, مباع) then property number, highest first (was: date added). Affects §9.
