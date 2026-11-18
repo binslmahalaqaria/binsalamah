@@ -420,6 +420,17 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **Project page made more polished.** Client: «مب فخم… ودي الخطوط و طريقة القسم تصير فخمة و مرتبه». `app/[locale]/(public)/offers/[slug]/page.tsx`:
+  - larger title block with refined tags;
+  - facts as tiles with icons;
+  - numbered section headings (01 الوحدات والأسعار، 02 عن المشروع، 03 مميزات المشروع، 04 الضمانات);
+  - description in a soft card;
+  - features as a checked list instead of boxes;
+  - warranties as cards with a large year count;
+  - dark price card with the brand pattern.
+
+  `components/site/UnitsTable.tsx` drops its own heading and hides columns no unit fills, with roomier rows and a segmented filter. Affects the public offer page.
+
 - **2026-11-18** — **«رجوع» button on every CRM screen.** Client: going back meant starting over. `CrmShell` (`components/crm/Shell.tsx`) shows «رجوع» above the content on every screen except the home page. It keeps this tab's trail of screens and calls `router.back()`; when there is no earlier screen (opened from a link) it goes up one path level, or to `/admin`. Affects the CRM shell.
 
 - **2026-11-18** — **A client with an open interest is not a «new call».** Client: a client with an interest and a call date showed in «مكالمات العملاء الجدد». Home section 1 (`app/[locale]/admin/page.tsx`) now leaves out clients with any open interest (`isOpenInterest`); they are followed up in «متابعة الاهتمامات». Affects §9.

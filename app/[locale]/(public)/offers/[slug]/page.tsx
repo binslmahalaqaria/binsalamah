@@ -12,12 +12,25 @@ import { RegisterInterestForm } from "@/components/RegisterInterestForm";
 import { Gallery } from "@/components/site/Gallery";
 import { UnitsTable } from "@/components/site/UnitsTable";
 import { parseWarranties } from "@/lib/warranties";
+import { districtKey } from "@/lib/districts";
 import { IconArea, IconBath, IconBed, IconPin, IconSofa } from "@/components/site/icons";
 
 const STAGE = { ready: { ar: "جاهز للسكن", en: "Ready to move in" }, under_construction: { ar: "تحت الإنشاء", en: "Under construction" }, off_plan: { ar: "بيع على الخارطة", en: "Off-plan" } } as const;
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="flex items-center gap-3 font-heading text-xl font-bold text-navy">{children}<span className="h-2 w-12 rounded-full bg-navy/20" /></h2>
+/** Section heading (client 2026-11-18 «ودي تصير فخمة و مرتبه»): a small numbered eyebrow, a larger title and a hairline. */
+const SectionTitle = ({ n, sub, children }: { n?: string; sub?: string; children: React.ReactNode }) => (
+  <div className="grid gap-1.5">
+    {n && <span className="num text-[11px] font-semibold tracking-[0.25em] text-navy/40">{n}</span>}
+    <div className="flex items-center gap-4">
+      <h2 className="shrink-0 font-heading text-2xl font-bold tracking-tight text-navy sm:text-[28px]">{children}</h2>
+      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-navy/15" />
+    </div>
+    {sub && <p className="text-sm text-navy/50">{sub}</p>}
+  </div>
+);
+
+const Check = () => (
+  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
 );
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -82,6 +95,8 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
     .concat(offer.warranties_text ? [] : (offer.warranties ?? []).map((w) => (ar ? `${w.item}: ${w.years} سنوات` : `${w.item}: ${w.years} years`)));
   // Each «item … N years» pair in the text becomes its own tile (see lib/warranties.ts).
   const warranties = parseWarranties(warrantyLines);
+  let sec = 0;
+  const nx = () => String(++sec).padStart(2, "0");
   const living = offer.living_rooms ?? (Math.max(0, ...(offer.units ?? []).map((u) => u.living_rooms ?? 0)) || null);
   const facts = [
     { icon: <IconArea />, label: ar ? "المساحة" : "Area", value: <>{range(offer.area_from, offer.area_to)} {s("area")}</> },
@@ -102,68 +117,78 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-        <div className="grid content-start gap-8">
+        <div className="grid min-w-0 content-start gap-12">
           <Gallery images={images} title={title} />
 
-          <div className="grid gap-3">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-navy px-3 py-1 text-xs font-semibold text-cream">{t(`types.${offer.type}`)}</span>
-              <span className={"rounded-full px-3 py-1 text-xs font-semibold " + (sold === 100 ? "bg-red-600 text-white" : "bg-gold/20 text-navy")}>{sold === 100 ? s("soldOut") : s("available")}</span>
-              {offer.ribbon?.trim() && <span className="rounded-full bg-[#333333] px-3 py-1 text-xs font-semibold text-white">{offer.ribbon.trim()}</span>}
-              {sold !== null && sold > 0 && sold < 100 && <span className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy/70">{ar ? "تم بيع " : "Sold "}{sold}%</span>}
+          <header className="grid gap-4 border-b border-navy/10 pb-8">
+            <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium">
+              <span className="rounded-full border border-navy/15 px-3 py-1 text-navy/70">{t(`types.${offer.type}`)}</span>
+              <span className={"inline-flex items-center gap-1.5 rounded-full px-3 py-1 " + (sold === 100 ? "bg-red-600 text-white" : "border border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                {sold !== 100 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}{sold === 100 ? s("soldOut") : s("available")}
+              </span>
+              {offer.ribbon?.trim() && <span className="rounded-full bg-navy px-3 py-1 text-white">{offer.ribbon.trim()}</span>}
+              {sold !== null && sold > 0 && sold < 100 && <span className="rounded-full bg-navy/5 px-3 py-1 text-navy/60">{ar ? "تم بيع " : "Sold "}<bdi>{sold}%</bdi></span>}
             </div>
-            <h1 className="font-heading text-3xl font-bold text-navy sm:text-4xl">{title}</h1>
-            <p className="flex items-center gap-1.5 text-navy/60"><IconPin /> {district}{city ? (ar ? "، " : ", ") + city : ""}</p>
+            <h1 className="font-heading text-[34px] font-bold leading-[1.2] tracking-tight text-navy sm:text-5xl">{title}</h1>
+            <p className="flex items-center gap-2 text-[15px] text-navy/55"><IconPin /> {ar ? "حي " + districtKey(district) : district}{city ? (ar ? "، " : ", ") + city : ""}</p>
             {offer.ad_license_no && (
-              <p className="text-xs text-navy/60">
+              <p className="text-xs text-navy/45">
                 {ar ? "رقم ترخيص الإعلان: " : "Advertising licence: "}<bdi dir="ltr">{offer.ad_license_no}</bdi>
                 {offer.ad_license_expiry && <>{ar ? " · ينتهي في " : " · expires "}<bdi dir="ltr">{offer.ad_license_expiry}</bdi></>}
               </p>
             )}
-          </div>
+          </header>
 
-          {/* One compact strip: key facts and project details together. */}
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-navy/10 bg-navy/10 sm:grid-cols-3 lg:grid-cols-4">
+          {/* Key facts and project details: each a quiet tile with its icon, the value large, the label small. */}
+          <dl className="flex flex-wrap gap-3">
             {[
               ...facts.filter((f) => f.label !== (ar ? "الموقع" : "Location")).map((f) => [f.label, f.value, f.icon] as const),
               ...(offer.developer ? [[ar ? "المطوّر" : "Developer", (!ar && offer.developer_en) || offer.developer, null] as const] : []),
               ...(offer.stage ? [[ar ? "حالة المشروع" : "Status", ar ? STAGE[offer.stage].ar : STAGE[offer.stage].en, null] as const] : []),
               ...(offer.handover ? [[ar ? "موعد التسليم" : "Handover", (!ar && offer.handover_en) || offer.handover, null] as const] : []),
             ].map(([label, value, icon]) => (
-              <div key={label} className="bg-white px-4 py-3">
-                <dt className="flex items-center gap-1.5 text-xs text-navy/50">{icon ? <span className="text-gold">{icon}</span> : null}{label}</dt>
-                <dd className="mt-0.5 font-heading font-bold text-navy">{value}</dd>
+              <div key={label} className="flex flex-auto basis-[140px] items-center gap-3 rounded-2xl border border-navy/[0.08] bg-[#f7f7f6] px-4 py-4">
+                {icon && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-navy shadow-[0_2px_8px_-3px_rgba(0,0,0,0.15)]">{icon}</span>}
+                <div className="min-w-0">
+                  <dt className="text-[12px] text-navy/50">{label}</dt>
+                  <dd className={"mt-0.5 font-heading text-[17px] font-bold leading-snug text-navy " + (icon ? "whitespace-nowrap" : "")}>{value}</dd>
+                </div>
               </div>
             ))}
           </dl>
 
-          {!!offer.units?.length && <UnitsTable units={offer.units} enquiry={enquiry} whatsappNumber={whatsappNumber} />}
+          {!!offer.units?.length && (
+            <div className="grid gap-5">
+              <SectionTitle n={nx()}>{ar ? "الوحدات والأسعار" : "Units & prices"}</SectionTitle>
+              <UnitsTable units={offer.units} enquiry={enquiry} whatsappNumber={whatsappNumber} />
+            </div>
+          )}
 
           {description && (
-            <div className="grid gap-2">
-              <h2 className="font-heading text-lg font-bold text-navy">{ar ? "عن العقار" : "About this property"}</h2>
-              {description.length > 320 ? (
-                <details className="group">
-                  <summary className="cursor-pointer list-none leading-loose text-navy/75 [&::-webkit-details-marker]:hidden">
-                    <span className="whitespace-pre-line group-open:hidden">{description.slice(0, 300).trimEnd()}… </span>
-                    <span className="text-sm font-semibold text-navy underline group-open:hidden">{ar ? "المزيد" : "Read more"}</span>
-                  </summary>
-                  <p className="whitespace-pre-line leading-loose text-navy/75">{description}</p>
-                </details>
-              ) : <p className="whitespace-pre-line leading-loose text-navy/75">{description}</p>}
+            <div className="grid gap-5">
+              <SectionTitle n={nx()}>{ar ? "عن المشروع" : "About the project"}</SectionTitle>
+              <div className="rounded-3xl border border-navy/[0.08] bg-[#f7f7f6] p-6 sm:p-8">
+                {description.length > 420 ? (
+                  <details className="group">
+                    <summary className="cursor-pointer list-none text-[15.5px] leading-[2] text-navy/75 [&::-webkit-details-marker]:hidden">
+                      <span className="whitespace-pre-line group-open:hidden">{description.slice(0, 400).trimEnd()}… </span>
+                      <span className="text-sm font-semibold text-navy underline underline-offset-4 group-open:hidden">{ar ? "اقرأ المزيد" : "Read more"}</span>
+                    </summary>
+                    <p className="whitespace-pre-line text-[15.5px] leading-[2] text-navy/75">{description}</p>
+                  </details>
+                ) : <p className="whitespace-pre-line text-[15.5px] leading-[2] text-navy/75">{description}</p>}
+              </div>
             </div>
           )}
 
           {!!offer.features?.length && (
-            <div className="grid gap-4">
-              <SectionTitle>{ar ? "خصائص المشروع" : "Project features"}</SectionTitle>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid gap-5">
+              <SectionTitle n={nx()}>{ar ? "مميزات المشروع" : "Project features"}</SectionTitle>
+              <ul className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
                 {offer.features.map((k, i) => (
-                  <li key={k + i} className="flex flex-col items-center gap-3 rounded-xl bg-navy/[0.04] px-3 py-5 text-center">
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-navy text-white">
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-                    </span>
-                    <span className="text-[13px] font-semibold leading-snug text-navy/70">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</span>
+                  <li key={k + i} className="flex items-start gap-3 border-b border-navy/[0.08] py-3.5">
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-navy text-white"><Check /></span>
+                    <span className="text-[14.5px] leading-relaxed text-navy/80">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</span>
                   </li>
                 ))}
               </ul>
@@ -171,21 +196,21 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
           )}
 
           {warranties.length > 0 && (
-            <div className="grid gap-4">
-              <SectionTitle>{ar ? "الضمانات" : "Warranties"}</SectionTitle>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid gap-5">
+              <SectionTitle n={nx()}>{ar ? "الضمانات" : "Warranties"}</SectionTitle>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {warranties.map((w, i) => (
-                  <li key={i} className="flex flex-col items-center gap-3 rounded-xl bg-navy/[0.04] px-3 py-5 text-center">
+                  <li key={i} className="grid content-start gap-2 rounded-2xl border border-navy/[0.08] bg-white p-5 shadow-[0_12px_30px_-24px_rgba(0,0,0,0.4)]">
                     {w.years ? (
-                      <span className="grid h-11 w-11 place-items-center rounded-full bg-navy leading-none text-white">
-                        <span><b className="block text-[15px]">{w.years}</b><span className="block text-[9px] opacity-80">{ar ? "سنوات" : "years"}</span></span>
+                      <span className="flex items-baseline gap-1.5 text-navy">
+                        <b className="num font-heading text-4xl font-bold leading-none">{w.years}</b>
+                        <span className="text-sm text-navy/50">{ar ? (Number(w.years) > 10 || Number(w.years) <= 2 ? "سنة" : "سنوات") : "years"}</span>
                       </span>
                     ) : (
-                      <span className="grid h-11 w-11 place-items-center rounded-full bg-navy text-white">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-                      </span>
+                      <span className="grid h-9 w-9 place-items-center rounded-full bg-navy text-white"><Check /></span>
                     )}
-                    <span className="text-[13px] font-semibold leading-snug text-navy/70">{w.label}</span>
+                    <span className="h-px w-8 bg-navy/20" />
+                    <span className="text-[13.5px] font-medium leading-snug text-navy/70">{w.label}</span>
                   </li>
                 ))}
               </ul>
@@ -194,25 +219,26 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
         </div>
 
         <aside className="grid content-start gap-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="grid gap-4 rounded-3xl border border-navy/10 bg-white p-6 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.35)]">
-            <div>
-              <span className="text-xs text-navy/50">{offer.price_to ? (ar ? "السعر" : "Price") : t("priceFrom")}</span>
-              <div className="font-heading text-2xl font-bold text-navy">{range(offer.price_from, offer.price_to)} <span className="text-sm font-normal text-navy/50">{s("sar")}</span></div>
+          <div className="relative isolate grid gap-4 overflow-hidden rounded-3xl bg-gradient-to-b from-[#3a3a3a] to-[#1f1f1f] p-6 text-white shadow-[0_30px_60px_-30px_rgba(0,0,0,0.6)]">
+            <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[url(/brand/pattern-footer.png)] bg-[length:90px_90px] opacity-[.06]" />
+            <div className="grid gap-1 border-b border-white/10 pb-4">
+              <span className="text-[12px] tracking-wide text-white/55">{offer.price_to ? (ar ? "السعر" : "Price") : t("priceFrom")}</span>
+              <div className="font-heading text-[26px] font-bold leading-tight [&_span]:!text-white/50">{range(offer.price_from, offer.price_to)} <span className="text-sm font-normal">{s("sar")}</span></div>
             </div>
             <WhatsAppLink whatsappNumber={whatsappNumber} message={waMessage}
-              className="flex items-center justify-center gap-2 rounded-full bg-[#333333] px-5 py-3 font-medium text-white transition-opacity hover:opacity-90">
+              className="flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 font-semibold text-navy transition-opacity hover:opacity-90">
               {s("ctaWa")}
             </WhatsAppLink>
-            <a href="#interest" className="rounded-full border border-navy px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy hover:text-cream">{t("registerInterest")}</a>
+            <a href="#interest" className="rounded-full border border-white/30 px-5 py-3 text-center font-medium text-white transition-colors hover:bg-white hover:text-navy">{t("registerInterest")}</a>
             {/* The map location and the project file are not published: the client asks for the file and the team sends it. */}
             <WhatsAppLink whatsappNumber={whatsappNumber}
               message={(ar ? "السلام عليكم، أرغب بالحصول على ملف العقار: " + offer.title_ar : "Hello, I would like to receive the property file: " + (offer.title_en || offer.title_ar)) + "\nhttps://" + shortOfferUrl(offer.slug)}
-              className="flex items-center justify-center gap-2 rounded-full border border-navy/20 px-5 py-3 text-center font-medium text-navy transition-colors hover:bg-navy/5">
+              className="flex items-center justify-center gap-2 rounded-full px-5 py-2 text-center text-sm font-medium text-white/75 underline-offset-4 transition-colors hover:text-white hover:underline">
               {ar ? "اطلب ملف العقار" : "Request the property file"}
             </WhatsAppLink>
             {offer.video_url && (
-              <div className="grid gap-2 border-t border-navy/10 pt-4 text-sm">
-                <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-navy hover:text-gold">{ar ? "مشاهدة الفيديو" : "Watch video"}</a>
+              <div className="grid gap-2 border-t border-white/10 pt-4 text-sm">
+                <a href={offer.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-white/80 hover:text-white">{ar ? "مشاهدة الفيديو" : "Watch video"}</a>
               </div>
             )}
           </div>
