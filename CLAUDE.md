@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **Escalation: only numbers in «الأرقام».** Client: return no client to the manager unless it is a new number in the «الأرقام» list. `runEscalation` now takes only clients with status «للتواصل» (and still no request or interest) whose call is overdue; any other client (active, with or without a request) stays with the employee. Affects §9.
+
 - **2026-11-17** — **Matching: a property in another part of Riyadh is never suitable.** Client: a client after the north must not get east or west villas. `match1` (`lib/crm/logic.ts`) returns no match when the request names a zone or districts (`zones` + the zones of its districts) and the property's district maps to a different zone (`zoneOf`). A property whose district isn't in the zone list, or a request with no zone/district, is judged as before. Affects §9.
 
 - **2026-11-17** — **Only new numbers go back to the sales manager.** Client: the system returns to the manager only new numbers without a request; a client with a request or an interest stays with the employee even when the call is late. `runEscalation` (`lib/crm/actions.ts`) now skips any client with a request (any stage, closed too) or any interest; the settings card «إعادة العميل إلى مدير المبيعات» says so. Clients already returned before stay where they are. Affects §9.

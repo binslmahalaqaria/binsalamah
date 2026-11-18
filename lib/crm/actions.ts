@@ -591,13 +591,13 @@ export async function sendChat(d: CrmData, text: string, clientId: string | null
  * Escalation: active clients whose next call is overdue by more than
  * `days` go back to the sales manager (logged on the client). Runs in the
  * browser of whichever manager has the CRM open, like the original.
- * Only new numbers go back (client 2026-11-17): a client with any request (open or closed) or any interest
- * stays with their employee however late the call is.
+ * Only new numbers go back (client 2026-11-17/18): a number still in «الأرقام» (status «للتواصل») with no
+ * request and no interest. Every other client stays with their employee however late the call is.
  */
 export async function runEscalation(d: CrmData, mgr: string, days: number, done: Set<string>) {
   const list = d.clients.filter(
     (c) =>
-      (c.status || "نشط") === "نشط" && c.assignee && c.assignee !== mgr && c.nextCall &&
+      c.status === TO_CONTACT && c.assignee && c.assignee !== mgr && c.nextCall &&
       (dayDiff(c.nextCall) ?? 0) < -days && !done.has(c.id) &&
       !d.requests.some((r) => r.clientId === c.id) && !(c.interests || []).length
   );
