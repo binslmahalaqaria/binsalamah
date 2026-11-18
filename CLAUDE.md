@@ -426,6 +426,7 @@ Update this table the moment a new secret, API key, or config value is introduce
   - numbered section headings (01 الوحدات والأسعار، 02 عن المشروع، 03 مميزات المشروع، 04 الضمانات);
   - description in a soft card;
   - features as a checked list instead of boxes;
+  - features as compact chips in a soft card; only the first 9 show, and the rest open under «عرض كل المميزات (+N)» (follow-up the same day: the list was too long);
   - warranties as cards with a large year count;
   - dark price card with the brand pattern.
 
