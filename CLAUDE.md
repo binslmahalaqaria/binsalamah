@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **«⏰ تأجيل» menu no longer cut off.** Client: the postpone options showed clipped and could not all be pressed. `components/crm/Postpone.tsx` now draws the menu on `<body>` (portal) at a fixed spot next to the button. It opens upwards when there is no room below and closes on an outside click. It is not closed on scroll or resize, because a phone's date picker fires those. Affects every home section and task row that uses `PostponeButton`.
+
 - **2026-11-18** — **More elegant opening screen.** Client: «الشاشة… ودي نخليها بشكل أجمل». In `components/site/Splash.tsx`:
   - the earlier look is kept: #3f3f3f panels with the small-logo pattern at .5 (the client asked for it back: «خلها مثل قبل التصميم… خل الشعار الصغار»);
   - the mark fades in from a blur;
