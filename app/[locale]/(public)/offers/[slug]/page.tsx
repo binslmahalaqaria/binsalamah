@@ -184,14 +184,30 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ sl
           {!!offer.features?.length && (
             <div className="grid gap-5">
               <SectionTitle n={nx()}>{ar ? "مميزات المشروع" : "Project features"}</SectionTitle>
-              <ul className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
-                {offer.features.map((k, i) => (
-                  <li key={k + i} className="flex items-start gap-3 border-b border-navy/[0.08] py-3.5">
-                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-navy text-white"><Check /></span>
-                    <span className="text-[14.5px] leading-relaxed text-navy/80">{!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k}</span>
+              {(() => {
+                // Short tidy chips; a long list shows the first 9 and folds the rest under «عرض كل المميزات» (client 2026-11-18: «طويلة وشكلها قبيح»).
+                const items = offer.features!.map((k, i) => (!ar && offer.features_en?.length === offer.features!.length ? offer.features_en[i] : k));
+                const chip = (k: string, i: number) => (
+                  <li key={k + i} className="inline-flex items-center gap-2 rounded-full border border-navy/[0.1] bg-white py-2 ps-2 pe-4 text-[13.5px] font-medium leading-snug text-navy/80 shadow-[0_6px_16px_-14px_rgba(0,0,0,0.5)]">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-navy text-white"><Check /></span>{k}
                   </li>
-                ))}
-              </ul>
+                );
+                const first = items.slice(0, 9), rest = items.slice(9);
+                return (
+                  <div className="rounded-3xl border border-navy/[0.08] bg-[#f7f7f6] p-5 sm:p-6">
+                    <ul className="flex flex-wrap gap-2.5">{first.map(chip)}</ul>
+                    {rest.length > 0 && (
+                      <details className="group mt-2.5">
+                        <summary className="cursor-pointer list-none text-sm font-semibold text-navy underline underline-offset-4 [&::-webkit-details-marker]:hidden">
+                          <span className="group-open:hidden">{ar ? `عرض كل المميزات (+${rest.length})` : `Show all features (+${rest.length})`}</span>
+                          <span className="hidden group-open:inline">{ar ? "إخفاء" : "Show less"}</span>
+                        </summary>
+                        <ul className="mt-2.5 flex flex-wrap gap-2.5">{rest.map((k, i) => chip(k, i + 9))}</ul>
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
