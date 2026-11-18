@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **«تم إرسال عروض» window takes unlisted properties.** Client asked for the same unlisted-property box as in «تحديث». `OffersSentModal` (`components/crm/modals.tsx`) has «+ عقار غير مضاف في النظام» (name plus short details). Each one is saved as a sent offer with `recordUnlisted(…, "أُرسل")`, and the request still moves to «تم إرسال عروض». Affects the request status flow.
+
 - **2026-11-18** — **Property picker with search, sorted #1 → last.** Client: property numbers should come in order when registering an interest or anything else, with a search.
   - New `PropPicker` in `components/crm/ui.tsx`. It opens inline, so it is never clipped. It sorts by `ref` ascending, and the search matches the number («14»/«#14»), the title or the district. Enter picks the first result.
   - It replaces the property `<Select>`s in:

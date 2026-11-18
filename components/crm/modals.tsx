@@ -429,6 +429,8 @@ function OffersSentModal({ reqId }: { reqId: string }) {
   const r = data.requests.find((x) => x.id === reqId);
   const [q, setQ] = useState("");
   const [pick, setPick] = useState<string[]>([]);
+  // Properties not in the system, same block as «تحديث» (client 2026-11-18).
+  const [extras, setExtras] = useState<{ title: string; details: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const matched = useMemo(() => (r ? matchesForReq(data, r).map((x) => x.p.id) : []), [data, r]);
   if (!r) return null;
@@ -444,9 +446,12 @@ function OffersSentModal({ reqId }: { reqId: string }) {
         <button type="button" className="crm-btn primary" disabled={busy} onClick={async () => {
           setBusy(true);
           try {
+            const typed = extras.filter((x) => x.title.trim());
             for (const id of pick) await reqSent(data, r.id, id);
+            for (const x of typed) await recordUnlisted(data, r, x.title.trim(), x.details.trim() || null, "أُرسل");
             if (!pick.length) await setReqStage(r.id, "أرسلنا خيارات", data);
-            toast("انتقل الطلب إلى: تم إرسال عروض" + (pick.length ? " (" + pick.length + " عرض)" : ""));
+            const n = pick.length + typed.length;
+            toast("انتقل الطلب إلى: تم إرسال عروض" + (n ? " (" + n + " عرض)" : ""));
             closeModal();
           } catch { toast("تعذّر الحفظ، يرجى المحاولة مجدداً"); setBusy(false); }
         }}>حفظ</button>
@@ -465,6 +470,14 @@ function OffersSentModal({ reqId }: { reqId: string }) {
         ))}
         {!list.length && <p className="m-0 py-4 text-center text-[var(--crm-ink-3)]">لا توجد عقارات.</p>}
       </div>
+      {extras.map((x, i) => (
+        <div key={i} className="grid gap-2 rounded-xl border border-[var(--crm-line)] p-2.5">
+          <div className="flex items-center justify-between text-[13px]"><b>عقار غير مضاف في النظام</b><button type="button" className="crm-btn ghost sm" onClick={() => setExtras((xs) => xs.filter((_, n) => n !== i))}>إزالة</button></div>
+          <input value={x.title} placeholder="اسم العقار أو وصفه، مثال: فيلا حي الملقا" aria-label="اسم العقار" onChange={(e) => setExtras((xs) => xs.map((y, n) => (n === i ? { ...y, title: e.target.value } : y)))} />
+          <input value={x.details} placeholder="تفاصيل بسيطة: السعر، المساحة" aria-label="تفاصيل العقار" onChange={(e) => setExtras((xs) => xs.map((y, n) => (n === i ? { ...y, details: e.target.value } : y)))} />
+        </div>
+      ))}
+      <button type="button" className="crm-btn sm justify-self-start" onClick={() => setExtras((xs) => [...xs, { title: "", details: "" }])}>+ عقار غير مضاف في النظام</button>
     </ModalFrame>
   );
 }
