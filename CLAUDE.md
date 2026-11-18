@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **A client with an open interest is not a «new call».** Client: a client with an interest and a call date showed in «مكالمات العملاء الجدد». Home section 1 (`app/[locale]/admin/page.tsx`) now leaves out clients with any open interest (`isOpenInterest`); they are followed up in «متابعة الاهتمامات». Affects §9.
+
 - **2026-11-18** — **حي الرحاب added to north Riyadh.** Client: `RIYADH_ZONES` (`lib/districts.ts`) north list gains «الرحاب», so it shows in the district pickers and filters and counts as north in matching. Affects §8, §9.
 
 - **2026-11-18** — **حي الصفا is in east Riyadh.** Client correction: `RIYADH_ZONES` (`lib/districts.ts`) moves «الصفا» from the north list to the east list. Affects zone filters on the site and in requests, the request form's district picker, and matching by zone. Requests that already saved «شمال الرياض» as their zone keep it. Affects §8, §9.

@@ -26,7 +26,7 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
-import { InterestList, ReqInterestList, dueInterests, dueReqInterests } from "@/components/crm/Interests";
+import { InterestList, ReqInterestList, dueInterests, dueReqInterests, isOpenInterest } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -96,8 +96,9 @@ export default function HomeDashboard() {
   const due = (c: Client) => !!c.nextCall && c.nextCall <= t;
   const tomorrow = addDays(1);
   // 1) New customers to call: no open request yet — call due today/overdue, or a new number not tried today.
+  // A client with an open interest is followed up in «متابعة الاهتمامات», not here (client 2026-11-18).
   const newCalls = mine.filter((c) =>
-    !open(c).length && ((isActive(c) && due(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
+    !open(c).length && !(c.interests || []).some(isOpenInterest) && ((isActive(c) && due(c)) || (c.status === TO_CONTACT && (!c.nextCall || due(c)) && !calledToday(c)))).sort(byPrio);
   // 2) Follow-ups: customers with a request whose follow-up is due (negotiations have their own section).
   const negSt = ["تفاوض", "عربون"];
   // Each customer in one section only: offers, viewings and negotiations have their own sections below.
