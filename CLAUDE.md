@@ -420,6 +420,12 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **Ready WhatsApp message for a sent-offer follow-up.** Client: WhatsApp should open with the message ready, in the same style as the interest follow-up.
+  - New `offerMessage(d, c, titles)` in `components/crm/Interests.tsx`. It uses the same greeting and signature as `interestMessage` and asks the client's impression of the offer: suitable and book a visit, or look for another property.
+  - Used by the WhatsApp button on `ProposalRow` (statuses أُرسل / بانتظار الرد / مهتم) and on the «عروض بانتظار رد العميل» request rows on the home page (`reqRow` now takes a `waText` argument).
+
+  Affects home section 7, the offers list and the client file.
+
 - **2026-11-18** — **«تم إرسال عروض» window takes unlisted properties.** Client asked for the same unlisted-property box as in «تحديث». `OffersSentModal` (`components/crm/modals.tsx`) has «+ عقار غير مضاف في النظام» (name plus short details). Each one is saved as a sent offer with `recordUnlisted(…, "أُرسل")`, and the request still moves to «تم إرسال عروض». Affects the request status flow.
 
 - **2026-11-18** — **Property picker with search, sorted #1 → last.** Client: property numbers should come in order when registering an interest or anything else, with a search.

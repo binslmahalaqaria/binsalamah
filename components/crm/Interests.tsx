@@ -34,7 +34,23 @@ export function interestMessage(d: CrmData, c: Client, xs: Interest[]) {
   ].join("\n");
 }
 
-export const isOpenInterest = (x: Interest) => INT_OPEN.includes(x.status);
+/** Follow-up on a sent offer (client 2026-11-18): same wording and signature as `interestMessage`, asking for their impression. */
+export function offerMessage(d: CrmData, c: Client, titles: string[]) {
+  const list = titles.length > 1 ? titles.slice(0, -1).join("، ") + " و" + titles[titles.length - 1] : titles[0] || "العقار";
+  const nameOnly = /^[\d\s+()-]+$/.test((c.name || "").trim()) || !c.name?.trim();
+  const me = (nameOf(d, d.uid) || "").trim().split(/\s+/)[0];
+  return [
+    "السلام عليكم ورحمة الله، حيّاك الله" + (nameOnly ? "" : " أستاذ " + c.name.trim()) + " 🌷",
+    "",
+    (me ? "معك " + me + " من" : "معك فريق") + " بن سلمه العقارية.",
+    (titles.length ? "سبق وأرسلنا لك عرض " + list + "، وودنا نعرف انطباعك عنه" : "سبق وأرسلنا لك عروض عقارية، وودنا نعرف انطباعك عنها") +
+      ": هل ناسبك وحاب ننسّق لك موعد زيارة؟ أو حاب نشوف لك عقار آخر اذا العرض غير مناسب معك؟",
+    "",
+    "حاضرين لخدمتك طال عمرك.",
+  ].join("\n");
+}
+
+export const isOpenInterest =(x: Interest) => INT_OPEN.includes(x.status);
 export type InterestItem = { c: Client; x: Interest };
 
 /** Every interest of the clients this person may see; `work` keeps to their own queue, like the home page. */

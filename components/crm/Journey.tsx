@@ -13,6 +13,7 @@ import type { Proposal, Viewing } from "@/lib/crm/types";
 import { ageDays, fmtVisit, money, relDay, today } from "@/lib/crm/util";
 import { ContactIcons, Kebab, PhoneTag, Pill } from "./ui";
 import { PostponeButton } from "./Postpone";
+import { offerMessage } from "./Interests";
 
 /** `postpone` (home «عروض بانتظار رد العميل», client 2026-11-15): shows the client's follow-up date and «⏰ تأجيل». */
 export function ProposalRow({ p, showClient = true, postpone: withPostpone = false }: { p: Proposal; showClient?: boolean; postpone?: boolean }) {
@@ -55,7 +56,8 @@ export function ProposalRow({ p, showClient = true, postpone: withPostpone = fal
         </div>
       ) : (
       <div className="flex flex-wrap items-center gap-1.5">
-        {showClient && <ContactIcons phone={c?.phone} />}
+        {/* WhatsApp opens with the offer follow-up message ready (client 2026-11-18). */}
+        {showClient && <ContactIcons phone={c?.phone} text={c && ["أُرسل", "بانتظار الرد", "مهتم"].includes(p.status) ? offerMessage(data, c, [pr?.title || p.propertyTitle || "العقار"]) : undefined} />}
         {waiting && <>
           <button type="button" className="crm-btn sm primary" disabled={busy} onClick={() => set("مهتم")}>مهتم</button>
           <button type="button" className="crm-btn sm danger" disabled={busy} onClick={() => { const fb = window.prompt("سبب عدم مناسبته (اختياري)") ?? undefined; if (fb !== undefined) set("غير مناسب", fb); }}>غير مناسب</button>

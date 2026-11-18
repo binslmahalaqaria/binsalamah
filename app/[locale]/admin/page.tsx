@@ -26,7 +26,7 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
-import { InterestList, ReqInterestList, dueInterests, dueReqInterests, isOpenInterest } from "@/components/crm/Interests";
+import { InterestList, ReqInterestList, dueInterests, dueReqInterests, isOpenInterest, offerMessage } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -229,7 +229,8 @@ export default function HomeDashboard() {
   };
 
   // `noPostpone`: new / searching requests are a work queue, not a dated follow-up, so no «⏰ تأجيل» there.
-  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false, noPostpone = false) => (
+  // `waText`: the WhatsApp button opens with this message ready (e.g. the sent-offer follow-up).
+  const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false, noPostpone = false, waText?: string) => (
     <div key={r.id} className="crm-row grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 cursor-pointer" onClick={() => openClient(c.id, r.id)}>
         <div className="flex flex-wrap items-center gap-1.5"><b className="font-heading">{c.name}</b><PhoneTag phone={c.phone} name={c.name} /><TempPill t={c.temp} /><Pill tone={REQ_TONE[r.status || "جديد"]}>{lbl(r.status || "جديد")}</Pill></div>
@@ -246,7 +247,7 @@ export default function HomeDashboard() {
           {team && r.assignee ? " · " + nameOf(data, r.assignee) : ""}
         </div>
       </div>
-      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} />{action}{!noPostpone && <PostponeButton onPick={(day) => (day ? postpone(data, c.id, day) : clearNextCall(data, c))} />}</div>
+      <div className="flex items-center gap-1.5"><ContactIcons phone={c.phone} text={waText} />{action}{!noPostpone && <PostponeButton onPick={(day) => (day ? postpone(data, c.id, day) : clearNextCall(data, c))} />}</div>
     </div>
   );
 
@@ -396,7 +397,8 @@ export default function HomeDashboard() {
 
       <Section n={7} title="عروض بانتظار رد العميل" count={props.length + offers.length} hint="كل عقار أرسلته وما سجّلت رأي العميل فيه — اللي حان موعد متابعتهم أولاً. سجّل: مهتم، غير مناسب، أو حدد زيارة">
         {props.map((p) => <ProposalRow key={p.id} p={p} postpone />)}
-        {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>))}
+        {offers.map((x) => reqRow(x, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: x.c.id, reqId: x.r.id })}>تسجيل رد العميل</button>, false, false,
+          offerMessage(data, x.c, (x.r.sent || []).map((id) => propById(data, id)?.title).filter(Boolean) as string[])))}
       </Section>
 
       <Section n={8} title="مواعيد الزيارات" count={views.length + viewings.length} hint="زيارات اليوم وغداً — أكّد الموعد مع العميل">
