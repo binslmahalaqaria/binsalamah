@@ -17,7 +17,7 @@ import { toggleTask, assignClient, interestsToOffers, createClient, setPropRef, 
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
-  ConfirmButton, DistrictPicker, Field, RadioChips, ModalFrame, More, MultiCheck, Pill, Sec, Select,
+  ConfirmButton, DistrictPicker, Field, RadioChips, ModalFrame, More, MultiCheck, Pill, PropPicker, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
@@ -425,7 +425,7 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
         <Field label="المرحلة"><Select value={f.status} onChange={(v) => set("status", v)} options={REQ.filter((v) => can(data, "recordDeals") || !SOLD_ST.includes(v) || v === rec?.status).map((v) => [v, lbl(v)] as [string, string])} /></Field>
         <Field label="المسؤول"><MemberSelect value={f.assignee} onChange={(v) => set("assignee", v)} lock={!data.isMgr} auto={!rec && data.isMgr} owner={ownerNow} /></Field>
         <More title="بيانات البيع (عند العربون أو البيع)" open={!!f.propertyId}>
-          <Field label="العقار"><Select value={f.propertyId} onChange={(v) => set("propertyId", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
+          <Field label="العقار"><PropPicker props={data.props} value={f.propertyId} onChange={(v) => set("propertyId", v)} /></Field>
           <Field label="الوحدة">
             {us.length ? <Select value={f.unit} onChange={(v) => set("unit", v)} options={us.map((u) => u.name)} blank="—" /> : <input value={f.unit} onChange={(e) => set("unit", e.target.value)} />}
           </Field>
@@ -832,7 +832,7 @@ export function TaskForm({ id, preset }: { id?: string; preset?: Partial<Task> }
         <Field label="التاريخ"><input type="date" value={f.due} onChange={(e) => set("due", e.target.value)} /></Field>
         <Field label="الأولوية"><Select value={f.priority} onChange={(v) => set("priority", v)} options={PRIO} /></Field>
         <Field label="العميل (اختياري)"><Select value={f.clientId} onChange={(v) => set("clientId", v)} options={visibleClients(data).map((c) => [c.id, c.name] as [string, string])} blank="—" /></Field>
-        <Field label="العقار (اختياري)"><Select value={f.propertyId} onChange={(v) => set("propertyId", v)} options={data.props.map((p) => [p.id, p.title] as [string, string])} blank="—" /></Field>
+        <Field label="العقار (اختياري)"><PropPicker props={data.props} value={f.propertyId} onChange={(v) => set("propertyId", v)} /></Field>
         <Field label="تفاصيل" full><textarea rows={3} value={f.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
       </form>
     </ModalFrame>

@@ -420,6 +420,15 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **Property picker with search, sorted #1 → last.** Client: property numbers should come in order when registering an interest or anything else, with a search.
+  - New `PropPicker` in `components/crm/ui.tsx`. It opens inline, so it is never clipped. It sorts by `ref` ascending, and the search matches the number («14»/«#14»), the title or the district. Enter picks the first result.
+  - It replaces the property `<Select>`s in:
+    - the interest form (`Interests.tsx`);
+    - the update modal and the visit modal, which keeps its unlisted entries and the «✓» mark (`modals.tsx`);
+    - the two `propertyId` fields in `forms.tsx`.
+
+  Affects every place a property is chosen.
+
 - **2026-11-18** — **«⏰ تأجيل» menu no longer cut off.** Client: the postpone options showed clipped and could not all be pressed. `components/crm/Postpone.tsx` now draws the menu on `<body>` (portal) at a fixed spot next to the button. It opens upwards when there is no room below and closes on an outside click. It is not closed on scroll or resize, because a phone's date picker fires those. Affects every home section and task row that uses `PostponeButton`.
 
 - **2026-11-18** — **More elegant opening screen.** Client: «الشاشة… ودي نخليها بشكل أجمل». In `components/site/Splash.tsx`:

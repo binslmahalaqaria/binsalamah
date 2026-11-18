@@ -11,7 +11,7 @@ import { clientById, nameOf, OPEN_REQ, propById, unitsOf, visibleClients, workCl
 import { addInterests, postponeInterest, quickInterestVisit, setProposalFollowUp, interestsToOffers, createClient, followInterest, isPhoneTaken, removeInterest, type InterestItem as NewInterest, type InterestResult } from "@/lib/crm/actions";
 import type { Client, Interest, Proposal } from "@/lib/crm/types";
 import { addDays, ageDays, fmtStamp, fmtVisit, nowStamp, relDay, splitList, today } from "@/lib/crm/util";
-import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, PhoneTag, Pill, RadioChips, Select } from "./ui";
+import { ConfirmButton, ContactIcons, Field, Kebab, ModalFrame, PhoneTag, Pill, PropPicker, RadioChips, Select } from "./ui";
 import { TempPill } from "./bits";
 import { DupHint, dupMsg, findDup, takenMsg } from "./forms";
 import { PostponeButton } from "./Postpone";
@@ -293,8 +293,8 @@ export function InterestForm({ clientId: c0, propertyId: p0, newName, newPhone }
           </div>
         )}
         <Field label="العقارات التي استفسر عنها *" hint="تقدر تختار أكثر من عقار.">
-          <Select value="" onChange={(v) => { if (v) setPicked((xs) => (xs.includes(v) ? xs : [...xs, v])); setUnit(""); }} blank="+ أضف عقار من النظام"
-            options={data.props.filter((p) => !picked.includes(p.id)).map((p) => [p.id, (p.ref ? "#" + p.ref + " " : "") + p.title] as [string, string])} />
+          <PropPicker props={data.props} value="" exclude={picked} blank="+ أضف عقار من النظام"
+            onChange={(v) => { if (v) setPicked((xs) => (xs.includes(v) ? xs : [...xs, v])); setUnit(""); }} />
         </Field>
         {picked.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

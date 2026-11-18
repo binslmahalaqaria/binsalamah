@@ -14,7 +14,7 @@ import {
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
-import { ConfirmButton, Field, ModalFrame, PhoneTag, Pill, RadioChips, Select } from "./ui";
+import { ConfirmButton, Field, ModalFrame, PhoneTag, Pill, PropPicker, RadioChips, Select } from "./ui";
 import { DemandChips } from "./bits";
 import { ClientForm, PropertyForm, RequestForm, TaskForm } from "./forms";
 import { SendZipToClient } from "./SendZipToClient";
@@ -144,8 +144,8 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
       <RadioChips options={UPD.filter((x) => (!DEAL_UPD[x.k] || can(data, "recordDeals")) && !(hasReq && x.k === "سجّل اهتمام")).map((x) => [x.k, lbl(x.k)] as [string, string])} value={type} onChange={(v) => { setType(v); if (!picked) setNext(defNext(v)); }} />
       <div className="mt-3 grid gap-3">
         <Field label="العقارات (اختياري)" hint="تقدر تختار أكثر من عقار.">
-          <Select value="" onChange={(v) => v && setProps((xs) => (xs.includes(v) ? xs : [...xs, v]))} blank="+ أضف عقار"
-            options={data.props.filter((p) => !props.includes(p.id)).map((p) => [p.id, (p.ref ? "#" + p.ref + " " : "") + p.title] as [string, string])} />
+          <PropPicker props={data.props} value="" exclude={props} blank="+ أضف عقار"
+            onChange={(v) => v && setProps((xs) => (xs.includes(v) ? xs : [...xs, v]))} />
           {props.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {props.map((id) => <button key={id} type="button" className="crm-btn sm" title="إزالة" onClick={() => setProps((xs) => xs.filter((x) => x !== id))}>{data.props.find((p) => p.id === id)?.title || "عقار"} ✕</button>)}
@@ -217,10 +217,9 @@ function VisitModal({ reqId, propertyId, propertyTitle, viewingId }: { reqId: st
         <Field label="التاريخ والوقت"><input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
         {!v && (
           <Field label="العقار">
-            <Select value={pid} onChange={setPid} blank="—" options={[
-              ...unlisted.map((t) => ["t:" + t, t + " (غير مضاف)"] as [string, string]),
-              ...data.props.map((p) => [p.id, p.title + (ms.includes(p) ? " ✓" : "")] as [string, string]),
-            ]} />
+            <PropPicker props={data.props} value={pid} onChange={setPid}
+              extra={unlisted.map((t) => ["t:" + t, t + " (غير مضاف)"] as [string, string])}
+              mark={(id) => (ms.some((p) => p.id === id) ? " ✓" : "")} />
           </Field>
         )}
         <Field label={v ? "سبب التأجيل أو الإلغاء (اختياري)" : "ملاحظة (اختياري)"}><input value={note} placeholder={v ? "مثال: العميل مسافر" : "مثال: سيحضر مع زوجته"} onChange={(e) => setNote(e.target.value)} /></Field>

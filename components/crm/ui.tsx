@@ -325,6 +325,56 @@ export function SubTabs({ tabs }: { tabs: { href: string; label: string; badge?:
   );
 }
 
+/**
+ * Property picker with search (client 2026-11-18): properties listed by number from #1 to the last, and a search box
+ * that matches the number («14» or «#14»), the title or the district. Opens inline (not a floating menu) so it is
+ * never cut off inside a modal. `extra` options (e.g. unlisted properties) come first; `mark` adds a suffix like « ✓».
+ */
+export function PropPicker({ props, value, onChange, blank = "—", exclude = [], extra = [], mark }: {
+  props: { id: string; ref?: number | null; title: string; district?: string | null }[];
+  value: string | null | undefined; onChange: (v: string) => void; blank?: string; exclude?: string[];
+  extra?: [string, string][]; mark?: (id: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const label = (p: { id: string; ref?: number | null; title: string }) => (p.ref ? "#" + p.ref + " " : "") + p.title + (mark ? mark(p.id) : "");
+  const sorted = props.filter((p) => !exclude.includes(p.id)).sort((a, b) => (a.ref || 1e9) - (b.ref || 1e9) || a.title.localeCompare(b.title, "ar"));
+  const s = q.trim().replace(/^#/, "").toLowerCase();
+  const list = !s ? sorted : sorted.filter((p) => String(p.ref || "") === s || String(p.ref || "").startsWith(s) || p.title.toLowerCase().includes(s) || (p.district || "").includes(s));
+  const ex = !s ? extra : extra.filter(([, l]) => l.toLowerCase().includes(s));
+  const cur = value ? (extra.find(([v]) => v === value)?.[1] ?? (() => { const p = props.find((x) => x.id === value); return p ? label(p) : ""; })()) : "";
+  const choose = (v: string) => { onChange(v); setOpen(false); setQ(""); };
+  return (
+    <div className="grid gap-1.5">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 rounded-[10px] border border-[var(--crm-line)] bg-white px-3 py-2 text-start">
+        <span className={"min-w-0 flex-1 truncate " + (cur ? "" : "text-[var(--crm-ink-3)]")}>{cur || blank}</span>
+        <span aria-hidden className="text-[var(--crm-ink-3)]">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div className="grid gap-1.5 rounded-xl border border-[var(--crm-line)] bg-white p-2 shadow-md">
+          <input autoFocus value={q} placeholder="ابحث برقم العقار أو اسمه أو الحي…" onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const f = ex[0]?.[0] ?? list[0]?.id; if (f) choose(f); } if (e.key === "Escape") setOpen(false); }} />
+          <div className="grid max-h-64 overflow-y-auto">
+            {value && <button type="button" className="rounded-lg px-2.5 py-2 text-start text-[13px] text-[var(--crm-ink-3)] hover:bg-[var(--crm-surface-2)]" onClick={() => choose("")}>{blank === "—" ? "بدون عقار" : "إلغاء الاختيار"}</button>}
+            {ex.map(([v, l]) => (
+              <button key={v} type="button" className="rounded-lg px-2.5 py-2 text-start hover:bg-[var(--crm-surface-2)]" onClick={() => choose(v)}>{l}</button>
+            ))}
+            {list.map((p) => (
+              <button key={p.id} type="button" onClick={() => choose(p.id)}
+                className={"flex items-baseline gap-2 rounded-lg px-2.5 py-2 text-start hover:bg-[var(--crm-surface-2)] " + (p.id === value ? "bg-[var(--crm-gold-soft)] font-semibold" : "")}>
+                <b className="num w-9 shrink-0 text-[var(--crm-ink-3)]">{p.ref ? "#" + p.ref : ""}</b>
+                <span className="min-w-0 flex-1">{p.title}{mark ? mark(p.id) : ""}</span>
+              </button>
+            ))}
+            {!list.length && !ex.length && <p className="m-0 px-2.5 py-2 text-[13px] text-[var(--crm-ink-3)]">ما فيه عقار بهذا البحث</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PageHeader({ title, sub, action }: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
   return (
     <header className="relative mb-6 flex flex-wrap items-end gap-3 pb-4">
