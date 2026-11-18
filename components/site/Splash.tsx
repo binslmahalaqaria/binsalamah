@@ -21,12 +21,11 @@ export async function Splash() {
       <style>{`
         .bs-splash{position:fixed;inset:0;z-index:2000;overflow:hidden;cursor:pointer;animation:bs-gone 0s linear ${END + 1.1}s forwards}
         .bs-splash.bs-skip{animation:bs-fade .35s ease forwards}
-        .bs-pane{position:absolute;top:0;bottom:0;width:50.5%;overflow:hidden;background:linear-gradient(180deg,#363636 0%,#262626 55%,#1c1c1c 100%)}
-        .bs-pane:before{content:"";position:absolute;inset:-50%;transform:rotate(-18deg);opacity:.07;background:url(/brand/pattern-footer.png) 0 0/110px 110px}
-        .bs-pane.a{left:0;box-shadow:inset -1px 0 0 rgba(255,255,255,.08);animation:bs-left 1.2s cubic-bezier(.76,0,.24,1) ${END}s forwards}
-        .bs-pane.b{right:0;box-shadow:inset 1px 0 0 rgba(255,255,255,.08);animation:bs-right 1.2s cubic-bezier(.76,0,.24,1) ${END}s forwards}
+        .bs-pane{position:absolute;top:0;bottom:0;width:50.5%;overflow:hidden;background:#3f3f3f}
+        .bs-pane:before{content:"";position:absolute;inset:-50%;transform:rotate(-18deg);opacity:.5;background:url(/brand/pattern-footer.png) 0 0/96px 96px}
+        .bs-pane.a{left:0;animation:bs-left 1.2s cubic-bezier(.76,0,.24,1) ${END}s forwards}
+        .bs-pane.b{right:0;animation:bs-right 1.2s cubic-bezier(.76,0,.24,1) ${END}s forwards}
         .bs-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;color:#fff;text-align:center;
-          background:radial-gradient(ellipse 55% 45% at 50% 48%,rgba(255,255,255,.09),transparent 70%);
           animation:bs-fade .45s ease ${END - 0.3}s forwards}
         .bs-mark{width:clamp(60px,9vw,84px);height:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.45));animation:bs-in 1.1s cubic-bezier(.2,.7,.2,1) .15s both}
         .bs-word{font-family:var(--font-crm-body),Tahoma,sans-serif;font-weight:600;font-size:clamp(2.6rem,8vw,5.2rem);line-height:1.3;letter-spacing:-.01em;

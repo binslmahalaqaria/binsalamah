@@ -421,8 +421,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
 - **2026-11-18** — **More elegant opening screen.** Client: «الشاشة… ودي نخليها بشكل أجمل». In `components/site/Splash.tsx`:
-  - darker gradient panels with a faint pattern;
-  - a soft light behind the mark, which fades in from a blur;
+  - the earlier look is kept: #3f3f3f panels with the small-logo pattern at .5 (the client asked for it back: «خلها مثل قبل التصميم… خل الشعار الصغار»);
+  - the mark fades in from a blur;
   - «بن سلمه يدلك» is revealed right-to-left with a silver sheen;
   - a hairline and «BIN SLMAH REAL ESTATE» in spaced capitals;
   - the panels part at 3.3 s (was 2.9 s).
