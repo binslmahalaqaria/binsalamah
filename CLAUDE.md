@@ -420,6 +420,15 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **More elegant opening screen.** Client: «الشاشة… ودي نخليها بشكل أجمل». In `components/site/Splash.tsx`:
+  - darker gradient panels with a faint pattern;
+  - a soft light behind the mark, which fades in from a blur;
+  - «بن سلمه يدلك» is revealed right-to-left with a silver sheen;
+  - a hairline and «BIN SLMAH REAL ESTATE» in spaced capitals;
+  - the panels part at 3.3 s (was 2.9 s).
+
+  The once-per-session, home-only and tap-to-skip rules are unchanged. Affects the home page.
+
 - **2026-11-18** — **Project page made more polished.** Client: «مب فخم… ودي الخطوط و طريقة القسم تصير فخمة و مرتبه». `app/[locale]/(public)/offers/[slug]/page.tsx`:
   - larger title block with refined tags;
   - facts as tiles with icons;
