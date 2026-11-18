@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **حي الرحاب added to north Riyadh.** Client: `RIYADH_ZONES` (`lib/districts.ts`) north list gains «الرحاب», so it shows in the district pickers and filters and counts as north in matching. Affects §8, §9.
+
 - **2026-11-18** — **حي الصفا is in east Riyadh.** Client correction: `RIYADH_ZONES` (`lib/districts.ts`) moves «الصفا» from the north list to the east list. Affects zone filters on the site and in requests, the request form's district picker, and matching by zone. Requests that already saved «شمال الرياض» as their zone keep it. Affects §8, §9.
 
 - **2026-11-18** — **Escalation: only numbers in «الأرقام».** Client: return no client to the manager unless it is a new number in the «الأرقام» list. `runEscalation` now takes only clients with status «للتواصل» (and still no request or interest) whose call is overdue; any other client (active, with or without a request) stays with the employee. Affects §9.
