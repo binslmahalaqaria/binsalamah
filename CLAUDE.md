@@ -423,8 +423,7 @@ Update this table the moment a new secret, API key, or config value is introduce
 - **2026-11-18** — **More elegant opening screen.** Client: «الشاشة… ودي نخليها بشكل أجمل». In `components/site/Splash.tsx`:
   - the earlier look is kept: #3f3f3f panels with the small-logo pattern at .5 (the client asked for it back: «خلها مثل قبل التصميم… خل الشعار الصغار»);
   - the mark fades in from a blur;
-  - «بن سلمه يدلك» is revealed right-to-left with a silver sheen;
-  - a hairline and «BIN SLMAH REAL ESTATE» in spaced capitals;
+  - «بن سلمه يدلك» rises in, plain white. The sheen, the hairline and the English line were tried and removed the same day (client: «اللمعة والكلام اللي بالإنجليزي والخط» were not nice);
   - the panels part at 3.3 s (was 2.9 s).
 
   The once-per-session, home-only and tap-to-skip rules are unchanged. Affects the home page.

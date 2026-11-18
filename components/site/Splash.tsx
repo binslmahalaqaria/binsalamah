@@ -28,23 +28,17 @@ export async function Splash() {
         .bs-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;color:#fff;text-align:center;
           animation:bs-fade .45s ease ${END - 0.3}s forwards}
         .bs-mark{width:clamp(60px,9vw,84px);height:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.45));animation:bs-in 1.1s cubic-bezier(.2,.7,.2,1) .15s both}
-        .bs-word{font-family:var(--font-crm-body),Tahoma,sans-serif;font-weight:600;font-size:clamp(2.6rem,8vw,5.2rem);line-height:1.3;letter-spacing:-.01em;
-          background:linear-gradient(110deg,#fff 35%,#bdbdbd 50%,#fff 65%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
-          animation:bs-reveal 1.1s cubic-bezier(.65,0,.35,1) .65s both,bs-sheen 1.6s ease 1.5s both}
-        .bs-line{display:block;height:1px;width:clamp(90px,14vw,150px);background:linear-gradient(90deg,transparent,#cfcfcf,transparent);transform-origin:center;animation:bs-grow .9s cubic-bezier(.2,.7,.2,1) 1.35s both}
-        .bs-tag{font-family:var(--font-crm-body),Tahoma,sans-serif;font-size:clamp(.7rem,1.6vw,.85rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-inline-start:.42em;animation:bs-rise .9s cubic-bezier(.2,.7,.2,1) 1.6s both}
-        @keyframes bs-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+        .bs-word{font-family:var(--font-crm-body),Tahoma,sans-serif;font-weight:600;font-size:clamp(2.6rem,8vw,5.2rem);line-height:1.3;
+          animation:bs-rise 1s cubic-bezier(.2,.7,.2,1) .65s both}
+        @keyframes bs-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
         @keyframes bs-in{from{opacity:0;transform:scale(.82);filter:blur(8px)}to{opacity:1;transform:none;filter:drop-shadow(0 10px 30px rgba(0,0,0,.45))}}
-        @keyframes bs-reveal{from{clip-path:inset(0 0 0 100%);transform:translateY(6px)}to{clip-path:inset(0 0 0 0);transform:none}}
-        @keyframes bs-sheen{from{background-position:100% 0}to{background-position:0 0}}
-        @keyframes bs-grow{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
         @keyframes bs-left{to{transform:translateX(-101%)}}
         @keyframes bs-right{to{transform:translateX(101%)}}
         @keyframes bs-fade{to{opacity:0;visibility:hidden}}
         @keyframes bs-gone{to{visibility:hidden}}
         @media (prefers-reduced-motion:reduce){
           .bs-splash{animation:bs-fade .4s ease 1.5s forwards}
-          .bs-pane.a,.bs-pane.b,.bs-center,.bs-mark,.bs-word,.bs-line,.bs-tag{animation:none}
+          .bs-pane.a,.bs-pane.b,.bs-center,.bs-mark,.bs-word{animation:none}
         }
       `}</style>
       <div className="bs-splash" aria-hidden>
@@ -53,10 +47,7 @@ export async function Splash() {
         <div className="bs-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="bs-mark" src="/brand/logo-mark-hd-white.png" alt="" />
-          <div className="bs-word">{t("introLead")}</div>
-          <span className="bs-line" />
-          <span className="bs-tag" dir="ltr">Bin Slmah Real Estate</span>
-        </div>
+          <div className="bs-word">{t("introLead")}</div>        </div>
       </div>
       <script
         dangerouslySetInnerHTML={{
