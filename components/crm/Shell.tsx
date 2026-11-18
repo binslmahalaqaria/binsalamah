@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useCrm } from "@/lib/crm/store";
@@ -173,6 +173,23 @@ export function CrmShell({ children }: { children: ReactNode }) {
 
   useEffect(() => setMoreOpen(false), [pathname]);
 
+  // «رجوع» (client 2026-11-18): back to the previous CRM screen without starting over. Keeps this tab's own trail of
+  // screens; with no earlier screen (opened from a link) it goes up one level instead (/admin/properties/x → /admin/properties).
+  const router = useRouter();
+  const trail = useRef<string[]>([]);
+  const [hasPrev, setHasPrev] = useState(false);
+  useEffect(() => {
+    const t = trail.current;
+    if (t[t.length - 1] === pathname) return;
+    if (t[t.length - 2] === pathname) t.pop(); else t.push(pathname);
+    setHasPrev(t.length > 1);
+  }, [pathname]);
+  const goBack = () => {
+    if (hasPrev) { router.back(); return; }
+    const up = pathname.split("/").slice(0, -1).join("/");
+    router.push(up.startsWith("/admin") ? up : "/admin");
+  };
+
   const meBox = (dark: boolean) =>
     me && (
       <div className="grid gap-2">
@@ -244,6 +261,12 @@ export function CrmShell({ children }: { children: ReactNode }) {
               </select>
               {data.viewAs && <button type="button" className="crm-btn ghost sm ms-auto" onClick={() => setViewAs("")}>عرض كل الفريق</button>}
             </div>
+          )}
+          {pathname !== "/admin" && (
+            <button type="button" onClick={goBack}
+              className="mb-3 inline-flex items-center gap-1 rounded-full border border-[var(--crm-line)] bg-[var(--crm-surface)] py-1.5 ps-2 pe-3.5 text-[13.5px] font-medium text-[var(--crm-ink-2)] hover:border-[var(--crm-gold)] hover:text-[var(--crm-ink)]">
+              <Icon k="chevR" size={18} /> رجوع
+            </button>
           )}
           {pathname !== "/admin/whatsapp" && <WaAlert />}
           <WebLeadDispatcher />
