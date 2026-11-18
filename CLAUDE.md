@@ -420,6 +420,17 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-18** — **«متابعات اليوم»: WhatsApp opens with a message that fits the call reason.** Client asked for the message to be ready so he only presses send.
+  - `followMessage(c, r)` in `app/[locale]/admin/page.tsx` follows `callReason`:
+    - after the visit: asks for the client's impression;
+    - a visit tomorrow: confirms it, with the time;
+    - a visit today: reminds the client, with the time;
+    - offers waiting for a reply, or «أرسلنا خيارات»: `offerMessage`;
+    - جديد, جاري البحث, تفاوض and عربون each have their own line, with a general follow-up otherwise.
+  - The shared greeting and signature live in `staffMessage` (`components/crm/Interests.tsx`); `offerMessage` uses it too.
+
+  Affects home section 5.
+
 - **2026-11-18** — **Ready WhatsApp message for a sent-offer follow-up.** Client: WhatsApp should open with the message ready, in the same style as the interest follow-up.
   - New `offerMessage(d, c, titles)` in `components/crm/Interests.tsx`. It uses the same greeting and signature as `interestMessage` and asks the client's impression of the offer: suitable and book a visit, or look for another property.
   - Used by the WhatsApp button on `ProposalRow` (statuses أُرسل / بانتظار الرد / مهتم) and on the «عروض بانتظار رد العميل» request rows on the home page (`reqRow` now takes a `waText` argument).

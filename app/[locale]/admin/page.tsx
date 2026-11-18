@@ -26,7 +26,7 @@ import { TaskRow } from "@/components/crm/TaskRow";
 import { toggleTodo, usePrivateTodos } from "@/components/crm/PrivateTodos";
 import { TempPill } from "@/components/crm/bits";
 import { ProposalRow, ViewingRow } from "@/components/crm/Journey";
-import { InterestList, ReqInterestList, dueInterests, dueReqInterests, isOpenInterest, offerMessage } from "@/components/crm/Interests";
+import { InterestList, ReqInterestList, dueInterests, dueReqInterests, isOpenInterest, offerMessage, staffMessage } from "@/components/crm/Interests";
 
 const tempRank = (c?: Client | null) => { const i = TEMPS.indexOf((c?.temp || "") as never); return i < 0 ? TEMPS.length : i; };
 const lastCall = (c: Client) => (c.log || []).find((l) => l.type !== "طلب من الموقع");
@@ -228,6 +228,26 @@ export default function HomeDashboard() {
     return { why, lastTxt };
   };
 
+  // «متابعات اليوم» (client 2026-11-18): WhatsApp opens with a message that fits the call reason above, ready to send.
+  const followMessage = (c: Client, r: Request) => {
+    const tm = addDays(1);
+    const va = c.visitAt ? c.visitAt.slice(0, 10) : "";
+    const vt = (propById(data, c.visitProperty)?.title || c.visitProperty || "العقار");
+    const sentNow = data.proposals.filter((p) => p.clientId === c.id && p.requestId === r.id && ["أُرسل", "بانتظار الرد"].includes(p.status));
+    if (va && va < t) return staffMessage(data, c, "حبيت أتابع معك بعد زيارتك لـ" + vt + "، وودنا نعرف انطباعك عنه: هل ناسبك ونكمل معك؟ أو حاب نشوف لك عقار آخر؟");
+    if (va === tm) return staffMessage(data, c, "حبيت أأكد معك موعد زيارة " + vt + " بكرة (" + fmtVisit(c.visitAt) + "). نتشرف فيك، وإذا تحتاج تغيّر الموعد بلغنا.");
+    if (va === t) return staffMessage(data, c, "نذكّرك بموعد زيارة " + vt + " اليوم (" + fmtVisit(c.visitAt) + "). نتشرف فيك، وإذا تحتاج تغيّر الموعد بلغنا.");
+    if (sentNow.length) return offerMessage(data, c, sentNow.map((p) => propById(data, p.propertyId)?.title || p.propertyTitle || "العقار"));
+    const st = r.status || "جديد";
+    if (st === "أرسلنا خيارات") return offerMessage(data, c, (r.sent || []).map((id) => propById(data, id)?.title).filter(Boolean) as string[]);
+    return staffMessage(data, c,
+      st === "جديد" ? "استلمنا طلبك العقاري، وحبيت أتواصل معك عشان نفهم احتياجك بالتفصيل ونرشّح لك الأنسب. متى يناسبك نتكلم؟"
+      : st === "جاري البحث" ? "حبيت أطمّنك إننا مستمرين في البحث لك عن عقار يناسب طلبك، وبنرسل لك أول ما يتوفر الأنسب. ودك تضيف أو تعدّل شي في طلبك؟"
+      : st === "تفاوض" ? "حبيت أتابع معك بخصوص التفاوض على العقار، وش آخر المستجدات عندك؟"
+      : st === "عربون" ? "حبيت أتابع معك إجراءات العربون، وإذا تحتاج أي شي حنا حاضرين."
+      : "حبيت أتابع معك بخصوص طلبك العقاري، وش آخر المستجدات عندك؟");
+  };
+
   // `noPostpone`: new / searching requests are a work queue, not a dated follow-up, so no «⏰ تأجيل» there.
   // `waText`: the WhatsApp button opens with this message ready (e.g. the sent-offer follow-up).
   const reqRow = ({ c, r }: { c: Client; r: Request }, action: ReactNode, withWhy = false, noPostpone = false, waText?: string) => (
@@ -386,7 +406,7 @@ export default function HomeDashboard() {
       <Section n={5} title="متابعات اليوم" count={follow.length} hint="عملاء حان موعد الاتصال بهم — سجّل نتيجة الاتصال">
         {follow.map((c) => {
           const r = open(c)[0];
-          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>, true);
+          return reqRow({ c, r }, <button type="button" className="crm-btn sm primary" onClick={() => openModal({ kind: "update", clientId: c.id, reqId: r.id })}>تسجيل المتابعة</button>, true, false, followMessage(c, r));
         })}
       </Section>
 

@@ -36,15 +36,22 @@ export function interestMessage(d: CrmData, c: Client, xs: Interest[]) {
 
 /** Follow-up on a sent offer (client 2026-11-18): same wording and signature as `interestMessage`, asking for their impression. */
 export function offerMessage(d: CrmData, c: Client, titles: string[]) {
-  const list = titles.length > 1 ? titles.slice(0, -1).join("، ") + " و" + titles[titles.length - 1] : titles[0] || "العقار";
+  return staffMessage(d, c, (titles.length ? "سبق وأرسلنا لك عرض " + joinAr(titles) + "، وودنا نعرف انطباعك عنه" : "سبق وأرسلنا لك عروض عقارية، وودنا نعرف انطباعك عنها") +
+    ": هل ناسبك وحاب ننسّق لك موعد زيارة؟ أو حاب نشوف لك عقار آخر اذا العرض غير مناسب معك؟");
+}
+
+/** «أ، ب وج». */
+export const joinAr = (xs: string[]) => (xs.length > 1 ? xs.slice(0, -1).join("، ") + " و" + xs[xs.length - 1] : xs[0] || "العقار");
+
+/** The shared frame of every ready WhatsApp message: greeting with the client's name, the employee's first name, the body, sign-off. */
+export function staffMessage(d: CrmData, c: Client, body: string) {
   const nameOnly = /^[\d\s+()-]+$/.test((c.name || "").trim()) || !c.name?.trim();
   const me = (nameOf(d, d.uid) || "").trim().split(/\s+/)[0];
   return [
     "السلام عليكم ورحمة الله، حيّاك الله" + (nameOnly ? "" : " أستاذ " + c.name.trim()) + " 🌷",
     "",
     (me ? "معك " + me + " من" : "معك فريق") + " بن سلمه العقارية.",
-    (titles.length ? "سبق وأرسلنا لك عرض " + list + "، وودنا نعرف انطباعك عنه" : "سبق وأرسلنا لك عروض عقارية، وودنا نعرف انطباعك عنها") +
-      ": هل ناسبك وحاب ننسّق لك موعد زيارة؟ أو حاب نشوف لك عقار آخر اذا العرض غير مناسب معك؟",
+    body,
     "",
     "حاضرين لخدمتك طال عمرك.",
   ].join("\n");
