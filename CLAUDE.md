@@ -420,6 +420,13 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-19** — **Home: no client in two sections.** Client: «قسمين نفس الشيء… بتخلط وبتاخذ وقت». «متابعات اليوم» (`follow` in `app/[locale]/admin/page.tsx`) now leaves out a client who is already in one of these sections:
+  - «عروض بانتظار رد العميل» (an offer sent, still waiting for a reply);
+  - «اتصال بعد الزيارة» (a visit that has passed);
+  - «متابعة الاهتمامات» (an interest on the request that is due).
+
+  `follow` is computed after those lists. Affects §9 home sections.
+
 - **2026-11-18** — **«متابعات اليوم»: WhatsApp opens with a message that fits the call reason.** Client asked for the message to be ready so he only presses send.
   - `followMessage(c, r)` in `app/[locale]/admin/page.tsx` follows `callReason`:
     - after the visit: asks for the client's impression;

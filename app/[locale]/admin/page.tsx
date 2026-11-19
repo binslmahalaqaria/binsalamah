@@ -132,7 +132,7 @@ export default function HomeDashboard() {
   // in no section, because «أرسلنا خيارات» was only ever shown as offers waiting).
   // Client 2026-11-08: a call date that has come always shows here, whatever the request's stage (negotiation and
   // booked viewings keep their own sections).
-  const follow = base.filter((c) => due(c)).sort(byPrio);
+  // (`follow` itself is worked out below, once the other sections are known, so nobody shows twice.)
   // 4) Viewings today, overdue (result to record) and tomorrow (to confirm); plus visits booked before the record existed.
   const soon = (at: string | null | undefined) => !!at && at.slice(0, 10) <= tomorrow;
   const allViews = data.viewings.filter((v) => mineIds.has(v.clientId) && ["مجدولة", "مؤجلة"].includes(v.status));
@@ -155,6 +155,12 @@ export default function HomeDashboard() {
   const interests = dueInterests(data, true);
   const reqInterests = dueReqInterests(data); // interests on a request whose check-back date has come
   const interestCount = new Set([...interests.map(({ c }) => c.id), ...reqInterests.map((p) => p.clientId)]).size;
+
+  // «متابعات اليوم»: a due call that no other section already covers (client 2026-11-19: «قسمين نفس الشيء بتخلط»).
+  // Offers waiting for an answer → «عروض بانتظار رد العميل»; a visit that has passed → «اتصال بعد الزيارة»;
+  // an interest on the request that is due → «متابعة الاهتمامات».
+  const elsewhere = new Set([...props.map((p) => p.clientId), ...afterViews.map((v) => v.clientId), ...reqInterests.map((p) => p.clientId)]);
+  const follow = base.filter((c) => due(c) && !elsewhere.has(c.id)).sort(byPrio);
 
   /* ---- attendance (checks the office location first when that rule is on) ---- */
   async function doCheck(kind: "in" | "out") {
