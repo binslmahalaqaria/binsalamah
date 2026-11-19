@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-19** — **Properties list: the type filter also matches unit types.** Client has a project with townhouses and penthouses. Matching already works per unit through `unitView`, which uses the unit's own type. The «النوع» filter on `/admin/properties` now also finds a project when any of its units has that type. Affects the properties list.
+
 - **2026-11-19** — **Home: no client in two sections.** Client: «قسمين نفس الشيء… بتخلط وبتاخذ وقت». «متابعات اليوم» (`follow` in `app/[locale]/admin/page.tsx`) now leaves out a client who is already in one of these sections:
   - «عروض بانتظار رد العميل» (an offer sent, still waiting for a reply);
   - «اتصال بعد الزيارة» (a visit that has passed);

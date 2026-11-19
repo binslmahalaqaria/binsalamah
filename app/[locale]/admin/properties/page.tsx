@@ -44,7 +44,8 @@ export default function PropertiesPage() {
   const refQ = /^#?[0-9]+$/.test(qq) ? Number(qq.replace("#", "")) : 0;
   if (qq) list = list.filter((p) => (refQ && p.ref === refQ) || [p.title, p.district, p.city, p.contactName, p.contactPhone, p.features, p.notes].join(" ").includes(qq));
   if (F.status) list = list.filter((p) => (p.status || "متاح") === F.status);
-  if (F.type) list = list.filter((p) => p.type === F.type);
+  // A project can mix types by unit (e.g. townhouses + penthouses, client 2026-11-19): match the unit types too.
+  if (F.type) list = list.filter((p) => p.type === F.type || (p.units || []).some((u) => u?.type === F.type));
   if (F.kind) list = list.filter((p) => p.ownerKind === F.kind);
   const advKey = (p: Property) => normPhone(p.contactPhone || "") || (p.contactName ? "n:" + p.contactName.trim() : "");
   const advs = new Map<string, { label: string; n: number }>();
