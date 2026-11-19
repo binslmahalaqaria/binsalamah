@@ -420,6 +420,8 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-19** — **Living rooms and bathrooms per unit in the CRM.** Client: a project's units differ (e.g. المصيف: townhouses 5 bathrooms, penthouses 4), and the property form had only property-level fields, so they could not reach the website's units table. `Unit` (`lib/crm/types.ts`) gains optional `livingRooms` and `bathrooms`; the property form's units table (`components/crm/forms.tsx`) has «الصالات» and «دورات المياه» columns (numeric). They are copied into the website listing's unit rows (`living_rooms`, `bathrooms`) by «تفعيل في الموقع» (`toOffer` in `lib/crm/offer-from-property.ts`) and by the property ⇄ listing sync (`lib/crm/web-sync.ts`, both directions; an empty CRM value keeps what the listing already had). Units saved before this have none, so nothing changes for them. `tsc` clean; not tried in a browser or deployed. Affects §9.
+
 - **2026-11-19** — **Properties list: the type filter also matches unit types.** Client has a project with townhouses and penthouses. Matching already works per unit through `unitView`, which uses the unit's own type. The «النوع» filter on `/admin/properties` now also finds a project when any of its units has that type. Affects the properties list.
 
 - **2026-11-19** — **Home: no client in two sections.** Client: «قسمين نفس الشيء… بتخلط وبتاخذ وقت». «متابعات اليوم» (`follow` in `app/[locale]/admin/page.tsx`) now leaves out a client who is already in one of these sections:

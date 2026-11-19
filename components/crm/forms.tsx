@@ -483,7 +483,7 @@ export function PropertyForm({ id }: { id?: string }) {
   const dists = useMemo(() => allDistricts(data, DISTRICTS), [data]);
 
   const setUnit = (i: number, k: keyof Unit, v: string) =>
-    set("units", f.units.map((u, j) => (j === i ? { ...u, [k]: ["area", "price", "bedrooms"].includes(k) ? num(v) : v || null } : u)));
+    set("units", f.units.map((u, j) => (j === i ? { ...u, [k]: ["area", "price", "bedrooms", "livingRooms", "bathrooms"].includes(k) ? num(v) : v || null } : u)));
 
   function genWa() {
     if (f.waMessage.trim() && !waArmed) {
@@ -699,8 +699,8 @@ export function PropertyForm({ id }: { id?: string }) {
           <div className="sm:col-span-2">
             {f.units.length ? (
               <div className="overflow-x-auto">
-                <table className="crm-table min-w-[700px]">
-                  <thead><tr><th>الوحدة</th><th>النوع</th><th>المساحة م²</th><th>السعر</th><th>الغرف</th><th>الدور</th><th>الحالة</th><th /></tr></thead>
+                <table className="crm-table min-w-[860px]">
+                  <thead><tr><th>الوحدة</th><th>النوع</th><th>المساحة م²</th><th>السعر</th><th>الغرف</th><th>الصالات</th><th>دورات المياه</th><th>الدور</th><th>الحالة</th><th /></tr></thead>
                   <tbody>
                     {f.units.map((u, i) => (
                       <tr key={i}>
@@ -709,6 +709,8 @@ export function PropertyForm({ id }: { id?: string }) {
                         <td><input inputMode="decimal" value={s(u.area)} onChange={(e) => setUnit(i, "area", e.target.value)} /></td>
                         <td><input inputMode="decimal" value={s(u.price)} onChange={(e) => setUnit(i, "price", e.target.value)} /></td>
                         <td><input inputMode="decimal" value={s(u.bedrooms)} onChange={(e) => setUnit(i, "bedrooms", e.target.value)} /></td>
+                        <td><input inputMode="decimal" value={s(u.livingRooms)} onChange={(e) => setUnit(i, "livingRooms", e.target.value)} /></td>
+                        <td><input inputMode="decimal" value={s(u.bathrooms)} onChange={(e) => setUnit(i, "bathrooms", e.target.value)} /></td>
                         <td><Select value={u.floor} onChange={(v) => setUnit(i, "floor", v)} options={FLOORS} blank="—" /></td>
                         <td><Select value={u.status || "متاح"} onChange={(v) => setUnit(i, "status", v)} options={PSTATUS} /></td>
                         <td><button type="button" className="crm-btn ghost sm" onClick={() => set("units", f.units.filter((_, j) => j !== i))}>حذف</button></td>

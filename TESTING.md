@@ -147,3 +147,10 @@
 - [ ] Clicking the floating WhatsApp button, a footer WhatsApp link, and a unit's WhatsApp button each send one `Contact` event.
 - [ ] `/ar/admin/...` pages load no `fbevents.js` and send nothing.
 - [ ] Events Manager for dataset «بن سلمه - الموقع» starts receiving events within a few minutes.
+
+## Per-unit living rooms and bathrooms (2026-11-19)
+
+- [ ] Property form → «الوحدات»: columns «الصالات» and «دورات المياه» appear; values typed (also Arabic digits) save as numbers and reopen unchanged.
+- [ ] «تفعيل في الموقع» on a project: the listing's units table shows each unit's living rooms and bathrooms (townhouse 5 / penthouse 4 style differences are kept per unit).
+- [ ] Editing a unit's bathrooms in the CRM updates the linked listing's unit; editing it in the website offer form updates the CRM unit; an empty CRM value does not wipe the listing's value.
+- [ ] A project saved before this change (no per-unit values) behaves as before.

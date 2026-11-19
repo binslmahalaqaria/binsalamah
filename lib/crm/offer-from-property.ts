@@ -41,7 +41,7 @@ export function splitWarranties(notes: string | null | undefined): { rest: strin
 export function toOffer(p: Property): Offer {
   const w = splitWarranties(p.notes);
   const units = unitsOf(p).map((u) => ({
-    name: u.name, area: u.area || 0, price: u.price || 0, rooms: u.bedrooms ?? null, living_rooms: null, bathrooms: null,
+    name: u.name, area: u.area || 0, price: u.price || 0, rooms: u.bedrooms ?? null, living_rooms: u.livingRooms ?? null, bathrooms: u.bathrooms ?? null,
     status: UNIT_STATUS[u.status || ""] || ("available" as UnitStatus),
   }));
   const prices = units.map((u) => u.price).filter(Boolean);

@@ -90,6 +90,9 @@ export interface Unit {
   area?: number | null;
   price?: number | null;
   bedrooms?: number | null;
+  /** Per-unit living rooms / bathrooms (they differ between unit models); copied to the website listing's unit row. */
+  livingRooms?: number | null;
+  bathrooms?: number | null;
   floor?: string | null;
   status?: string;
 }

@@ -74,7 +74,7 @@ export function offerPatch(p: Property, o: Offer): Record<string, unknown> {
         return {
           ...rest, ...(m && m.name === u.name && name_en ? { name_en } : {}),
           name: u.name, area: u.area || 0, price: u.price || 0, rooms: u.bedrooms ?? m?.rooms ?? null,
-          living_rooms: m?.living_rooms ?? null, bathrooms: m?.bathrooms ?? null, status: webStatus(u.status),
+          living_rooms: u.livingRooms ?? m?.living_rooms ?? null, bathrooms: u.bathrooms ?? m?.bathrooms ?? null, status: webStatus(u.status),
         } as OfferUnit;
       });
     } else {
@@ -123,7 +123,7 @@ export function propertyPatch(o: Offer, p: Property): Record<string, unknown> {
     const units: Unit[] = ou.map((x, i) => {
       const m = pick(pu, x.name, i, names);
       const keep = m && webStatus(m.status) === (x.status || "available");
-      return { ...(m || {}), name: x.name, area: x.area || null, price: x.price || null, bedrooms: x.rooms ?? m?.bedrooms ?? null, status: keep ? m!.status : TO_CRM[x.status || "available"] };
+      return { ...(m || {}), name: x.name, area: x.area || null, price: x.price || null, bedrooms: x.rooms ?? m?.bedrooms ?? null, livingRooms: x.living_rooms ?? m?.livingRooms ?? null, bathrooms: x.bathrooms ?? m?.bathrooms ?? null, status: keep ? m!.status : TO_CRM[x.status || "available"] };
     });
     if (!same(pu, units)) patch.units = units;
   } else {
