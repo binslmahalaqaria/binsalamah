@@ -507,6 +507,11 @@ export async function recordSends(d: CrmData, reqId: string, pids: string[]) {
   await write("requests", reqId, { sent: [...new Set((r.sent || []).concat(pids))], ...(early ? { status: "أرسلنا خيارات" } : {}), updatedAt: nowStamp() }, "update");
 }
 
+/** An unlisted property sent moves the request forward too, like `recordSends` (client 2026-11-19). */
+export async function advanceOnSend(r: { id: string; status?: string | null }) {
+  if (["جديد", "جاري البحث"].includes(r.status || "جديد")) await write("requests", r.id, { status: "أرسلنا خيارات", updatedAt: nowStamp() }, "update");
+}
+
 /** Records on the client what was sent for a property (message / photos link / file) and writes it to the client's log. */
 export async function markSent(d: CrmData, clientId: string, p: Property, kinds: ("msg" | "drive" | "pdf")[], withLog = true) {
   const c = clientById(d, clientId);

@@ -10,7 +10,7 @@ import {
   clientById, comm, goalOf, match, matchesForReq, members, nameOf, OPEN_REQ, propById, propMsg, propSummary,
   unitsOf, visibleRequests, can } from "@/lib/crm/logic";
 import {
-  addInterests, applyUpdate, interestOnRequest, scheduleInterestViewing, recordSends, recordUnlisted, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
+  addInterests, applyUpdate, interestOnRequest, scheduleInterestViewing, recordSends, recordUnlisted, advanceOnSend, setReqStage, cancelSale, cancelViewing, deleteAttendance, postponeViewing, reqSent, saveAttendance, saveClose, scheduleViewing, transferRequest, viewingResult, write,
 } from "@/lib/crm/actions";
 import type { Client, CustomGoal, HrFile, Property } from "@/lib/crm/types";
 import { addDays, fmtVisit, localDay, monthName, money, moneyFull, nowStamp, num, relDay, today, waLink } from "@/lib/crm/util";
@@ -111,6 +111,7 @@ function UpdateModal({ clientId, type: t0, propertyId: p0, reqId }: { clientId: 
         if (sendT) {
           if (props.length) await recordSends(data, openR.id, props);
           for (const x of typed) await recordUnlisted(data, openR, x.title.trim(), x.details.trim() || null, "أُرسل");
+          if (!props.length && typed.length) await advanceOnSend(openR);
         } else {
           // Asked about / interested (client 2026-11-10: this is where a client with a request gets an interest):
           // offers «مهتم» on the request with the check-back date, shown in الاهتمامات.
