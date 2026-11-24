@@ -424,6 +424,7 @@ Update this table the moment a new secret, API key, or config value is introduce
   - New page `/admin/careers` (`app/[locale]/admin/careers/page.tsx`) lists website job applications (leads whose message starts «طلب توظيف», `isJobApp` in `lib/careers.ts`). Each one shows the name, phone with call/WhatsApp, job, age, nationality, city, experience, email, bio and CV link, with a job filter.
   - The nav item sits under الفريق, for `isMgr` only. «نماذج الموقع» no longer lists applications.
   - The limit is in the UI only: the Firestore rules still let staff read `leads`.
+  - The same day, the owner (`isAdmin`, matching the rules' `delete: if isAdmin()`) got «🗑 حذف» on each application, after a confirm, through the new `deleteLead` in `lib/leads.ts`.
 
   Affects the CRM nav, the leads page and /careers.
 

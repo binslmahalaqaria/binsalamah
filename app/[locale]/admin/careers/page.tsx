@@ -6,7 +6,7 @@
  * never turned into clients and no longer show in «نماذج الموقع».
  */
 import { useEffect, useState } from "react";
-import { listLeads } from "@/lib/leads";
+import { deleteLead, listLeads } from "@/lib/leads";
 import { isJobApp } from "@/lib/careers";
 import { useCrm } from "@/lib/crm/store";
 import { ageDays, fmtStamp } from "@/lib/crm/util";
@@ -24,7 +24,7 @@ function fields(message: string | null | undefined) {
 }
 
 export default function CareersPage() {
-  const { data } = useCrm();
+  const { data, toast } = useCrm();
   const [apps, setApps] = useState<Lead[] | null>(null);
   const [job, setJob] = useState("");
   useEffect(() => {
@@ -63,9 +63,19 @@ export default function CareersPage() {
                   {["الوظيفة", "العمر", "الجنسية", "المدينة", "الخبرة", "البريد"].map((k) => f[k] ? <span key={k}><b className="text-[var(--crm-ink)]">{k}:</b> {f[k]}</span> : null)}
                 </div>
                 {f["نبذة"] && <p className="m-0 whitespace-pre-line text-[13.5px] leading-relaxed">{f["نبذة"]}</p>}
-                {cv && (/^https?:\/\//.test(cv)
-                  ? <a href={cv} target="_blank" rel="noopener noreferrer" className="crm-btn sm justify-self-start">فتح السيرة الذاتية</a>
-                  : <span className="text-[13px]"><b>السيرة:</b> {cv}</span>)}
+                <div className="flex flex-wrap items-center gap-2">
+                  {cv && (/^https?:\/\//.test(cv)
+                    ? <a href={cv} target="_blank" rel="noopener noreferrer" className="crm-btn sm">فتح السيرة الذاتية</a>
+                    : <span className="text-[13px]"><b>السيرة:</b> {cv}</span>)}
+                  {/* Delete (client 2026-11-24): the Firestore rules allow it for the owner (admin) only. */}
+                  {data.isAdmin && (
+                    <button type="button" className="crm-btn sm danger ms-auto" onClick={async () => {
+                      if (!window.confirm("حذف طلب التوظيف «" + (a.customer_name || "") + "» نهائياً؟ ما يرجع بعد الحذف.")) return;
+                      try { await deleteLead(a.id); setApps((xs) => (xs || []).filter((x) => x.id !== a.id)); toast("تم حذف الطلب"); }
+                      catch { toast("تعذّر الحذف"); }
+                    }}>🗑 حذف</button>
+                  )}
+                </div>
               </div>
             );
           })}

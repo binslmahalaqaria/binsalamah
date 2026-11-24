@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -42,6 +43,11 @@ export async function listLeads(): Promise<Lead[]> {
     query(collection(db, COLLECTION), orderBy("created_at", "desc"))
   );
   return snap.docs.map((d) => fromDoc(d.id, d.data()));
+}
+
+/** Permanently deletes a lead (Firestore rules: owner/admin only). */
+export async function deleteLead(id: string) {
+  await deleteDoc(doc(db, COLLECTION, id));
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
