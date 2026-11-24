@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { listLeads } from "@/lib/leads";
+import { isJobApp } from "@/lib/careers";
 import { useCrm } from "@/lib/crm/store";
 import { REQ_TONE, lbl } from "@/lib/crm/constants";
 import { clientById, members, nameOf } from "@/lib/crm/logic";
@@ -30,7 +31,8 @@ function summary(message: string | null) {
 export default function WebFormsPage() {
   const { data, openClient, toast } = useCrm();
   const [leads, setLeads] = useState<WebLead[] | null>(null);
-  useEffect(() => { listLeads().then((l) => setLeads(l as WebLead[])).catch(() => setLeads([])); }, []);
+  // Job applications have their own manager-only section, «طلبات التوظيف» (client 2026-11-24).
+  useEffect(() => { listLeads().then((l) => setLeads((l as WebLead[]).filter((x) => !isJobApp(x)))).catch(() => setLeads([])); }, []);
 
   const GRID = "xl:grid-cols-[minmax(130px,1fr)_minmax(180px,1.6fr)_105px_90px_130px]";
   return (

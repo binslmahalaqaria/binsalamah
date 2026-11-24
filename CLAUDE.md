@@ -420,6 +420,13 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-24** — **«طلبات التوظيف»: a separate, manager-only section.** Client: «خله قسم منفصل وفقط يجي للمدير».
+  - New page `/admin/careers` (`app/[locale]/admin/careers/page.tsx`) lists website job applications (leads whose message starts «طلب توظيف», `isJobApp` in `lib/careers.ts`). Each one shows the name, phone with call/WhatsApp, job, age, nationality, city, experience, email, bio and CV link, with a job filter.
+  - The nav item sits under الفريق, for `isMgr` only. «نماذج الموقع» no longer lists applications.
+  - The limit is in the UI only: the Firestore rules still let staff read `leads`.
+
+  Affects the CRM nav, the leads page and /careers.
+
 - **2026-11-24** — **Request form shows the client's phone.** Client asked to see the client's phone while filling a request. In `RequestForm` (`components/crm/forms.tsx`):
   - the «عميل موجود» list shows «name — phone»;
   - once a client is chosen, a read-only «جوال العميل» field shows the number with the call/WhatsApp icons.

@@ -104,6 +104,8 @@ export function CrmShell({ children }: { children: ReactNode }) {
       { href: "/admin/tasks", k: "tasks", label: "المهام", badge: newTasks },
       { href: "/admin/chat", k: "chat", label: "الدردشة", badge: pathname === "/admin/chat" ? 0 : unread },
       { href: "/admin/team", k: "team", label: "الفريق" },
+      // Job applications from the website (client 2026-11-24): managers only.
+      ...(data.isMgr ? [{ href: "/admin/careers", k: "clients", label: "طلبات التوظيف" }] : []),
       ...(data.isMgr ? [{ href: "/admin/setup", k: "settings", label: "الإعدادات" }] : []),
     ]],
   ];
