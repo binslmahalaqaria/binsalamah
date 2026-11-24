@@ -17,7 +17,7 @@ import { toggleTask, assignClient, interestsToOffers, createClient, setPropRef, 
 import type { Client, Property, Request, Task, Unit } from "@/lib/crm/types";
 import { fmtStamp, normPhone, nowStamp, num, splitList, today } from "@/lib/crm/util";
 import {
-  ConfirmButton, DistrictPicker, Field, RadioChips, ModalFrame, More, MultiCheck, Pill, PropPicker, Sec, Select,
+  ConfirmButton, ContactIcons, DistrictPicker, Field, RadioChips, ModalFrame, More, MultiCheck, Pill, PropPicker, Sec, Select,
 } from "./ui";
 import { WaPicker } from "./WaPicker";
 import { uploadOfferImage, uploadOfferPdf } from "@/lib/upload-image";
@@ -238,7 +238,8 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
   // A client saved from a bare number has the number as their name: ask for the real name here.
   const selClient = f.clientId ? clientById(data, f.clientId) : null;
   const nameless = !!selClient && /^[\d\s+()-]+$/.test((selClient.name || "").trim());
-  const clientOpts = visibleClients(data).map((c) => [c.id, c.name] as [string, string]);
+  // Name plus phone, so two clients with the same name can be told apart (client 2026-11-24).
+  const clientOpts = visibleClients(data).map((c) => [c.id, c.name + (c.phone && c.phone !== c.name ? " — " + c.phone : "")] as [string, string]);
   if (base.clientId && !clientOpts.some(([v]) => v === base.clientId))
     clientOpts.unshift([base.clientId, presetClient?.name || preset?._clientName || "العميل"]);
 
@@ -369,6 +370,12 @@ export function RequestForm({ id, preset }: { id?: string; preset?: Partial<Requ
             const own = v ? clientById(data, v)?.assignee : null;
             if (!rec && data.isMgr && own && data.staff.some((x) => x.id === own && x.active)) set("assignee", AUTO);
           }} /></Field>
+        {/* The chosen client's phone, shown while filling the request (client 2026-11-24). */}
+        {f.clientId && (() => { const ph = clientById(data, f.clientId)?.phone; return (
+          <Field label="جوال العميل">
+            <div className="flex items-center gap-1.5"><input value={ph || "—"} readOnly dir="ltr" className="num" aria-label="جوال العميل" />{ph && <ContactIcons phone={ph} />}</div>
+          </Field>
+        ); })()}
         {nameless && (
           <Field label="اسم العميل *"><input value={f.clientName} placeholder="الرقم محفوظ بدون اسم — اكتب الاسم" onChange={(e) => set("clientName", e.target.value)} /></Field>
         )}

@@ -420,6 +420,12 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-24** — **Request form shows the client's phone.** Client asked to see the client's phone while filling a request. In `RequestForm` (`components/crm/forms.tsx`):
+  - the «عميل موجود» list shows «name — phone»;
+  - once a client is chosen, a read-only «جوال العميل» field shows the number with the call/WhatsApp icons.
+
+  Affects the add/edit request modal.
+
 - **2026-11-19** — **An unlisted property sent also moves the request to «تم إرسال عروض».** Client: «تم إرسال التفاصيل» with an offer should move the request from «جاري البحث». Properties from the system already moved it (`recordSends`), but a send of only «عقار غير مضاف» did not. New `advanceOnSend(r)` in `lib/crm/actions.ts` is called from the update modal in that case. Affects the request stage flow.
 
 - **2026-11-19** — **Living rooms and bathrooms per unit in the CRM.** Client: a project's units differ (e.g. المصيف: townhouses 5 bathrooms, penthouses 4), and the property form had only property-level fields, so they could not reach the website's units table. `Unit` (`lib/crm/types.ts`) gains optional `livingRooms` and `bathrooms`; the property form's units table (`components/crm/forms.tsx`) has «الصالات» and «دورات المياه» columns (numeric). They are copied into the website listing's unit rows (`living_rooms`, `bathrooms`) by «تفعيل في الموقع» (`toOffer` in `lib/crm/offer-from-property.ts`) and by the property ⇄ listing sync (`lib/crm/web-sync.ts`, both directions; an empty CRM value keeps what the listing already had). Units saved before this have none, so nothing changes for them. `tsc` clean; not tried in a browser or deployed. Affects §9.
