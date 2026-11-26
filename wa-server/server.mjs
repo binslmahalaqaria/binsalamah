@@ -500,6 +500,74 @@ async function staffOf(req) {
 const canSee = (src, who) => who.mgr || src.ownerUid === who.uid;
 const canManage = (src, who) => who.mgr || (src.ownerUid && src.ownerUid === who.uid);
 
+/* ---------------- WhatsApp campaigns (client 2026-11-26) ----------------
+ * A manager uploads a list of numbers (from Excel) with an image and/or text and picks the sending number.
+ * The server sends one message at a time, 20–45 s apart, and after each batch (default 10) waits (default
+ * 30 min), so it keeps going with the CRM closed. Numbers not on WhatsApp are skipped; a number is sent to once
+ * per campaign. Stored in data/campaigns.json (+ data/campaigns/<id>.img).
+ */
+const CAMP_FILE = path.join(DATA, "campaigns.json");
+const CAMP_DIR = path.join(DATA, "campaigns");
+fs.mkdirSync(CAMP_DIR, { recursive: true });
+let campaigns = [];
+try { campaigns = JSON.parse(fs.readFileSync(CAMP_FILE, "utf8")); } catch { campaigns = []; }
+const saveCampaigns = () => fs.writeFileSync(CAMP_FILE, JSON.stringify(campaigns));
+// «05xxxxxxxx», «5xxxxxxxx», «+966…», «00966…» → 9665xxxxxxxx@s.whatsapp.net; anything else with 10–15 digits as is.
+const toJid = (raw) => {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 10 && d.startsWith("05")) d = "966" + d.slice(1);
+  else if (d.length === 9 && d.startsWith("5")) d = "966" + d;
+  return /^\d{10,15}$/.test(d) ? d + "@s.whatsapp.net" : null;
+};
+const clampN = (v, lo, hi, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
+const campPub = (c) => {
+  const n = (st) => c.recipients.filter((r) => r.status === st).length;
+  const { recipients, ...rest } = c;
+  return { ...rest, total: recipients.length, sent: n("sent"), failed: n("failed"), invalid: n("invalid"), pending: n("pending"),
+    recipients: recipients.map((r) => ({ phone: r.phone, name: r.name, status: r.status, at: r.at || null, error: r.error || null })) };
+};
+let campBusy = false;
+setInterval(async () => {
+  if (campBusy) return;
+  campBusy = true;
+  try {
+    for (const c of campaigns) {
+      const now = Date.now();
+      if (c.status !== "running" || (c.nextAt || 0) > now) continue;
+      const s = sessions.get(c.source);
+      if (!s || s.state.status !== "open") { if (c.note !== "waiting") { c.note = "waiting"; saveCampaigns(); } continue; }
+      const r = c.recipients.find((x) => x.status === "pending");
+      if (!r) { c.status = "done"; c.doneAt = now; c.note = null; saveCampaigns(); continue; }
+      c.note = null;
+      const hits = await s.sock.onWhatsApp(r.phone).catch(() => null);
+      const hit = Array.isArray(hits) ? hits[0] : null;
+      if (hits && !hit?.exists) { r.status = "invalid"; r.at = now; c.nextAt = now + 3000; saveCampaigns(); continue; }
+      try {
+        const caption = c.text.split("{الاسم}").join(r.name || "").replace(/[ \t]{2,}/g, " ").replace(/ +([،,.!؟])/g, "$1").trim();
+        const content = c.image
+          ? { image: fs.readFileSync(path.join(CAMP_DIR, c.id + ".img")), mimetype: c.image, caption: caption || undefined }
+          : { text: caption };
+        const sent = await s.sock.sendMessage(hit?.jid || r.jid, content);
+        s.ingest(sent, false);
+        r.status = "sent";
+      } catch (e) {
+        r.status = "failed";
+        r.error = String(e?.message || e).slice(0, 200);
+      }
+      r.at = now;
+      c.inBatch = (c.inBatch || 0) + 1;
+      if (c.inBatch >= c.batch) { c.inBatch = 0; c.nextAt = now + c.pauseMin * 60_000; }
+      else c.nextAt = now + (20 + Math.random() * 25) * 1000;
+      saveCampaigns();
+    }
+  } catch (e) {
+    console.warn("[campaigns]", e?.message || e);
+  } finally {
+    campBusy = false;
+  }
+}, 5000);
+
 /* ---------------- HTTP API ---------------- */
 const send = (res, code, body) => {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
@@ -647,6 +715,54 @@ http.createServer(async (req, res) => {
       const labels = uniq.flatMap((x) => Object.values(sessions.get(x.id)?.store.labels || {}).map((l) => ({ ...l, source: x.id })));
       return send(res, 200, { chats: out.slice(0, 3000), labels });
     }
+    // --- campaigns (managers only) ---
+    if (url.pathname === "/api/campaigns") {
+      if (!who.mgr) return send(res, 403, { error: "forbidden" });
+      if (req.method === "GET") return send(res, 200, { campaigns: campaigns.slice().reverse().map(campPub) });
+      if (req.method === "POST") {
+        const csrc = srcOf(body.source);
+        if (!csrc) return send(res, 400, { error: "no_source" });
+        const text = String(body.text || "").trim().slice(0, 1000);
+        let image = null, buf = null;
+        if (body.dataUrl) {
+          const mm = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(String(body.dataUrl));
+          if (!mm) return send(res, 400, { error: "bad_image" });
+          buf = Buffer.from(mm[2], "base64");
+          if (buf.length > 8 * 1024 * 1024) return send(res, 413, { error: "too_large" });
+          image = mm[1];
+        }
+        if (!text && !image) return send(res, 400, { error: "empty" });
+        const seen = new Set(), recipients = [];
+        for (const x of (Array.isArray(body.list) ? body.list : []).slice(0, 5000)) {
+          const jid = toJid(x?.phone);
+          if (!jid || seen.has(jid)) continue;
+          seen.add(jid);
+          recipients.push({ jid, phone: jid.split("@")[0], name: String(x?.name || "").trim().slice(0, 60), status: "pending" });
+        }
+        if (!recipients.length) return send(res, 400, { error: "no_numbers" });
+        const c = {
+          id: "c" + Date.now().toString(36) + crypto.randomBytes(2).toString("hex"), name: String(body.name || "حملة").trim().slice(0, 80),
+          source: csrc.id, sourceLabel: csrc.label, text, image, batch: clampN(body.batch, 1, 50, 10), pauseMin: clampN(body.pauseMin, 5, 240, 30),
+          status: "running", createdAt: Date.now(), by: who.uid, nextAt: Date.now(), inBatch: 0, recipients,
+        };
+        if (buf) fs.writeFileSync(path.join(CAMP_DIR, c.id + ".img"), buf);
+        campaigns.push(c);
+        saveCampaigns();
+        return send(res, 200, { campaign: campPub(c) });
+      }
+    }
+    const cm = url.pathname.match(/^\/api\/campaigns\/([\w-]+)\/(pause|resume|cancel)$/);
+    if (cm && req.method === "POST") {
+      if (!who.mgr) return send(res, 403, { error: "forbidden" });
+      const c = campaigns.find((x) => x.id === cm[1]);
+      if (!c) return send(res, 404, { error: "not_found" });
+      if (cm[2] === "pause" && c.status === "running") c.status = "paused";
+      if (cm[2] === "resume" && c.status === "paused") { c.status = "running"; c.nextAt = Date.now(); c.inBatch = 0; }
+      if (cm[2] === "cancel" && ["running", "paused"].includes(c.status)) c.status = "cancelled";
+      saveCampaigns();
+      return send(res, 200, { campaign: campPub(c) });
+    }
+
     const src = srcOf(url.searchParams.get("source") || body.source);
     if (!src || !canSee(src, who)) return send(res, 404, { error: "no_source" });
     const s = sessions.get(src.id);

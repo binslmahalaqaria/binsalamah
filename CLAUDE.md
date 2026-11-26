@@ -420,6 +420,19 @@ Update this table the moment a new secret, API key, or config value is introduce
 
 > Newest entry always on top. Format: Date — what changed — why — affected sections.
 
+- **2026-11-26** — **«حملات واتساب» (WhatsApp campaigns), managers only.** Client: send an offer to an Excel list from a chosen number, 10 at a time with a 30-min pause, so the number isn't blocked.
+  - **Page** — `app/[locale]/admin/wa-campaigns/page.tsx`:
+    - takes an Excel upload (`read-excel-file`), auto-detects the phone and name columns, and accepts an optional image (shrunk to 1600 px JPEG);
+    - the message can use «{الاسم}»;
+    - you pick the sending number, set the batch size (10) and the pause (30 min), and see a preview and the estimated hours;
+    - the campaign list shows progress, pause/resume/cancel and the per-number status.
+  - **Server** — `wa-server/server.mjs` (`/api/campaigns`, `/api/campaigns/:id/(pause|resume|cancel)`, `who.mgr` only):
+    - stores campaigns in `data/campaigns.json`, with images under `data/campaigns/`;
+    - a 5-second runner sends one message every 20–45 s and waits `pauseMin` after each batch;
+    - numbers not on WhatsApp are skipped (`onWhatsApp`), and numbers are de-duplicated;
+    - it waits while the source is disconnected and keeps sending with the CRM closed.
+  - Nav: under الفريق for `isMgr`.
+
 - **2026-11-24** — **«طلبات التوظيف»: a separate, manager-only section.** Client: «خله قسم منفصل وفقط يجي للمدير».
   - New page `/admin/careers` (`app/[locale]/admin/careers/page.tsx`) lists website job applications (leads whose message starts «طلب توظيف», `isJobApp` in `lib/careers.ts`). Each one shows the name, phone with call/WhatsApp, job, age, nationality, city, experience, email, bio and CV link, with a job filter.
   - The nav item sits under الفريق, for `isMgr` only. «نماذج الموقع» no longer lists applications.

@@ -101,6 +101,8 @@ export function CrmShell({ children }: { children: ReactNode }) {
     ["الفريق", [
       ...(data.isMgr ? [{ href: "/admin/manager", k: "sales", label: "لوحة المدير", also: ["/admin/report"] }] : []),
       ...(can(data, "whatsapp") ? [{ href: "/admin/whatsapp", k: "wa", label: "واتساب" }] : []),
+      // Bulk WhatsApp sends from an Excel list (client 2026-11-26): managers only.
+      ...(data.isMgr ? [{ href: "/admin/wa-campaigns", k: "wa", label: "حملات واتساب" }] : []),
       { href: "/admin/tasks", k: "tasks", label: "المهام", badge: newTasks },
       { href: "/admin/chat", k: "chat", label: "الدردشة", badge: pathname === "/admin/chat" ? 0 : unread },
       { href: "/admin/team", k: "team", label: "الفريق" },
